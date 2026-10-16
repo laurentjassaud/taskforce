@@ -1,14 +1,10 @@
 <script setup>
 // Modale d'avertissement : changement de phase refusé (mode Assisté).
 //
-// Ouverte par HexMap.vue::onPhaseNext quand le joueur veut quitter :
-//  - la phase Mouvement alors que 2 unités amies ou plus occupent encore un
-//    même hex (cf. lib/useAssisted.js::stackedHexes) ;
-//  - la phase Combat alors qu'il reste des combats obligatoires en attente —
-//    des unités amies et ennemies adjacentes qui n'ont, ni l'une ni l'autre,
-//    combattu (cf. lib/useCombat.js::pendingEngagements).
-// Ce composant ne fait qu'AFFICHER ces listes (seule celle qui n'est pas vide
-// apparaît) et renvoyer l'intention "ferme".
+// Ouverte par HexMap.vue::onPhaseNext quand le joueur veut quitter la phase
+// Mouvement alors que des unités amies sont encore en surplus d'empilement
+// sur un même hex (cf. lib/useAssisted.js::stackedHexes). Ce composant ne
+// fait qu'AFFICHER cette liste et renvoyer l'intention "ferme".
 //
 // Réutilisée aussi par HexMap.vue::setSelectedCounter (props `title` et
 // `stackMessage`) quand on veut quitter une unité en overstack pour en
@@ -22,15 +18,11 @@
 // cf. HexMap.vue::onPhaseNext) — "Annuler" ferme, le second bouton renvoie
 // "confirm". Entrée et Échap annulent : passer outre demande un vrai clic.
 //
-// Contrairement à CombatModal.vue, elle est BLOQUANTE (overlay) : c'est un
-// simple message à acquitter, il n'y a rien à cliquer sur la carte pendant
-// qu'elle est ouverte.
+// Elle est BLOQUANTE (overlay) : c'est un simple message à acquitter, il n'y
+// a rien à cliquer sur la carte pendant qu'elle est ouverte.
 import { onMounted, onUnmounted } from 'vue'
 
 defineProps({
-  // `[{ key, friendly, friendlyHex, enemy, enemyHex }]` — cf.
-  // useCombat.js::pendingEngagements.
-  engagements: { type: Array, default: () => [] },
   // `[{ key, hex, units }]` — cf. useAssisted.js::stackedHexes.
   stacks: { type: Array, default: () => [] },
   title: { type: String, default: null },
@@ -64,14 +56,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
           </li>
         </ul>
       </template>
-      <p v-if="engagements.length">{{ $t('phaseBlocked.engagements') }}</p>
-      <ul v-if="engagements.length" class="pb-list">
-        <li v-for="engagement in engagements" :key="engagement.key">
-          <b>{{ engagement.friendly }}</b> <span class="pb-hex">{{ engagement.friendlyHex }}</span>
-          <span class="pb-vs">↔</span>
-          <b>{{ engagement.enemy }}</b> <span class="pb-hex">{{ engagement.enemyHex }}</span>
-        </li>
-      </ul>
       <footer class="pb-foot">
         <template v-if="confirmLabel">
           <button type="button" class="pb-cancel" @click="emit('close')">{{ $t('common.cancel') }}</button>

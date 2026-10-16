@@ -4,7 +4,7 @@
 // Usage : node scripts/decode-bug-report.mjs <export>
 //     ou : node scripts/decode-bug-report.mjs < export.txt
 // Affiche le JSON : réglages, pas/phase, positions ("id@CCRR"), unités
-// éliminées ou ayant combattu, et les derniers coups du journal (mêmes
+// éliminées, et les derniers coups du journal (mêmes
 // entrées `{ t, kind, text, data }` qu'un journal enregistré).
 import { readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'

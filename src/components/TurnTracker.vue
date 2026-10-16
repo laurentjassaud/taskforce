@@ -11,14 +11,14 @@
 // Le parent (HexMap.vue) n'a besoin que de :
 //  - écouter `turn` pour répercuter une avance LOCALE au serveur (multijoueur) ;
 //  - écouter `change` pour connaître le tour courant ailleurs dans sa propre
-//    logique (ex. régénération du soutien allié par tour) ;
+//    logique (ex. renfort de leurres, retour des chits de recherche) ;
 //  - appeler `canControl(counter)` (exposé) pour restreindre sélection/glisser ;
 //  - appeler `applyRemoteTurn(step)` (exposé) quand le serveur fait autorité.
 //
 // Phases (mode Assisté uniquement — cf. lib/useAssisted.js) : ce composant
-// reste volontairement "bête" sur le sujet des phases (Mouvement/Combat, et
-// pour le dernier camp de l'ordre, Fin de tour) — il ne connaît PAS le sens
-// de ces phases lui-même (toute cette logique, y compris COMBIEN de
+// reste volontairement "bête" sur le sujet des phases (celles du module, cf.
+// `turnStructure.phases`) — il ne connaît PAS le sens de ces phases
+// lui-même (toute cette logique, y compris COMBIEN de
 // marqueurs afficher et LESQUELS, vit dans useAssisted.js::phaseLabels, cf.
 // ce fichier pour le détail). Il se contente :
 //  - d'afficher, si la prop `phase` est fournie (non nulle), une 2e ligne
@@ -30,7 +30,7 @@
 //    le pas courant (contrairement au bouton de la 1re ligne, utilisé hors
 //    mode phases, qui continue d'appeler `nextTurn()` directement comme
 //    avant). C'est useAssisted.js qui, en écoutant `phase-next`, décide si
-//    ce clic doit seulement faire passer de Mouvement à Combat (aucun
+//    ce clic doit seulement faire passer à la phase suivante (aucun
 //    changement de pas ici) ou doit AUSSI faire avancer le pas courant (en
 //    rappelant `nextTurn()`, exposé plus bas) pour passer au camp/tour
 //    suivant.
@@ -52,25 +52,22 @@ const props = defineProps({
   // suivante", le pas courant n'avance alors que via applyRemoteTurn (piloté
   // par le lecteur de rejeu ou par le serveur).
   disabled: { type: Boolean, default: false },
-  // Phase active (index dans `phaseLabels` ci-dessous : 0 = Mouvement,
-  // 1 = Combat, 2 = Fin de tour pour le dernier camp de l'ordre), ou `null`
-  // hors mode Assisté (cf. useAssisted.js::phase). C'est cette prop, et
+  // Phase active (pas de phase, cf. lib/rules.js : 0 = Mouvement), ou
+  // `null` hors mode Assisté (cf. useAssisted.js::phase). C'est cette prop, et
   // elle seule, qui détermine si la 2e ligne "phases" est affichée : `null`
   // = comportement historique inchangé (pas de phases, bouton en bout de
   // 1re ligne).
   phase: { type: Number, default: null },
   // Index du marqueur à allumer dans `phaseLabels` (cf.
-  // useAssisted.js::phaseIndex). Diffère de `phase` quand un marqueur
-  // "Airborne" précède "Mouvement" (phase -1 -> index 0). Absent : on
-  // retombe sur `phase`.
+  // useAssisted.js::phaseIndex). Absent : on retombe sur `phase`.
   phaseIndex: { type: Number, default: null },
   // Libellés des marqueurs de la ligne "phases", dans l'ordre (cf.
-  // useAssisted.js::phaseLabels — 2 entrées pour un camp normal, 3 pour le
-  // dernier camp de l'ordre). Ignoré hors mode phases (`phase === null`).
+  // useAssisted.js::phaseLabels — les phases jouées ce tour-ci). Ignoré
+  // hors mode phases (`phase === null`).
   phaseLabels: { type: Array, default: () => [] },
   // Texte à afficher sur le bouton de la ligne "phases", précisant ce que
   // le prochain clic va déclencher ("Nouvelle phase" / "Autre joueur" /
-  // "Fin de tour" / "Nouveau tour" — calculé par useAssisted.js). Ignoré
+  // "Nouveau tour" — calculé par useAssisted.js). Ignoré
   // hors mode phases.
   nextLabel: { type: String, default: null },
 })
@@ -160,11 +157,11 @@ function applyRemoteTurn(step) {
 
 // `currentStep` et `isLastSideOfTurn` sont exposés en lecture pour que
 // useAssisted.js puisse (a) observer les changements de pas afin de
-// remettre la phase à "Mouvement" dès que le camp/tour actif change (par
+// remettre la phase de départ dès que le camp/tour actif change (par
 // clic, par synchronisation réseau via applyRemoteTurn, ou par rejeu de
 // journal), et (b) choisir le libellé du bouton "suivant" en mode phases.
 // `nextTurn` est exposé pour que useAssisted.js puisse la déclencher
-// lui-même (cf. plus haut) quand un clic en phase Combat doit AUSSI faire
+// lui-même (cf. plus haut) quand un clic sur "suivant" doit AUSSI faire
 // avancer le pas courant.
 // `currentTurn` (numéro de tour, dérivé du pas courant) est en plus exposé
 // pour lib/useAssisted.js (congestion des hex d'entrée de renfort — remise à
@@ -466,8 +463,7 @@ const conditionRows = computed(() => {
   cursor: default;
 }
 
-/* Ligne "phases" (mode Assisté) : les 2 marqueurs Mouvement/Combat à
-   gauche, le bouton "suivant" (élargi pour accueillir son libellé) à
+/* Ligne "phases" (mode Assisté) : les marqueurs de phase à gauche, le bouton "suivant" (élargi pour accueillir son libellé) à
    droite — `justify-content: space-between` les écarte l'un de l'autre
    sans avoir à leur donner une largeur figée. */
 .tt-row-phases {

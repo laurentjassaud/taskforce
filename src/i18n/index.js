@@ -12,7 +12,7 @@ import en from './en.js'
    Le journal de partie reste dans la langue où il a été écrit : ses lignes
    sont traduites au moment où elles sont écrites, puis stockées en texte.
    Les noms d'unités et de lieux du module ne sont pas traduits. Ses autres
-   libellés (camps, scénarios, résultats de combat...) sont écrits en
+   libellés (camps, scénarios, phases...) sont écrits en
    français dans son JSON, qui peut en donner la traduction dans un
    dictionnaire `i18n` : `{ "en": { "Alliés": "Allies" } }` (cf. `mt`).
    ═══════════════════════════════════════════════════════════════════════════ */

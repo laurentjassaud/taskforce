@@ -5,7 +5,7 @@
 // Chaque boîte de jeu peut avoir des règles qu'aucun champ du JSON ne sait
 // exprimer (cf. lib/useCoralSea.js, qui suit le patron et la convention
 // `null` = "pas de règle particulière"). Le moteur (HexMap.vue) ne connaît
-// plus chaque module par son nom : il demande ICI le composable de règles du
+// pas chaque module par son nom : il demande ICI le composable de règles du
 // module joué, et reçoit un composable INERTE pour un module qui n'en a pas.
 //
 // AJOUTER UN MODULE : écrire `lib/useMonModule.js` sur le patron de
@@ -21,30 +21,10 @@ export const INERT_RULES = Object.freeze({
   active: false,
   /** Ce pion est-il posé au chargement ? `true`/`false` pour trancher, `null` pour laisser la règle générique. */
   autoPlacesAtLoad: () => null,
-  /** Un aéroporté vient d'être posé (mémoire du tour). */
-  noteAirborneArrival: () => {},
-  /** MP à compter comme déjà dépensés du fait de l'arrivée, ou `null`. */
-  airborneArrivalSpentMp: () => null,
-  /** Nouveau camp/tour : oublier ce qui ne valait que pour le tour écoulé. */
-  clearTurnState: () => {},
-  /** Cet hex peut-il recevoir un pion de soutien ? `false` pour l'interdire, `null` sinon. */
-  supportHexAllowed: () => null,
-  /** Combien d'artilleries un camp peut-il combiner dans un combat ? Un nombre, ou `null` (sans limite). */
-  maxArtilleryPerCombat: () => null,
-  /** Réduction de retraite offerte dans cet hex — `{ total, reason }` ou `null`. */
-  cityRetreatReduction: () => null,
-  /** Cette unité peut-elle franchir cet hexside malgré le terrain ? `true` pour l'ouvrir, `null` sinon. */
-  engineerCrossingAllows: () => null,
-  /** Ce pion échappe-t-il à la limite d'empilement ? `true` s'il ne compte pas, `null` sinon. */
-  stackingExempt: () => null,
-  /** Nature d'arête à substituer AU COMBAT pour cette unité, ou `null` (assaut de rivière). */
-  engineerAssaultEdge: () => null,
-  /** Ce pion éliminé revient-il en renfort ? `{ setup, turn }` ou `null`. */
-  rebuiltReinforcement: () => null,
-  /** Le génie qui tient un passage sur cet hex, ou `null`. */
-  engineerAt: () => null,
-  /** Cette unité est-elle un aéroporté ou un planeur à pied ? */
-  isAirborneFoot: () => false,
+  /** Pions attendus à la fin de la mise en place (`turnTrack.setup`) :
+   *  `{ count, total }` — posés sur la carte, et nombre exigé —, ou `null`
+   *  (aucune exigence). Moins : le joueur confirme ; plus : refusé. */
+  setupCount: () => null,
   /** Potentiel de mouvement de ce pion ce tour-ci (`turnInfo` = détail du tour de la piste), ou `null` (règle générique). */
   movementAllowance: () => null,
   /** Étiquette secrète d'un pion, montrée au seul camp `privateLabelSide`, ou `null`. */
@@ -58,9 +38,6 @@ export const INERT_RULES = Object.freeze({
    *  `autoMoveSide` (`{ col, row }`), ou `null` (déplacé par le joueur). */
   autoMoveTarget: () => null,
   autoMoveSide: null,
-  /** Cet hex (`{ col, row }`) est-il interdit à ce pion — placement comme
-   *  mouvement ? `true` pour l'interdire, `null` sinon. */
-  hexForbidden: () => null,
   /** Phase (id de `turnStructure.phases`) où `autoMoveSide` fait ses
    *  reconnaissances, ou `null` (pas de reconnaissance du moteur). */
   reconPhase: null,

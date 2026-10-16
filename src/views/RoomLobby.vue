@@ -45,7 +45,7 @@ function onRestartWith() {
   replayWarning.value = t('lobby.replayWarning')
 }
 
-// Libellé lisible d'un camp (ex. "german" -> "Allemands", cf. module
+// Libellé lisible d'un camp (ex. "usn" -> "Américains", cf. module
 // turnTrack.sides) ; à défaut, la clé du camp telle quelle.
 const sideLabel = (side) => mt(moduleData.value?.turnTrack?.sides?.[side]?.label) ?? side
 
@@ -65,8 +65,7 @@ async function loadGame() {
       const mod = await modRes.json()
       registerModuleTexts(mod)
       moduleData.value = mod
-      // Un module regroupe ses factions (ex: commonwealth/us/pol) sous des
-      // camps jouables via `sides` (ex: {"german":["german"],"allies":[...]})
+      // Un module regroupe ses factions sous des camps jouables via `sides` (ex: {"ijn":["ijn"],"usn":["usn"]})
       // — plusieurs factions peuvent partager un même camp en multijoueur.
       // À défaut (module sans ce champ), chaque faction devient son propre
       // camp, complété par des camps génériques pour avoir assez de choix.
@@ -108,26 +107,6 @@ function attachSocketListeners() {
   })
   socket.on('game:unlog', ({ uid }) => {
     hexMapRef.value?.removeRemoteEntry(uid)
-  })
-  // FPF en ligne (cf. HexMap.vue, section "FPF en ligne") : combat soumis au
-  // défenseur, sa réponse, ou l'abandon de la demande.
-  socket.on('game:fpf-request', ({ request }) => {
-    hexMapRef.value?.applyRemoteFpfRequest(request)
-  })
-  socket.on('game:fpf-reply', ({ id, fpfIds, supportIds }) => {
-    hexMapRef.value?.applyRemoteFpfReply(id, fpfIds, supportIds)
-  })
-  socket.on('game:fpf-cancel', ({ id }) => {
-    hexMapRef.value?.applyRemoteFpfCancel(id)
-  })
-  // Sort des ponts (cf. src/lib/useBridges.js) : l'occasion soumise au camp
-  // qui doit la trancher — démolir ou réparer —, puis sa décision, que tous
-  // appliquent.
-  socket.on('game:bridge-request', ({ request }) => {
-    hexMapRef.value?.applyRemoteBridgeRequest(request)
-  })
-  socket.on('game:bridge', (result) => {
-    hexMapRef.value?.applyRemoteBridge(result)
   })
   socket.on('connect', () => {
     // Reconnexion (auto par socket.io après coupure réseau) : on rejoint à
@@ -187,30 +166,6 @@ function onLocalUnlog(uid) {
   getSocket().emit('game:unlog', { gameId: props.id, uid })
 }
 
-// FPF en ligne : le joueur actif soumet son combat au défenseur, ou y
-// renonce ; le défenseur répond (cf. HexMap.vue, section "FPF en ligne").
-function onFpfRequest(request) {
-  getSocket().emit('game:fpf-request', { gameId: props.id, request })
-}
-
-function onFpfCancel(requestId) {
-  getSocket().emit('game:fpf-cancel', { gameId: props.id, requestId })
-}
-
-function onFpfReply({ requestId, fpfIds, supportIds }) {
-  getSocket().emit('game:fpf-reply', { gameId: props.id, requestId, fpfIds, supportIds })
-}
-
-/** Le plateau soumet une occasion au camp qui doit la trancher. */
-function onBridgeRequest(request) {
-  getSocket().emit('game:bridge-request', { gameId: props.id, request })
-}
-
-/** Le camp qui tranche publie sa décision — `{ edge, kind, ... }`. */
-function onBridge(result) {
-  getSocket().emit('game:bridge', { gameId: props.id, ...result })
-}
-
 // Déploiement initial (et tour de départ) proposés par le plateau : ceux que
 // le serveur retient (les premiers proposés par l'un des joueurs) sont
 // appliqués ici.
@@ -251,11 +206,6 @@ onUnmounted(() => {
   socket.off('game:over')
   socket.off('game:log')
   socket.off('game:unlog')
-  socket.off('game:fpf-request')
-  socket.off('game:fpf-reply')
-  socket.off('game:fpf-cancel')
-  socket.off('game:bridge-request')
-  socket.off('game:bridge')
   socket.off('connect')
 })
 </script>
@@ -335,9 +285,6 @@ onUnmounted(() => {
       :initial-blitz-used-ms="room.blitzUsedMs ?? {}"
       :initial-blitz-loser="room.blitzLoser ?? null"
       :initial-game-over-reason="room.gameOverReason ?? null"
-      :initial-fpf-request="room.fpfRequest ?? null"
-      :initial-bridge-log="room.bridgeLog ?? []"
-      :initial-bridge-request="room.bridgeRequest ?? null"
       :local-side="mySide"
       online
       :initial-journal="sharedJournal"
@@ -351,11 +298,6 @@ onUnmounted(() => {
       @unlog="onLocalUnlog"
       @deploy="onDeploy"
       @restart-with="onRestartWith"
-      @fpf-request="onFpfRequest"
-      @fpf-cancel="onFpfCancel"
-      @fpf-reply="onFpfReply"
-      @bridge-request="onBridgeRequest"
-      @bridge="onBridge"
     />
   </div>
 </template>

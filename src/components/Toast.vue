@@ -3,7 +3,7 @@
 // Toast.vue — court message en bas de la carte, qui s'efface de lui-même
 // (ex. résultat d'une reconnaissance du joueur, cf. HexMap.vue::performSearch).
 //
-// NON bloquant, contrairement à VictoryModal.vue : la partie continue
+// NON bloquant, contrairement à PhaseBlockedModal.vue : la partie continue
 // dessous. Un nouveau message (`id` différent) remplace le précédent et
 // relance le délai ; un clic le ferme tout de suite.
 // ═══════════════════════════════════════════════════════════════════════════

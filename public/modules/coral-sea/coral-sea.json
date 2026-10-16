@@ -284,8 +284,7 @@
       "kinds": {
         "barrier": {
           "impassable": true,
-          "blocksZoc": true,
-          "blocksAttack": true
+          "blocksZoc": true
         }
       },
       "movementPriority": [
@@ -790,9 +789,6 @@
     }
   ],
   "turnStructure": {
-    "airbornePhase": false,
-    "combatPhase": false,
-    "endOfTurnPhase": false,
     "phases": [
       {
         "id": "navalMovement",
@@ -819,7 +815,10 @@
     ]
   },
   "rules": {
-    "stackingLimit": 1
+    "stackingLimit": {
+      "ijn": 1,
+      "usn": "none"
+    }
   },
   "counters": {
     "ijn": [

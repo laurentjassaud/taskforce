@@ -26,10 +26,9 @@ const props = defineProps({
   // Cf. lib/useAssisted.js::draggable — faux en mode Assisté (clic
   // uniquement), vrai en mode Libre (glisser-déposer uniquement).
   draggable: { type: Boolean, default: true },
-  // Cf. lib/useAssisted.js::canPlaceReinforcementNow — le renfort peut-il
-  // être posé DANS LA PHASE EN COURS (phase Airborne : aéroportés
-  // seulement ; autres phases : tout sauf eux) ? Absent : aucune
-  // restriction de phase.
+  // Cf. HexMap.vue::canPlaceNow — le renfort peut-il être posé DANS LA
+  // PHASE EN COURS (mise en place : pions de tour 0 seulement ; renfort de
+  // leurres du joueur...) ? Absent : aucune restriction de phase.
   canPlace: { type: Function, default: null },
 })
 

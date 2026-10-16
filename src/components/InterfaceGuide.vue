@@ -28,8 +28,6 @@ const STEPS = [
     { key: 'turn' },
     { key: 'phases', mode: 'assisted' },
     { key: 'next', mode: 'free' },
-    { key: 'support' },
-    { key: 'victory' },
     { key: 'timer' },
   ] },
   { key: 'map', items: [
@@ -43,7 +41,6 @@ const STEPS = [
     { key: 'drag', mode: 'free' },
     { key: 'menu' },
     { key: 'undo', mode: 'assisted' },
-    { key: 'combat', mode: 'assisted' },
   ] },
   { key: 'panel', items: [
     { key: 'reinforcements' },
@@ -51,7 +48,6 @@ const STEPS = [
     { key: 'journal' },
   ] },
   { key: 'tools', items: [
-    { key: 'charts' },
     { key: 'die', mode: 'free' },
     { key: 'display' },
     { key: 'bug' },

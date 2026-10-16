@@ -7,7 +7,7 @@
 //
 // Pourquoi une "reprise en attente" : un journal ne se rejoue correctement
 // que dans les RÉGLAGES où il a été joué (mode Libre/Assisté surtout — les
-// règles de phase, de MP, de combat n'existent qu'en Assisté). Quand on
+// règles de phase, de MP, de ZOC n'existent qu'en Assisté). Quand on
 // reprend une sauvegarde faite avec d'autres réglages que la partie ouverte,
 // DemoPlay.vue relance la partie avec les bons réglages (nouvelle URL, carte
 // remontée à neuf) ; le journal à rejouer traverse ce remontage en

@@ -1,8 +1,8 @@
 <script setup>
 // ═══════════════════════════════════════════════════════════════════════════
 // StackPopup.vue — fenêtre de survol d'une pile : montre, en grand et côte à
-// côte, tous les pions d'un hex qui en porte plusieurs (unités, marqueurs DZ,
-// pions de soutien...), que l'empilement sur la carte masque en partie.
+// côte, tous les pions d'un hex qui en porte plusieurs (unités, marqueurs,
+// pions de repérage...), que l'empilement sur la carte masque en partie.
 // Ne connaît rien des règles : HexMap.vue lui passe la pile déjà triée (du
 // dessus vers le dessous, cf. `hoveredStackCounters`) et le rectangle écran
 // du pion survolé, à côté duquel elle s'affiche.

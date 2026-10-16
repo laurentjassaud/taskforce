@@ -103,7 +103,7 @@ export function createGame({ moduleId, scenarioId, variants, settings, maxPlayer
     turnStep: 0, // index dans la séquence tours × camps du module (cf. HexMap.vue -> turnTrack)
     // Phase en cours du camp actif (mode Assisté, cf. src/lib/useAssisted.js),
     // ou `null` quand chaque client doit la recalculer lui-même (début de
-    // camp/tour : Airborne ou Mouvement selon ses renforts).
+    // camp/tour : première phase du pas).
     phase: null,
     // Début (horloge serveur) de la phase/du pas en cours — sert au timing
     // "Limité" pour qu'un joueur qui (re)charge la page retrouve le temps
@@ -124,21 +124,6 @@ export function createGame({ moduleId, scenarioId, variants, settings, maxPlayer
     // qui (re)joint la partie, pour qu'il la reconstitue.
     journal: [],
     journalBytes: 0, // taille JSON cumulée de `journal` (cf. MAX_JOURNAL_BYTES)
-    // Combat soumis au défenseur pour son FPF ("final protective fire", cf.
-    // `recordFpfRequest`) — `{ id, targets, attackerIds, fpfIds }`, `fpfIds`
-    // à `null` tant qu'il n'a pas répondu — ou `null`. Conservé pour qu'un
-    // joueur qui recharge la page retrouve la négociation en cours.
-    fpfRequest: null,
-    // Sort des ponts (cf. src/lib/useBridges.js) : chaque décision déjà
-    // prise, DANS L'ORDRE — `[{ edge, kind, die, destroyed, unitId }]`, une
-    // démolition puis, le cas échéant, la réparation qui la défait. Transmis
-    // à qui (re)joint la partie pour qu'il retrouve la carte telle qu'elle
-    // est ; c'est l'ordre qui la reconstitue, pas la seule dernière entrée.
-    bridgeLog: [],
-    // Occasion soumise au camp qui doit la trancher, quand il n'a pas la main
-    // — `{ id, edge, kind, unitId }` ou `null`. Conservée pour qu'un joueur
-    // qui recharge sa page retrouve la décision en attente.
-    bridgeRequest: null,
   }
   games.set(id, game)
   return game
@@ -182,9 +167,6 @@ export function toPublic(game) {
     blitzUsedMs: game.blitzUsedMs,
     blitzLoser: game.blitzLoser,
     gameOverReason: game.gameOverReason ?? null,
-    fpfRequest: game.fpfRequest,
-    bridgeLog: game.bridgeLog,
-    bridgeRequest: game.bridgeRequest,
   }
 }
 
@@ -300,26 +282,24 @@ export function advanceTurn(id) {
   game.turnStep += 1
   game.phase = null
   game.phaseSince = Date.now()
-  game.fpfRequest = null
   touch(game)
   return game
 }
 
-/** Changement de phase SANS changement de pas (Airborne -> Mouvement,
- *  Mouvement -> Combat, Combat -> Fin de tour). Refusé s'il concerne un pas
- *  déjà dépassé (message en retard sur un `game:turn`). */
+/** Changement de phase SANS changement de pas (phase suivante du même camp).
+ *  Refusé s'il concerne un pas déjà dépassé (message en retard sur un
+ *  `game:turn`). */
 export function recordPhase(id, { phase, step, blitzUsed }) {
   const game = games.get(id)
   if (!game) throw new RoomError('not-found')
   if (game.status !== 'started') throw new RoomError('not-started')
   if (game.blitzLoser) throw new RoomError('game-over')
-  // -2 (mise en place), -1..2 : phases standard ; au-delà, phases propres au
-  // module (cf. src/lib/rules.js::CUSTOM_PHASE_BASE).
+  // -2 (mise en place), 0 (Mouvement), puis les phases propres au module
+  // (cf. src/lib/rules.js::CUSTOM_PHASE_BASE).
   if (!Number.isInteger(phase) || phase < -2 || phase > 31) throw new RoomError('bad-phase')
   if (step !== game.turnStep) throw new RoomError('stale-step')
   game.phase = phase
   game.phaseSince = Date.now()
-  game.fpfRequest = null
   const cleanBlitz = sanitizeBlitz(blitzUsed)
   if (cleanBlitz) game.blitzUsedMs = cleanBlitz
   touch(game)
@@ -365,168 +345,7 @@ export function appendJournal(id, entry) {
   if (!clean) throw new RoomError('bad-entry')
   if (game.journal.some((existing) => existing.uid === clean.uid)) return null
   pushJournal(game, [clean])
-  // Combat joué : la négociation de son FPF est close (cf. recordFpfRequest).
-  if (clean.kind === 'combat') game.fpfRequest = null
   return clean
-}
-
-// --- FPF en ligne ---------------------------------------------------------------
-// Le FPF ("final protective fire", cf. src/lib/useArtillery.js) est choisi
-// par le DÉFENSEUR, qui n'a pas la main : le joueur actif lui SOUMET son
-// combat (`recordFpfRequest`), le défenseur RÉPOND (`recordFpfReply`), puis le
-// joueur actif lance le dé. Le serveur ne fait que relayer et garder la
-// négociation en cours (cf. `game.fpfRequest`) — il ne connaît pas les
-// règles : c'est le client de l'attaquant qui ne retient, dans la réponse,
-// que les artilleries éligibles.
-
-const MAX_FPF_IDS = 32
-
-/** Liste d'ids de pions reçue d'un client : chaînes/nombres courts, au plus
- *  `MAX_FPF_IDS`. `null` si invalide. */
-function sanitizeIds(ids) {
-  if (!Array.isArray(ids) || ids.length > MAX_FPF_IDS) return null
-  const ok = ids.every((id) => (typeof id === 'string' || typeof id === 'number') && String(id).length <= 64)
-  return ok ? ids.map((id) => (typeof id === 'number' ? id : String(id))) : null
-}
-
-/** Le joueur actif soumet son combat au défenseur. `request` : `{ id,
- *  targets: [{ col, row }], attackerIds }`. Renvoie la demande assainie
- *  (celle qui est relayée). */
-export function recordFpfRequest(id, request) {
-  const game = startedGame(id)
-  if (game.blitzLoser) throw new RoomError('game-over')
-  const requestId = request?.id
-  const targets = Array.isArray(request?.targets) ? request.targets : null
-  const attackerIds = sanitizeIds(request?.attackerIds)
-  const validTargets = targets && targets.length >= 1 && targets.length <= 6 && targets.every((target) =>
-    Number.isInteger(target?.col) && Number.isInteger(target?.row) && target.col >= 0 && target.row >= 0 && target.col < 1000 && target.row < 1000)
-  if (typeof requestId !== 'string' || !requestId || requestId.length > 64 || !validTargets || !attackerIds?.length) {
-    throw new RoomError('bad-fpf')
-  }
-  game.fpfRequest = {
-    id: requestId,
-    targets: targets.map((target) => ({ col: target.col, row: target.row })),
-    attackerIds,
-    fpfIds: null,
-    supportIds: null,
-  }
-  touch(game)
-  return game.fpfRequest
-}
-
-/** Le défenseur répond à la demande `requestId` avec ses artilleries
- *  `fpfIds` et ses pions de soutien `supportIds` (cf. SupportTracker.vue —
- *  il ne peut pas les poser lui-même sur la carte pendant le tour adverse,
- *  c'est le client du joueur actif qui le fait en recevant cette réponse).
- *  Refusé s'il n'y a pas (ou plus) de demande en attente sous cet id.
- *  Renvoie `{ id, fpfIds, supportIds }`, relayé au joueur actif. */
-export function recordFpfReply(id, { requestId, fpfIds, supportIds }) {
-  const game = startedGame(id)
-  const pending = game.fpfRequest
-  const ids = sanitizeIds(fpfIds)
-  const supports = sanitizeIds(supportIds ?? [])
-  if (!pending || pending.id !== requestId || pending.fpfIds || !ids || !supports) throw new RoomError('bad-fpf')
-  pending.fpfIds = ids
-  pending.supportIds = supports
-  touch(game)
-  return { id: requestId, fpfIds: ids, supportIds: supports }
-}
-
-/** Le joueur actif renonce à la demande `requestId` (pas encore de réponse).
- *  `true` si elle a été retirée. */
-export function cancelFpfRequest(id, requestId) {
-  const game = startedGame(id)
-  if (!game.fpfRequest || game.fpfRequest.id !== requestId || game.fpfRequest.fpfIds) return false
-  game.fpfRequest = null
-  touch(game)
-  return true
-}
-
-// --- Sort des ponts en ligne ----------------------------------------------------
-// Démolir un pont et le relever sont tranchés par des camps OPPOSÉS (cf.
-// src/lib/useBridges.js — l'allemand fait sauter, le génie allié répare), et
-// aucun des deux n'a systématiquement la main. Quand celui qui décide ne l'a
-// pas, le joueur actif lui SOUMET l'occasion (`recordBridgeRequest`) et
-// attend ; le camp décideur publie sa décision (`recordBridgeResult`), que
-// tous appliquent. Quand il a la main, il décide sans demande préalable.
-// Comme pour le FPF, le serveur ne connaît pas les règles : il relaie, garde
-// l'occasion en attente pour une page rechargée, et tient l'historique des
-// ponts pour un joueur qui rejoint en cours de partie.
-
-/** Clé d'arête reçue d'un client ("CCRR-CCRR"), ou `null` si invalide. */
-function sanitizeEdge(edge) {
-  return typeof edge === 'string' && /^\d{4}-\d{4}$/.test(edge) ? edge : null
-}
-
-/** Sorte de décision reçue d'un client, ou `null`. */
-function sanitizeKind(kind) {
-  return kind === 'repair' || kind === 'demolition' ? kind : null
-}
-
-/** Id de pion reçu d'un client (le génie qui répare), ou `null`. */
-function sanitizeUnitId(unitId) {
-  if (unitId == null) return null
-  const ok = (typeof unitId === 'string' || typeof unitId === 'number') && String(unitId).length <= 64
-  return ok ? String(unitId) : null
-}
-
-/** Le joueur actif soumet l'occasion au camp décideur. `request` :
- *  `{ id, edge, kind, unitId }`. Renvoie la demande assainie (relayée). */
-export function recordBridgeRequest(id, request) {
-  const game = startedGame(id)
-  if (game.blitzLoser) throw new RoomError('game-over')
-  const requestId = request?.id
-  const edge = sanitizeEdge(request?.edge)
-  const kind = sanitizeKind(request?.kind) ?? 'demolition'
-  if (typeof requestId !== 'string' || !requestId || requestId.length > 64 || !edge) throw new RoomError('bad-bridge')
-  game.bridgeRequest = { id: requestId, edge, kind, unitId: sanitizeUnitId(request?.unitId) }
-  touch(game)
-  return game.bridgeRequest
-}
-
-/** Le camp décideur publie sa décision : `{ edge, kind, die, destroyed,
- *  unitId, declined }` — `die` à `null` s'il a renoncé sans lancer,
- *  `declined` pour une réparation refusée (qui ne change rien à la carte mais
- *  clôt l'occasion). Retenue DANS L'ORDRE pour les joueurs qui rejoindront
- *  ensuite, et clôt l'occasion en attente si c'est bien de ce pont qu'elle
- *  parlait. Renvoie le résultat relayé. */
-export function recordBridgeResult(id, { edge, kind, die = null, destroyed, unitId, declined } = {}) {
-  const game = startedGame(id)
-  const clean = sanitizeEdge(edge)
-  if (!clean) throw new RoomError('bad-bridge')
-  const result = {
-    edge: clean,
-    kind: sanitizeKind(kind) ?? 'demolition',
-    die: Number.isInteger(die) ? die : null,
-    destroyed: !!destroyed,
-    unitId: sanitizeUnitId(unitId),
-    declined: !!declined,
-  }
-  // Une réparation refusée ne laisse aucune trace sur la carte : inutile de
-  // la rejouer à qui rejoint la partie.
-  if (!result.declined && !isRepeat(game.bridgeLog, result)) game.bridgeLog.push(result)
-  if (game.bridgeRequest && sameEdge(game.bridgeRequest.edge, clean)) game.bridgeRequest = null
-  touch(game)
-  return result
-}
-
-/** Cette décision est-elle celle que l'historique porte DÉJÀ en dernier pour
- *  ce pont (deux clients qui se croisent) ? Un même pont peut y figurer
- *  plusieurs fois — démoli, puis relevé —, mais jamais deux fois de suite
- *  pour la même chose. */
-function isRepeat(log, result) {
-  for (let index = log.length - 1; index >= 0; index -= 1) {
-    if (sameEdge(log[index].edge, result.edge)) return log[index].kind === result.kind
-  }
-  return false
-}
-
-/** Deux clés d'arête désignent-elles le même hexside ? Le client peut nommer
- *  l'arête dans l'un ou l'autre sens (cf. src/lib/useBridges.js). */
-function sameEdge(edgeA, edgeB) {
-  if (edgeA === edgeB) return true
-  const [hexA, hexB] = String(edgeA).split('-')
-  return hexB + '-' + hexA === edgeB
 }
 
 /** Retire une entrée du journal partagé (retour arrière). `true` si retirée. */

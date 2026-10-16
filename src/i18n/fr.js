@@ -108,18 +108,7 @@ export default {
     offline: 'hors ligne',
   },
 
-  factions: {
-    german: 'Allemands',
-    commonwealth: 'Commonwealth',
-    us: 'US',
-    pol: 'Polonais',
-  },
 
-  counter: {
-    fought: 'A combattu pendant cette phase',
-    disrupted: 'A subi un résultat de combat (cette phase de Combat ou la précédente) : pas de FPF',
-    displaced: 'Refoulée par une retraite amie : ne peut plus tirer pendant cette phase',
-  },
 
   eliminated: {
     empty: 'Aucune unité éliminée.',
@@ -142,27 +131,12 @@ export default {
     title: 'Temps restant pour la phase de Mouvement',
   },
 
-  supportTracker: {
-    combatOnly: 'Utilisable pendant une phase de Combat',
-  },
 
   turnTracker: {
     nextTurn: 'Tour suivant',
   },
 
-  victory: {
-    title: 'Points de victoire',
-    endOfTurnTitle: 'Fin de tour — points de victoire',
-    total: '{side} :',
-    manualTitle: 'Points de victoire — à tenir à la main',
-    engineTitle: 'Points de victoire — tenus par le moteur',
-    removePoint: 'Retirer un point',
-    addPoint: 'Ajouter un point',
-  },
 
-  charts: {
-    movementAlt: 'Table des coûts de mouvement par terrain',
-  },
 
   dice: {
     result: 'Résultat :',
@@ -173,28 +147,8 @@ export default {
   phaseBlocked: {
     title: 'Impossible de changer de phase',
     stacks: 'Plusieurs unités amies occupent le même hex. Déplacez-en une avant de terminer la phase Mouvement :',
-    engagements: "Des unités adjacentes de camps opposés n'ont pas encore combattu. Résolvez ces combats avant de terminer la phase Combat :",
   },
 
-  bridge: {
-    facesList: '{list} ou {last}',
-    repairTitle: 'Réparation',
-    demolitionTitle: 'Démolition',
-    repairIntro: '{unit} a passé le tour adverse au calme et peut relever le {bridge}.',
-    demolitionIntro: 'Une unité ennemie borde le {bridge}.',
-    waitingRepair: 'En attente de la décision du joueur dont le génie tient ce pont…',
-    waitingDemolition: 'En attente de la décision du joueur qui tient ce pont…',
-    repairHint: "Le pont redeviendra franchissable et ne pourra plus être détruit. Refuser n'engage que ce tour-ci : il restera réparable.",
-    demolitionHint: "C'est la seule occasion de le faire sauter : si le jet échoue, ou si vous y renoncez, le pont tiendra jusqu'à la fin de la partie.",
-    odds: 'Le pont est détruit sur un jet de {faces}.',
-    repaired: 'Le pont est relevé. Il ne pourra plus être détruit.',
-    destroyed: "Le pont saute — l'obstacle est de nouveau à franchir.",
-    held: 'Le pont tient. Il ne pourra plus être détruit.',
-    leaveDestroyed: 'Laisser détruit',
-    leaveIntact: 'Laisser intact',
-    repair: 'Réparer le pont',
-    blow: 'Faire sauter le pont',
-  },
 
   bugReport: {
     intro: 'Un export du jeu sera réalisé, et placé dans un rapport de bug GitHub. Il vous faut un compte GitHub pour poursuivre.',
@@ -251,74 +205,10 @@ export default {
     loadErrorTitle: 'Erreur de chargement',
   },
 
-  combat: {
-    title: 'Combat',
-    enemyTitle: 'Combat adverse — FPF',
-    cancel: 'Annuler le combat',
-    defenders: 'Défenseurs',
-    attackers: 'Attaquants',
-    defenseFactor: 'Facteur de défense',
-    attackFactor: "Facteur d'attaque (barrage pour une artillerie)",
-    fpfTitle: 'Final protective fire : jamais affectée par le résultat',
-    fpfFactor: 'Facteur de FPF',
-    supportTitle: 'Pion de soutien : jamais affecté par le résultat',
-    supportFactor: 'Apport du pion de soutien',
-    rangedTitle: "Tir d'artillerie à distance : jamais affectée par le résultat",
-    supportBarred: "Soutien sans effet : l'attaque est faite uniquement d'artillerie et/ou de soutien",
-    artilleryCap: "Au plus {max} artilleries par combat : aucune autre ne peut s'y joindre.",
-    defense: 'Défense',
-    attack: 'Attaque',
-    ofWhichFpf: 'dont FPF +{n}',
-    ofWhichSupport: 'dont soutien +{n}',
-    ranged: 'à distance',
-    pickAttackers: 'Cliquez sur vos unités adjacentes à toutes les cibles, ou sur une artillerie qui les a toutes à portée.',
-    supportOnly: 'Attaque faite uniquement par le soutien : le défenseur ne peut reculer que de 2 hex ou plus, ou être éliminé.',
-    addTargets: 'Cliquez sur une autre unité ennemie pour ajouter son hex au combat (chaque attaquant doit toucher tous les hex cibles), ou sur un hex cible pour le retirer.',
-    stranded: 'Combat impossible, il laisserait sans adversaire :',
-    strandedFriendly: 'ne pourrait plus attaquer personne',
-    strandedEnemy: 'ne pourrait plus être attaqué par personne',
-    changeForces: 'Modifiez les attaquants ou les cibles.',
-    fpfLocal: 'Tir de protection (FPF) — au défenseur de choisir ses artilleries :',
-    fpfDefender: 'Tir de protection (FPF) — choisissez vos artilleries, puis validez :',
-    fpfClickMap: "Ou cliquez sur l'artillerie sur la carte.",
-    fpfNone: 'Aucune de vos artilleries ne peut tirer sur ce combat.',
-    supportDefense: 'Pions de soutien à engager en défense :',
-    fpfRequest: 'Le défenseur peut répondre par un tir de protection (FPF) ou par ses pions de soutien : soumettez-lui le combat avant de lancer le dé.',
-    fpfWaiting: 'En attente du choix du défenseur (FPF)…',
-    cancelRequest: 'Annuler la demande',
-    fpfAnswered: 'FPF du défenseur : {units}.',
-    fpfDeclined: "Le défenseur n'utilise pas de FPF.",
-    youMayRoll: 'Vous pouvez lancer le dé.',
-    differential: 'Différentiel',
-    column: 'colonne {n}',
-    die: 'Dé {n}',
-    sendFpf: 'Valider le FPF',
-    submitToDefender: 'Soumettre au défenseur',
-    resolved: 'Combat résolu',
-    fight: 'Combattre',
-    red: 'rouge',
-    green: 'vert',
-    brightGreen: 'vert vif',
-    pushChoice: 'Pour laisser passer {unit}, choisissez où refouler {pushed} : cliquez sur un hex {red}.',
-    otherRetreatHex: 'Choisir un autre hex de retraite',
-    retreatOf: 'Retraite de {unit} ({role}) — hex {step}/{total} : cliquez sur un hex {red}.',
-    defender: 'défenseur',
-    attacker: 'attaquant',
-    pushesOnly: "Seuls des hex amis sont accessibles : leur occupant sera refoulé d'un hex pour laisser la place.",
-    thenOthers: 'Ensuite : {n} autre unité. | Ensuite : {n} autres unités.',
-    stopHere: "S'arrêter ici",
-    reduceRetreat: 'Réduire la retraite à {n} hex',
-    advanceOf: 'Avance de {unit} : cliquez sur un hex {green}, ou sur une autre unité victorieuse pour terminer la sienne.',
-    advancePick: 'Avance après combat : cliquez sur une unité victorieuse (contour {green}), puis sur un hex du chemin de retraite.',
-    endAdvance: "Terminer l'avance",
-  },
 
   phases: {
     setup: 'Mise en place',
-    airborne: 'Airborne',
     movement: 'Mouvement',
-    combat: 'Combat',
-    endOfTurn: 'Fin de tour',
   },
 
   tabs: {
@@ -348,6 +238,13 @@ export default {
     skipMessage: 'Il reste {n} reconnaissance japonaise à faire. Passer la phase quand même ? | Il reste {n} reconnaissances japonaises à faire. Passer la phase quand même ?',
     skipConfirm: 'Passer quand même',
   },
+  setupCheck: {
+    shortTitle: 'Mise en place incomplète',
+    short: "Seulement {count} task forces (leurres compris) sur {total} sont posées. Commencer la partie quand même ?",
+    confirm: 'Commencer quand même',
+    excessTitle: 'Trop de task forces',
+    excess: "{count} task forces (leurres compris) sont posées, pour {total} au plus. Retirez-en {extra} (clic droit sur le pion, « Replacer le pion ») avant de commencer.",
+  },
   noMove: {
     title: 'Aucun mouvement',
     message: "Aucune unité n'a été déplacée pendant cette phase de mouvement. Terminer la phase quand même ?",
@@ -360,10 +257,6 @@ export default {
     eliminate: 'Éliminé',
     cancelMove: 'Annuler le mouvement',
     restack: "Changer l'ordre de l'empilement",
-    exitMap: 'Sortir de la carte ({cost} MP)',
-    exitZoc: 'Unité figée dans une zone de contrôle ennemie : elle ne peut pas quitter son hex',
-    exitMp: 'Il lui faut {cost} MP pour sortir par la {zone}',
-    exitOk: 'Sort par la {zone} et reviendra en renfort au tour suivant',
   },
 
   stack: {
@@ -373,34 +266,13 @@ export default {
     partiallyDetected: 'Flotte partiellement détectée',
   },
 
-  airborne: {
-    incompleteTitle: 'Largage incomplet',
-    incompleteMessage: 'La vague de ce tour doit être larguée avant la fin de la phase Airborne :',
-  },
 
   gameEnd: {
     title: 'Fin de la partie',
     bravo: 'Bravo, victoire des {side} !',
     draw: 'Match nul : les deux camps sont à égalité de points.',
-    drawOnRatio: 'Match nul !',
-    bravoLevel: {
-      strategic: 'Bravo, victoire stratégique des {side} !',
-      tactical: 'Bravo, victoire tactique des {side} !',
-    },
-    resultLevel: {
-      strategic: 'victoire stratégique des {side}',
-      tactical: 'victoire tactique des {side}',
-    },
-    resultDraw: 'match nul',
-    pointsRatio: 'Aux points : {of} {pointsOf} contre {to} {pointsTo}, soit {ratio} contre 1 — {result}.',
-    pointsNone: 'Aux points : aucun point marqué — {result}.',
-    indicative: 'La partie s’arrête avant son terme : c’est une défaite. À titre indicatif :',
     byConcession: '{side} a concédé la partie.',
     byTime: 'Le temps de {side} est écoulé.',
-    byTurns: 'Dernier tour joué : victoire aux points.',
-    turn: 'Tour',
-    total: 'Total',
-    noPoints: 'Aucun point de victoire marqué.',
     confirmTitle: 'Concéder la partie',
     confirmMessage: 'Les {side} abandonnent la partie et la donnent à leur adversaire. Cette décision est définitive.',
     concede: 'Concéder',
@@ -440,36 +312,8 @@ export default {
     moved: '{unit} déplacé de {from} vers {to}',
     enters: '{unit} entre en jeu en {hex}',
     congestion: "hex d'entrée déjà utilisé ({rank}e entrée ce tour) : coût ×{rank} = {cost} MP au lieu de {base}",
-    retreat: '{unit} retraite en {hex} ({done}/{total})',
-    displaced: '{unit} refoulé en {hex} pour laisser passer {by}',
-    noFire: '(ne pourra plus tirer pendant cette phase)',
-    advance: '{unit} avance en {hex} (après combat)',
-    riverAssaultFailed: "n'a pas pris l'hex de son assaut de rivière",
-    supportAttacking: 'soutien en attaque',
-    supportDefending: 'soutien en défense',
-    supportNoEffect: 'sans effet',
-    combat: 'Combat sur {hexes} ({forces}) : différentiel {diff}, {row}, dé {die} → {result} ({label})',
-    defenderImmune: "{result} sans effet sur le défenseur : attaque faite uniquement d'artillerie et/ou de soutien",
-    bridgeDestroyed: '{bridge} {where} détruit (dé {die})',
-    bridgeFailed: "{bridge} {where} : la destruction échoue (dé {die}), il tiendra jusqu'à la fin de la partie",
-    bridgeSpared: '{bridge} {where} laissé intact : il ne pourra plus être détruit',
-    bridgeRepaired: '{bridge} {where} réparé par {unit}',
-    engineers: 'le génie',
-    supportDefense: '{unit} engagé en défense en {hex}',
-    supportCommitted: '{unit} engagé en {hex}',
-    supportPlaced: '{unit} posé en {hex}',
-    supportBackToTray: '{unit} replacé dans la tablette',
-    supportRemoved: '{unit} retiré de la carte',
     returned: '{unit} replacé dans les renforts',
     eliminated: '{unit} éliminé',
-    rebuilt: ', se reconstitue et revient au tour {turn}',
-    exit: '{unit} quitte la carte par la {zone} ({from}) — {cost} MP',
-    victoryAward: '{side} : +{n} point ({reason}) — total {total} | {side} : +{n} points ({reason}) — total {total}',
-    victorySet: '{side} : {n} point — total {total} | {side} : {n} points — total {total}',
-    unitEliminated: '{unit} éliminé',
-    aUnit: 'unité',
-    unitsInZone: '{n} unité {zone} | {n} unités {zone}',
-    unitsUnsupplied: '{n} unité sans ligne de communication | {n} unités sans ligne de communication',
     timeUp: 'Temps écoulé — {side} perd la partie',
     conceded: '{side} concède la partie',
   },
@@ -480,31 +324,14 @@ export default {
     otherPlayer: 'Autre joueur',
   },
 
-  combatRow: {
-    undeclared: 'non déclaré',
-    hexTerrain: "terrain de l'hex ({label})",
-    rangedOnly: "attaque d'artillerie et/ou de soutien seuls",
-    best: '{hex}, {reason} — la plus favorable au défenseur',
-  },
 
-  retreatNotes: {
-    reduced: '{unit} : retraite réduite de {from} à {to} hex ({reason})',
-    noOtherWay: 'faute de retraite possible',
-    cannotRetreat: '{unit} ne peut pas retraiter : éliminé',
-    noRetreat: 'retraite impossible',
-    stays: '{unit} reste en place (retraite annulée)',
-    retreated: '{unit} a retraité de {n} hex',
-    result: 'résultat {code}',
-    pushed: "{unit} refoulé d'un hex pour laisser passer {by}",
-    advanced: '{unit} a avancé de {n} hex',
-  },
 
   toolbar: {
     gameOverTag: 'Partie terminée — {side} perd au temps',
     concede: 'Concéder la partie',
     concedeTitle: 'Abandonner la partie : votre adversaire la remporte',
     gameSummary: 'Bilan de la partie',
-    gameSummaryTitle: 'Revoir le vainqueur et les points de victoire tour par tour',
+    gameSummaryTitle: 'Revoir le vainqueur de la partie',
     gridDisabled: 'Grille désactivée en partie libre',
     grid: 'grille',
     coordinates: 'coordonnées',
@@ -515,8 +342,6 @@ export default {
     undo: '↩ Retour arrière',
     hideDie: 'Cacher le dé',
     showDie: 'Afficher le dé',
-    movementChart: 'Table des mouvements',
-    combatChart: 'Table de combat',
     bugReportTitle: 'Ouvrir un rapport de bug sur GitHub, avec un export de la partie',
     bugReport: 'Signaler un bug',
     replayStep: 'Lecture : avancer d\'une ligne',
@@ -525,20 +350,6 @@ export default {
     helpTitle: "Guide de l'interface",
   },
 
-  // Ligne de communication en mode debug (cf. lib/useSupplyLine.js::traceFor) :
-  // raison affichée en infobulle sur la croix de rupture.
-  supplyTrace: {
-    rupture: {
-      edge: 'Rupture : cours d\'eau sans pont',
-      enemy: 'Rupture : hex occupé par l\'ennemi',
-      zoc: 'Rupture : ZOC ennemie (aucune unité amie pour l\'annuler)',
-      stage: 'Rupture : la ligne devrait quitter la piste ou la route',
-      range: 'Rupture : portée maximale atteinte (zone de largage trop loin)',
-      offMap: 'Rupture : bord de carte',
-      noSource: 'Rupture : aucune source (zone de largage absente de la carte)',
-      detour: 'Rupture : passage libre, mais sans issue plus loin',
-    },
-  },
 
   guide: {
     stepOf: 'Étape {step} / {total}',
@@ -549,10 +360,8 @@ export default {
       title: 'La barre du haut',
       lead: "En haut de l'écran, tout ce qui décrit où en est la partie.",
       turn: { term: 'Piste des tours', text: 'Le tour en cours et le camp qui joue. Seul le camp actif peut déplacer ses unités.' },
-      phases: { term: 'Phases et bouton « suivant »', text: 'Sous la piste, les phases du tour (Mouvement, Combat, Fin de tour). Le bouton passe à la phase suivante, puis au camp suivant : il est refusé tant qu’il reste des unités empilées ou des combats obligatoires.' },
+      phases: { term: 'Phases et bouton « suivant »', text: 'Sous la piste, les phases du tour. Le bouton passe à la phase suivante, puis au camp suivant : il est refusé tant qu’il reste des unités empilées.' },
       next: { term: 'Bouton « suivant »', text: "Fait avancer la piste des tours d'un pas quand un camp a fini de jouer." },
-      support: { term: 'Tablette de soutien', text: 'Les pions de soutien disponibles ce tour-ci. Un pion non posé avant la fin du tour est perdu.' },
-      victory: { term: 'Points de victoire', text: 'Le score de chaque camp.' },
       timer: { term: 'Chronomètre', text: 'Affiché seulement si la partie a un timing Limité ou Blitz.' },
     },
     map: {
@@ -570,7 +379,6 @@ export default {
       drag: { term: 'Déplacer un pion', text: 'Glissez-déposez un pion sur la carte, ou depuis le panneau des renforts. Aucune règle n’est vérifiée : à vous de les appliquer.' },
       menu: { term: 'Menu du pion', text: "Clic droit sur un pion : le replacer dans les renforts, l'éliminer, ou annuler son mouvement." },
       undo: { term: 'Retour arrière', text: 'Annule le dernier mouvement pendant la phase Mouvement.' },
-      combat: { term: 'Combat', text: "En phase Combat, cliquez sur une unité ennemie adjacente : la fenêtre de combat s'ouvre, désignez vos attaquants sur la carte puis lancez l'attaque." },
     },
     panel: {
       title: 'Le panneau latéral',
@@ -582,7 +390,6 @@ export default {
     tools: {
       title: 'Les outils',
       lead: 'À droite de la barre du haut, quelques boutons utiles.',
-      charts: { term: 'Tables', text: 'La table des mouvements et la table de combat du module, en fenêtres déplaçables.' },
       die: { term: 'Dé', text: 'Un dé à lancer soi-même.' },
       display: { term: 'Affichage', text: 'Masquer les pions pour voir le terrain, afficher les coordonnées des hex.' },
       bug: { term: 'Signaler un bug', text: 'Ouvre un rapport GitHub pré-rempli avec un export de la partie.' },

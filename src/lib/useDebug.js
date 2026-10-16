@@ -32,14 +32,14 @@
 //      chemin (Dijkstra, cf. `reachableHexes` plus bas) où le "poids" pour
 //      entrer dans un hex est son COT — exactement la même notion de coût
 //      que `canEnterHex`/`spendMp`, juste étendue à plusieurs pas d'un coup.
-//      Les hex interdits à ce pion (cf. `canEnterTerrain`, ex. rough/broken/
-//      woods pour un véhicule) sont exclus du graphe exploré, pas juste
-//      comptés "chers" — un chemin ne peut jamais les traverser.
+//      Les hex hors d'atteinte de ce pion (cf. `canEnterTerrain`, ex.
+//      derrière une barrière côtière) sont exclus du graphe exploré, pas
+//      juste comptés "chers" — un chemin ne peut jamais les traverser.
 //   3. le SURCOÛT DE CONGESTION déjà accumulé sur les hex d'entrée de renfort
 //      actuellement surlignés (cf. `entrySurchargeLabels`) — cf.
 //      lib/useAssisted.js::entrySurcharge : un 2e renfort qui entre par le
 //      même hex le même tour paie 2× son coût de base, un 3e 3×, etc. ; ce
-//      surcoût ("+0.5", "+1"...) est ce que la PROCHAINE entrée sur cet hex
+//      surcoût ("+1", "+2"...) est ce que la PROCHAINE entrée sur cet hex
 //      devra payer en plus du coût de base.
 //   4. les TRACES des pions à hex-objectif (cf. `autoMoveTrailLines`, et
 //      HexMap.vue::runAutoMoves) : une ligne par pion reliant le centre des
@@ -58,17 +58,16 @@
 //     déjà `false` partout si aucun pion n'est sélectionné.
 //   - `terrainCost` : fonction `(h) => nombre de MP` (cf.
 //     lib/useAssisted.js::terrainCost, exportée pour être réutilisée ici SANS
-//     dupliquer la logique de lecture de `module.terrain`).
+//     dupliquer la règle de coût).
 //   - `selectedCounter` : ref/computed du pion actuellement sélectionné (objet
 //     complet, avec `col`/`row`/`mov`), ou `null` (cf. HexMap.vue::selectedCounter).
 //   - `remainingMp` : fonction `(pion) => nombre de MP restants, ou `null` si
 //     ce pion n'a pas de MP déclarés (cf. lib/useAssisted.js::remainingMp).
 //   - `canEnterTerrain` : fonction `(pion, hex, from) => bool` (cf.
-//     lib/useAssisted.js::canEnterTerrain) — un hex rough/broken/woods
-//     ("forest"), ou un ruisseau sans route/piste, est infranchissable pour
-//     certains types de pion (véhicules) quel que soit leur MP ; le calcul
-//     de portée doit l'exclure du graphe exploré, pas seulement le compter
-//     "trop cher".
+//     lib/useAssisted.js::canEnterTerrain) — une arête infranchissable (ex.
+//     barrière côtière) ou un passage d'île de la mauvaise couleur ferme un
+//     hex quel que soit le MP du pion ; le calcul de portée doit l'exclure
+//     du graphe exploré, pas seulement le compter "trop cher".
 //   - `zocSet` : ref/computed du Set ("col,row") des hex sous ZOC ennemie du
 //     pion sélectionné (cf. HexMap.vue::zocSet, lib/useAssisted.js::
 //     enemyZocSet) — un pion qui ENTRE dans un tel hex doit s'y arrêter : le
@@ -101,13 +100,10 @@ import { computed, ref } from 'vue'
 /** Tous les hex atteignables par `unit` depuis `{ col, row }` avec au plus
  *  `budget` MP à dépenser, chaque hex traversé coûtant `terrainCost(hex,
  *  from)` — plus court chemin (Dijkstra), PAS un simple calcul "distance ×
- *  coût moyen", car le coût pour entrer dans un hex peut varier selon d'où
- *  l'on vient (cf. lib/useAssisted.js::terrainCost, route/piste : moins cher
- *  en suivant une route précise qu'en coupant à travers champs). Un hex où
- *  `canEnterTerrain(unit, hex, from)` répond faux (cf. lib/useAssisted.js —
- *  rough/broken/woods ou ruisseau sans route/piste, interdits à certains
- *  véhicules) est retiré du graphe exploré AVANT même de regarder son coût :
- *  infranchissable, pas juste "cher".
+ *  coût moyen", car les arêtes infranchissables imposent des détours. Un hex
+ *  où `canEnterTerrain(unit, hex, from)` répond faux (cf. lib/useAssisted.js
+ *  — barrière côtière, passage d'île) est retiré du graphe exploré AVANT
+ *  même de regarder son coût : infranchissable, pas juste "cher".
  *
  *  ZOC (`zocSet`, cf. lib/useAssisted.js::enemyZocSet) : un hex sous ZOC
  *  ennemie reste ATTEIGNABLE (on peut y entrer) mais on n'explore JAMAIS ses
@@ -144,13 +140,9 @@ function reachableHexes(unit, { col, row }, budget, neighborsOf, hexOnMap, terra
     for (const neighbor of neighborsOf(hexCol, hexRow)) {
       if (!hexOnMap(neighbor.col, neighbor.row)) continue
       // `from: { c, r }` (le nœud qu'on est en train d'étendre) est ce qui
-      // permet à `terrainCost`/`canEnterTerrain` de détecter une arête
-      // route/piste PRÉCISE entre ce nœud et son voisin `n` — sans lui, on
-      // perdrait à la fois la règle de coût réduit ET l'exception route/
-      // piste au terrain interdit (cf. useAssisted.js::terrainCost/
-      // canEnterTerrain : une route reste praticable même à travers un
-      // terrain autrement infranchissable pour un véhicule).
-      if (!canEnterTerrain(unit, { c: neighbor.col, r: neighbor.row }, { c: hexCol, r: hexRow })) continue // infranchissable pour ce type de pion
+      // permet à `canEnterTerrain` de détecter une arête infranchissable
+      // PRÉCISE entre ce nœud et son voisin `n` (cf. useAssisted.js).
+      if (!canEnterTerrain(unit, { c: neighbor.col, r: neighbor.row }, { c: hexCol, r: hexRow })) continue // infranchissable pour ce pion
       const next = currentDist + terrainCost({ c: neighbor.col, r: neighbor.row }, { c: hexCol, r: hexRow })
       if (next > budget) continue // trop cher pour arriver jusque-là : hors de portée
       const key = neighbor.col + ',' + neighbor.row
@@ -194,9 +186,8 @@ export function useDebug(
   // liste vide si le mode debug est désactivé OU si aucun pion n'est
   // sélectionné (les deux se traduisent par "rien à afficher", cf. HexMap.vue
   // qui n'a donc besoin que d'un `v-for` dessus, sans autre condition). Le
-  // COT affiché tient compte d'une éventuelle route/piste PRÉCISE entre la
-  // position actuelle du pion (`from`) et chaque hex adjacent (cf.
-  // lib/useAssisted.js::terrainCost) — pas juste le coût de zone brut.
+  // COT affiché est celui que demanderait le pas depuis la position actuelle
+  // du pion (`from`, cf. lib/useAssisted.js::terrainCost).
   const adjacentCotLabels = computed(() => {
     if (!debug.value) return []
     const counter = selectedCounter.value

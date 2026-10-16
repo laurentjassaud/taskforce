@@ -9,8 +9,8 @@
 //   - `time`        : heure ou libellé court affiché sous le numéro ;
 //   - `initiative`  : camp qui joue EN PREMIER ce tour-ci (les autres camps
 //                     suivent dans l'ordre de `order`) ;
-//   - `movement`    : potentiel de mouvement (en MP) de toute unité
-//                     combattante ce tour-ci, à la place de son `mov` ;
+//   - `movement`    : potentiel de mouvement (en MP) de toute unité ce
+//                     tour-ci, à la place de son `mov` ;
 //   - `skipPhases`  : ids de phases (`turnStructure.phases`) absentes de ce
 //                     tour ;
 //   - `conditions`  : valeurs des lignes de `turnTrack.conditions` (texte,

@@ -6,8 +6,7 @@
 // useGameLog.js), mais consolidé ici en un seul composant autonome — pas de
 // composable séparé : HexMap.vue (le seul appelant) n'a qu'à récupérer une
 // référence de template et appeler `log(kind, text)` à chaque évènement de
-// jeu (cf. defineExpose plus bas), exactement comme pour TurnTracker.vue /
-// SupportTracker.vue.
+// jeu (cf. defineExpose plus bas), exactement comme pour TurnTracker.vue.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { ref, computed, watch, onMounted } from 'vue'
@@ -181,7 +180,8 @@ function autosaveNow() {
   }
 }
 // Débounce léger : un tour qui change peut journaliser plusieurs lignes
-// coup sur coup (ex. régénération du soutien) — un seul write suffit.
+// coup sur coup (ex. renfort de leurres, retour des chits) — un seul write
+// suffit.
 watch(entries, () => {
   if (props.shared) return
   clearTimeout(autosaveTimer)
@@ -466,30 +466,8 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
   font-style: italic;
 }
 
-.jn-row.jn-combat {
-  background: var(--orange-a18);
-}
-
 .jn-row.jn-eliminate {
   background: var(--danger-a20);
-}
-
-/* Démolition d'un pont (cf. lib/useBridges.js) : même famille que les
-   éliminations — c'est un élément de la carte qui disparaît. */
-.jn-row.jn-demolition {
-  background: var(--danger-a20);
-}
-
-/* Réparation d'un pont : l'inverse, donc la même famille que les entrées en
-   jeu et les retours. */
-.jn-row.jn-repair {
-  background: var(--selection-a14);
-}
-
-/* Points de victoire (cf. lib/useVictoryPoints.js) : l'or de la piste de
-   tour, puisque c'est de compte qu'il s'agit. */
-.jn-row.jn-victory {
-  background: var(--gold-a12);
 }
 
 .jn-row.jn-place,

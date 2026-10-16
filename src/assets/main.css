@@ -14,7 +14,6 @@
   /* --- Neutres ------------------------------------------------------------- */
   --color-white: #fff;
   --color-ink: #111;             /* numéros d'hex (coordonnées) */
-  --color-ink-soft: #1a1a1a;     /* contour des points d'état des pions */
 
   /* Voiles noirs et blancs translucides (ombres, fonds, survols). */
   --black-a08: rgba(0, 0, 0, 0.08);
@@ -61,47 +60,18 @@
   --panel-text: #ece4d0;
   --panel-text-muted: #2c5f72;
   --panel-text-faint: #748ea5;
-  --crt-text: #b9b5a2;           /* table de combat : cellules */
-  --crt-die-text: #9e9a89;       /* table de combat : lignes du dé */
-  --crt-hit-border: #ffd9a0;     /* table de combat : case du résultat */
 
   /* --- Couleurs du jeu ----------------------------------------------------- */
-  /* Or : attaquant, titres, surlignages de la table de combat. */
+  /* Or : titres, piste de tour. */
   --color-gold: #e8c468;
   --gold-a12: rgba(232, 196, 104, 0.12);
-  --gold-a16: rgba(232, 196, 104, 0.16);
   --gold-a22: rgba(232, 196, 104, 0.22);
-  --gold-a34: rgba(232, 196, 104, 0.34);
   --gold-a45: rgba(232, 196, 104, 0.45);
   --gold-a50: rgba(232, 196, 104, 0.5);
-  /* Orange : défenseur, hex cibles, hex d'entrée, bouton principal. */
+  /* Orange : hex d'entrée, liseré de mouvement, bouton principal. */
   --color-orange: #ff8c00;
-  --orange-a18: rgba(255, 140, 0, 0.18);
   --orange-a40: rgba(255, 140, 0, 0.4);
-  --orange-a50: rgba(255, 140, 0, 0.5);
   --orange-a60: rgba(255, 140, 0, 0.6);
-  --orange-a68: rgba(255, 140, 0, 0.68);
-  /* Bleu : tir de protection (FPF) de l'artillerie. */
-  --color-blue: #5aa9e6;
-  --blue-a10: rgba(90, 169, 230, 0.1);
-  --blue-a40: rgba(90, 169, 230, 0.4);
-  --color-blue-ink: #1c2530;     /* texte sur fond bleu */
-  /* Rouge : retraite. */
-  --color-red: #e02828;
-  --red-a12: rgba(224, 40, 40, 0.12);
-  --red-a45: rgba(224, 40, 40, 0.45);
-  --red-a65: rgba(224, 40, 40, 0.65);
-  --color-red-light: #ff6b5b;
-  --color-dot-red: #e02b2b;      /* points rouges des pions (a combattu, résultat subi) */
-  /* Vert : chemin de retraite et avance après combat. */
-  --color-green: #2ea043;
-  --green-a18: rgba(46, 160, 67, 0.18);   /* ligne de communication (debug) */
-  --green-a28: rgba(46, 160, 67, 0.28);
-  --green-a40: rgba(46, 160, 67, 0.4);
-  --green-a60: rgba(46, 160, 67, 0.6);
-  --green-a80: rgba(46, 160, 67, 0.8);
-  --color-green-dark: #1f7a33;
-  --color-green-light: #5fd37a;
   /* Sélection d'un pion, hex accessibles. */
   --color-selection: #2ecc71;
   --selection-a14: rgba(46, 204, 113, 0.14);
@@ -112,10 +82,6 @@
   --zoc-a22: rgba(192, 57, 43, 0.22);
   /* Alertes : fin de partie, temps presque écoulé. */
   --color-alert: #ff5a3c;
-  /* Combat impossible (unités orphelines). */
-  --color-stranded: #e05a47;
-  --stranded-a14: rgba(224, 90, 71, 0.14);
-  --color-stranded-text: #f3c2b8;
   /* Erreurs du journal, unités éliminées. */
   --color-danger: #d11a1a;
   --danger-a20: rgba(209, 26, 26, 0.2);
@@ -173,29 +139,19 @@
   --font-ui: system-ui, sans-serif;
 
   /* --- Tailles de texte : échelle numérotée (085 = 0.85rem) ----------------- */
-  --font-size-055: 0.55rem;
-  --font-size-060: 0.6rem;
-  --font-size-062: 0.62rem;
-  --font-size-065: 0.65rem;
   --font-size-068: 0.68rem;
   --font-size-070: 0.7rem;
   --font-size-072: 0.72rem;
-  --font-size-074: 0.74rem;
   --font-size-075: 0.75rem;
-  --font-size-076: 0.76rem;
-  --font-size-078: 0.78rem;
   --font-size-080: 0.8rem;
   --font-size-082: 0.82rem;
   --font-size-085: 0.85rem;
   --font-size-090: 0.9rem;
   --font-size-095: 0.95rem;
   --font-size-100: 1rem;
-  --font-size-105: 1.05rem;
   --font-size-110: 1.1rem;
   --font-size-125: 1.25rem;
-  --font-size-150: 1.5rem;
   --font-size-170: 1.7rem;
-  --font-size-220: 2.2rem;
   --font-size-320: 3.2rem;       /* titre du plateau */
   --font-size-400: 4rem;         /* face du dé */
   /* Relatives au texte parent (pages claires). */
@@ -215,12 +171,10 @@
   --radius-8: 8px;
   --radius-10: 10px;
   --radius-12: 12px;
-  --radius-14: 14px;
   --radius-round: 50%;
 
   /* --- Ombres -------------------------------------------------------------- */
   --shadow-modal: 0 18px 40px var(--black-a50);         /* modales */
-  --shadow-modal-drag: 0 22px 46px var(--black-a60);    /* modale de combat déplacée */
   --shadow-widget: 0 18px 40px var(--black-a50);        /* tables, dé */
   --shadow-widget-drag: 0 22px 46px var(--black-a50);   /* … en cours de déplacement */
   --shadow-menu: 0 10px 28px var(--black-a50);          /* menu contextuel */
@@ -231,7 +185,6 @@
   --z-side-tab-shadow: 31;       /* panneau latéral : ombre des onglets… */
   --z-side-content: 32;          /* … puis contenu (+ décalage par onglet) */
   --z-floating: 900;             /* tables des mouvements/combat, dé */
-  --z-combat-modal: 950;
   --z-overlay: 1000;             /* menu contextuel, changement de phase refusé */
   --z-guide: 1050;               /* guide de l'interface */
   --z-bug-report: 1100;

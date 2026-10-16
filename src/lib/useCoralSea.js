@@ -106,6 +106,12 @@
 // suivra désormais, puis tous bougent (le suiveur s'en écarte à son
 // mouvement, cf. HexMap.vue::runAutoMoves).
 //
+// MISE EN PLACE US : le joueur pose 12 task forces, leurres compris (cf.
+// `setupCount`) — moins, il confirme qu'il commence quand même ; plus, il
+// ne peut pas commencer. Il peut les empiler, pendant la mise en place comme
+// pendant ses mouvements (`rules.stackingLimit` du module : aucune limite
+// pour le camp "usn").
+//
 // Aux mêmes tours, le joueur US peut lui aussi poser des leurres, AVANT de
 // bouger quoi que ce soit dans sa phase de Mouvement : chacun sur l'hex d'une
 // de ses task forces, jusqu'à 12 task forces américaines (leurres compris)
@@ -303,6 +309,14 @@ export function useCoralSea(moduleId, ctx = {}) {
   function autoPlacesAtLoad(counter) {
     if (!active.value) return null
     return isDummy(counter)
+  }
+
+  /** Mise en place US : 12 task forces sur la carte, leurres compris (cf.
+   *  `DUMMY_TOTAL`, le même total que les renforts de leurres). */
+  function setupCount(counters) {
+    if (!active.value) return null
+    const count = counters.filter((counter) => counter.faction === 'usn' && counter.type === 'task force').length
+    return { count, total: DUMMY_TOTAL }
   }
 
   /** Rôle secret d'un leurre japonais, ou `null`. */
@@ -714,7 +728,7 @@ export function useCoralSea(moduleId, ctx = {}) {
 
   // Les autres règles : celles du composable inerte (aucune particularité).
   return {
-    ...INERT_RULES, active, autoPlacesAtLoad, movementAllowance, privateLabel,
+    ...INERT_RULES, active, autoPlacesAtLoad, setupCount, movementAllowance, privateLabel,
     privateLabelSide: 'ijn', setupSecrets, restoreSetupSecrets, autoMoveTarget, autoMoveSide: 'ijn',
     reconPhase: RECON_PHASE, reconChecks, reconTargetOf, manualReconSide: 'usn', searchBag, searchBagFull: SEARCH_CHITS, drawSearch, refillSearchBag, restoreSearchBag, searchChitsReturn,
     searchResults: SEARCH_RESULTS, searchOutcome, sightings: SIGHTINGS,

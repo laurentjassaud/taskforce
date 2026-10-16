@@ -106,18 +106,7 @@ export default {
     offline: 'offline',
   },
 
-  factions: {
-    german: 'Germans',
-    commonwealth: 'Commonwealth',
-    us: 'US',
-    pol: 'Polish',
-  },
 
-  counter: {
-    fought: 'Has fought this phase',
-    disrupted: 'Suffered a combat result (this Combat phase or the previous one): no FPF',
-    displaced: 'Displaced by a friendly retreat: cannot fire this phase',
-  },
 
   eliminated: {
     empty: 'No unit eliminated.',
@@ -140,27 +129,12 @@ export default {
     title: 'Time left for the Movement phase',
   },
 
-  supportTracker: {
-    combatOnly: 'Usable during a Combat phase',
-  },
 
   turnTracker: {
     nextTurn: 'Next turn',
   },
 
-  victory: {
-    title: 'Victory points',
-    endOfTurnTitle: 'End of turn — victory points',
-    total: '{side}:',
-    manualTitle: 'Victory points — kept by hand',
-    engineTitle: 'Victory points — kept by the engine',
-    removePoint: 'Remove a point',
-    addPoint: 'Add a point',
-  },
 
-  charts: {
-    movementAlt: 'Movement cost chart by terrain',
-  },
 
   dice: {
     result: 'Result:',
@@ -171,28 +145,8 @@ export default {
   phaseBlocked: {
     title: 'Cannot change phase',
     stacks: 'Several friendly units share the same hex. Move one of them before ending the Movement phase:',
-    engagements: 'Adjacent units of opposing sides have not fought yet. Resolve these combats before ending the Combat phase:',
   },
 
-  bridge: {
-    facesList: '{list} or {last}',
-    repairTitle: 'Repair',
-    demolitionTitle: 'Demolition',
-    repairIntro: '{unit} spent the enemy turn undisturbed and can rebuild the {bridge}.',
-    demolitionIntro: 'An enemy unit is next to the {bridge}.',
-    waitingRepair: 'Waiting for the decision of the player whose engineers hold this bridge…',
-    waitingDemolition: 'Waiting for the decision of the player who holds this bridge…',
-    repairHint: 'The bridge will be passable again and can no longer be destroyed. Declining only applies to this turn: it will remain repairable.',
-    demolitionHint: 'This is the only chance to blow it: if the roll fails, or if you decline, the bridge will stand until the end of the game.',
-    odds: 'The bridge is destroyed on a roll of {faces}.',
-    repaired: 'The bridge is rebuilt. It can no longer be destroyed.',
-    destroyed: 'The bridge is blown — the obstacle must be crossed again.',
-    held: 'The bridge holds. It can no longer be destroyed.',
-    leaveDestroyed: 'Leave it destroyed',
-    leaveIntact: 'Leave it intact',
-    repair: 'Repair the bridge',
-    blow: 'Blow the bridge',
-  },
 
   bugReport: {
     intro: 'An export of the game will be made and put into a GitHub bug report. You need a GitHub account to continue.',
@@ -249,74 +203,10 @@ export default {
     loadErrorTitle: 'Loading error',
   },
 
-  combat: {
-    title: 'Combat',
-    enemyTitle: 'Enemy attack — FPF',
-    cancel: 'Cancel the combat',
-    defenders: 'Defenders',
-    attackers: 'Attackers',
-    defenseFactor: 'Defense factor',
-    attackFactor: 'Attack factor (barrage for an artillery unit)',
-    fpfTitle: 'Final protective fire: never affected by the result',
-    fpfFactor: 'FPF factor',
-    supportTitle: 'Support counter: never affected by the result',
-    supportFactor: 'Support counter contribution',
-    rangedTitle: 'Ranged artillery fire: never affected by the result',
-    supportBarred: 'Support has no effect: the attack is made only by artillery and/or support',
-    artilleryCap: 'At most {max} artillery units per combat: no other can join.',
-    defense: 'Defense',
-    attack: 'Attack',
-    ofWhichFpf: 'incl. FPF +{n}',
-    ofWhichSupport: 'incl. support +{n}',
-    ranged: 'ranged',
-    pickAttackers: 'Click your units adjacent to all the targets, or an artillery unit that has them all in range.',
-    supportOnly: 'Attack made by support only: the defender can only retreat 2 hexes or more, or be eliminated.',
-    addTargets: 'Click another enemy unit to add its hex to the combat (every attacker must touch all the target hexes), or a target hex to remove it.',
-    stranded: 'Combat not allowed, it would leave without an opponent:',
-    strandedFriendly: 'could no longer attack anyone',
-    strandedEnemy: 'could no longer be attacked by anyone',
-    changeForces: 'Change the attackers or the targets.',
-    fpfLocal: 'Final protective fire (FPF) — the defender picks their artillery:',
-    fpfDefender: 'Final protective fire (FPF) — pick your artillery, then confirm:',
-    fpfClickMap: 'Or click the artillery on the map.',
-    fpfNone: 'None of your artillery can fire on this combat.',
-    supportDefense: 'Support counters to commit in defense:',
-    fpfRequest: 'The defender may answer with final protective fire (FPF) or with support counters: submit the combat to them before rolling the die.',
-    fpfWaiting: "Waiting for the defender's choice (FPF)…",
-    cancelRequest: 'Cancel the request',
-    fpfAnswered: "Defender's FPF: {units}.",
-    fpfDeclined: 'The defender does not use FPF.',
-    youMayRoll: 'You may roll the die.',
-    differential: 'Differential',
-    column: 'column {n}',
-    die: 'Die {n}',
-    sendFpf: 'Confirm the FPF',
-    submitToDefender: 'Submit to the defender',
-    resolved: 'Combat resolved',
-    fight: 'Fight',
-    red: 'red',
-    green: 'green',
-    brightGreen: 'bright green',
-    pushChoice: 'To let {unit} through, choose where to push {pushed}: click a {red} hex.',
-    otherRetreatHex: 'Choose another retreat hex',
-    retreatOf: 'Retreat of {unit} ({role}) — hex {step}/{total}: click a {red} hex.',
-    defender: 'defender',
-    attacker: 'attacker',
-    pushesOnly: 'Only friendly hexes can be reached: their occupant will be pushed one hex to make room.',
-    thenOthers: 'Next: {n} other unit. | Next: {n} other units.',
-    stopHere: 'Stop here',
-    reduceRetreat: 'Reduce the retreat to {n} hex(es)',
-    advanceOf: 'Advance of {unit}: click a {green} hex, or another victorious unit to end this one.',
-    advancePick: 'Advance after combat: click a victorious unit ({green} outline), then a hex of the retreat path.',
-    endAdvance: 'End the advance',
-  },
 
   phases: {
     setup: 'Setup',
-    airborne: 'Airborne',
     movement: 'Movement',
-    combat: 'Combat',
-    endOfTurn: 'End of turn',
   },
 
   tabs: {
@@ -346,6 +236,13 @@ export default {
     skipMessage: '{n} Japanese reconnaissance is still to do. Skip the phase anyway? | {n} Japanese reconnaissances are still to do. Skip the phase anyway?',
     skipConfirm: 'Skip anyway',
   },
+  setupCheck: {
+    shortTitle: 'Incomplete setup',
+    short: 'Only {count} task forces (dummies included) out of {total} have been placed. Start the game anyway?',
+    confirm: 'Start anyway',
+    excessTitle: 'Too many task forces',
+    excess: '{count} task forces (dummies included) have been placed, but at most {total} are allowed. Remove {extra} of them (right-click the counter, "Put the counter back") before starting.',
+  },
   noMove: {
     title: 'No movement',
     message: 'No unit was moved during this movement phase. End the phase anyway?',
@@ -358,10 +255,6 @@ export default {
     eliminate: 'Eliminated',
     cancelMove: 'Cancel the move',
     restack: 'Change the stacking order',
-    exitMap: 'Exit the map ({cost} MP)',
-    exitZoc: 'Unit locked in an enemy zone of control: it cannot leave its hex',
-    exitMp: 'It needs {cost} MP to exit by the {zone}',
-    exitOk: 'Exits by the {zone} and will come back as a reinforcement next turn',
   },
 
   stack: {
@@ -371,34 +264,13 @@ export default {
     partiallyDetected: 'Fleet partially detected',
   },
 
-  airborne: {
-    incompleteTitle: 'Drop not finished',
-    incompleteMessage: "This turn's wave must be dropped before the end of the Airborne phase:",
-  },
 
   gameEnd: {
     title: 'Game over',
     bravo: 'Congratulations, victory for the {side}!',
     draw: 'Draw: both sides are level on points.',
-    drawOnRatio: 'Draw!',
-    bravoLevel: {
-      strategic: 'Congratulations, strategic victory for the {side}!',
-      tactical: 'Congratulations, tactical victory for the {side}!',
-    },
-    resultLevel: {
-      strategic: 'strategic victory for the {side}',
-      tactical: 'tactical victory for the {side}',
-    },
-    resultDraw: 'draw',
-    pointsRatio: 'On points: {of} {pointsOf} to {to} {pointsTo}, a ratio of {ratio} to 1 — {result}.',
-    pointsNone: 'On points: no points scored — {result}.',
-    indicative: 'The game stops before its end: it is a loss. For reference only:',
     byConcession: 'The {side} conceded the game.',
     byTime: 'The {side} ran out of time.',
-    byTurns: 'Last turn played: victory on points.',
-    turn: 'Turn',
-    total: 'Total',
-    noPoints: 'No victory points scored.',
     confirmTitle: 'Concede the game',
     confirmMessage: 'The {side} give up the game and hand it to their opponent. This cannot be undone.',
     concede: 'Concede',
@@ -438,36 +310,8 @@ export default {
     moved: '{unit} moved from {from} to {to}',
     enters: '{unit} enters play at {hex}',
     congestion: 'entry hex already used (entry #{rank} this turn): cost ×{rank} = {cost} MP instead of {base}',
-    retreat: '{unit} retreats to {hex} ({done}/{total})',
-    displaced: '{unit} pushed to {hex} to let {by} through',
-    noFire: '(cannot fire again this phase)',
-    advance: '{unit} advances to {hex} (after combat)',
-    riverAssaultFailed: 'did not take the hex of its river assault',
-    supportAttacking: 'support attacking',
-    supportDefending: 'support defending',
-    supportNoEffect: 'no effect',
-    combat: 'Combat on {hexes} ({forces}): differential {diff}, {row}, die {die} → {result} ({label})',
-    defenderImmune: '{result} has no effect on the defender: attack made only by artillery and/or support',
-    bridgeDestroyed: '{bridge} {where} destroyed (die {die})',
-    bridgeFailed: '{bridge} {where}: demolition fails (die {die}), it will stand until the end of the game',
-    bridgeSpared: '{bridge} {where} left intact: it can no longer be destroyed',
-    bridgeRepaired: '{bridge} {where} repaired by {unit}',
-    engineers: 'the engineers',
-    supportDefense: '{unit} committed in defense at {hex}',
-    supportCommitted: '{unit} committed at {hex}',
-    supportPlaced: '{unit} placed at {hex}',
-    supportBackToTray: '{unit} put back in the tray',
-    supportRemoved: '{unit} removed from the map',
     returned: '{unit} put back into the reinforcements',
     eliminated: '{unit} eliminated',
-    rebuilt: ', rebuilds and comes back on turn {turn}',
-    exit: '{unit} leaves the map by the {zone} ({from}) — {cost} MP',
-    victoryAward: '{side}: +{n} point ({reason}) — total {total} | {side}: +{n} points ({reason}) — total {total}',
-    victorySet: '{side}: {n} point — total {total} | {side}: {n} points — total {total}',
-    unitEliminated: '{unit} eliminated',
-    aUnit: 'unit',
-    unitsInZone: '{n} unit {zone} | {n} units {zone}',
-    unitsUnsupplied: '{n} unit without a line of communication | {n} units without a line of communication',
     timeUp: 'Time is up — {side} loses the game',
     conceded: '{side} concede the game',
   },
@@ -478,31 +322,14 @@ export default {
     otherPlayer: 'Other player',
   },
 
-  combatRow: {
-    undeclared: 'undeclared',
-    hexTerrain: 'hex terrain ({label})',
-    rangedOnly: 'artillery and/or support attack only',
-    best: '{hex}, {reason} — the most favorable to the defender',
-  },
 
-  retreatNotes: {
-    reduced: '{unit}: retreat reduced from {from} to {to} hex(es) ({reason})',
-    noOtherWay: 'no retreat possible otherwise',
-    cannotRetreat: '{unit} cannot retreat: eliminated',
-    noRetreat: 'no retreat possible',
-    stays: '{unit} stays in place (retreat cancelled)',
-    retreated: '{unit} retreated {n} hex(es)',
-    result: 'result {code}',
-    pushed: '{unit} pushed one hex to let {by} through',
-    advanced: '{unit} advanced {n} hex(es)',
-  },
 
   toolbar: {
     gameOverTag: 'Game over — {side} loses on time',
     concede: 'Concede the game',
     concedeTitle: 'Give up the game: your opponent wins it',
     gameSummary: 'Game summary',
-    gameSummaryTitle: 'See the winner and the victory points turn by turn again',
+    gameSummaryTitle: 'See the winner of the game again',
     gridDisabled: 'Grid disabled in free play',
     grid: 'grid',
     coordinates: 'coordinates',
@@ -513,8 +340,6 @@ export default {
     undo: '↩ Undo',
     hideDie: 'Hide die',
     showDie: 'Show die',
-    movementChart: 'Movement chart',
-    combatChart: 'Combat chart',
     bugReportTitle: 'Open a bug report on GitHub, with an export of the game',
     bugReport: 'Report a bug',
     replayStep: 'Replay: step one line forward',
@@ -523,20 +348,6 @@ export default {
     helpTitle: 'Interface guide',
   },
 
-  // Supply line in debug mode (see lib/useSupplyLine.js::traceFor): reason
-  // shown as a tooltip on the break cross.
-  supplyTrace: {
-    rupture: {
-      edge: 'Break: unbridged waterway',
-      enemy: 'Break: hex occupied by the enemy',
-      zoc: 'Break: enemy ZOC (no friendly unit to negate it)',
-      stage: 'Break: the line would have to leave the trail or road',
-      range: 'Break: maximum range reached (drop zone too far)',
-      offMap: 'Break: map edge',
-      noSource: 'Break: no source (drop zone not on the map)',
-      detour: 'Break: open passage, but a dead end further on',
-    },
-  },
 
   guide: {
     stepOf: 'Step {step} / {total}',
@@ -547,10 +358,8 @@ export default {
       title: 'The top bar',
       lead: 'At the top of the screen, everything about where the game stands.',
       turn: { term: 'Turn track', text: 'The current turn and the side to play. Only the active side can move its units.' },
-      phases: { term: 'Phases and "next" button', text: 'Below the track, the phases of the turn (Movement, Combat, End of turn). The button moves to the next phase, then to the next side: it is refused while units are still stacked or mandatory combats remain.' },
+      phases: { term: 'Phases and "next" button', text: 'Below the track, the phases of the turn. The button moves to the next phase, then to the next side: it is refused while units are still stacked.' },
       next: { term: '"Next" button', text: 'Moves the turn track one step forward once a side has finished playing.' },
-      support: { term: 'Support tray', text: 'The support counters available this turn. A counter not placed before the end of the turn is lost.' },
-      victory: { term: 'Victory points', text: "Each side's score." },
       timer: { term: 'Timer', text: 'Shown only when the game uses Limited or Blitz timing.' },
     },
     map: {
@@ -568,7 +377,6 @@ export default {
       drag: { term: 'Moving a counter', text: 'Drag and drop a counter on the map, or from the reinforcements panel. No rule is checked: applying them is up to you.' },
       menu: { term: 'Counter menu', text: 'Right-click a counter to put it back in the reinforcements, eliminate it, or cancel its move.' },
       undo: { term: 'Undo', text: 'Cancels the last move during the Movement phase.' },
-      combat: { term: 'Combat', text: 'In the Combat phase, click an adjacent enemy unit: the combat window opens, pick your attackers on the map, then launch the attack.' },
     },
     panel: {
       title: 'The side panel',
@@ -580,7 +388,6 @@ export default {
     tools: {
       title: 'Tools',
       lead: 'On the right of the top bar, a few handy buttons.',
-      charts: { term: 'Charts', text: "The module's movement and combat charts, in movable windows." },
       die: { term: 'Die', text: 'A die to roll yourself.' },
       display: { term: 'Display', text: 'Hide the counters to see the terrain, show the hex coordinates.' },
       bug: { term: 'Report a bug', text: 'Opens a GitHub report pre-filled with an export of the game.' },
