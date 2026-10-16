@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getGame } from '../lib/api.js'
 import { getSocket } from '../lib/socket.js'
 import HexMap from '../components/HexMap.vue'
+import { fetchModule } from '../lib/moduleLoader.js'
 import { resolveSettings, describeSettings, scenarioOptions } from '../lib/gameSettings.js'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { t, mt, errorMessage, registerModuleTexts } from '../i18n/index.js'
@@ -61,8 +62,7 @@ async function loadGame() {
     const modules = await modulesRes.json()
     const modEntry = modules.find((moduleEntry) => moduleEntry.id === gameSummary.value.moduleId)
     if (modEntry) {
-      const modRes = await fetch(modEntry.path, { cache: 'no-store' })
-      const mod = await modRes.json()
+      const mod = await fetchModule(modEntry.path)
       registerModuleTexts(mod)
       moduleData.value = mod
       // Un module regroupe ses factions sous des camps jouables via `sides` (ex: {"ijn":["ijn"],"usn":["usn"]})

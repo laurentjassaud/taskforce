@@ -31,7 +31,7 @@ avec le nombre de joueurs) — cf. `src/lib/gameSettings.js`.
 
 | Réglage | Valeurs | Effet |
 |---|---|---|
-| Scénario | Ceux du module — Coral Sea : Historique | Déploiement |
+| Scénario | Ceux du module — Coral Sea : Scenario 5 : Bataille de la mer de Corail | Déploiement |
 | Météo | *bientôt disponible* | — (pas encore appliquée par le moteur) |
 | Partie | **Libre** / **Assisté** | Voir ci-dessous |
 | Timing | Libre / **Limité** / **Blitz** | Chronomètre de la phase de Mouvement — partie Assistée uniquement |

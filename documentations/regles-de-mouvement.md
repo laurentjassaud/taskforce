@@ -51,10 +51,14 @@ Sources lues : [useAssisted.js](../src/lib/useAssisted.js), [edges.js](../src/li
 
 ## 3. Règles particulières de la mer de Corail ([useCoralSea.js](../src/lib/useCoralSea.js))
 
+- **Formation japonaise** (`formations.ijn` du scénario) :
+  - au coup d'envoi, l'appli tire seule, à chances égales, l'option 1 (6 task forces), l'option 2 (9 task forces) ou une formation aléatoire (7 ou 8 task forces) ;
+  - chaque task force est portée en secret par un des 12 leurres ; les autres sont de vrais leurres ;
+  - le comportement de chaque task force dépend de ses navires, lus dans le catalogue `fleet-ijn.json`.
 - **Allure transport (AK)** :
   - elle vaut 1 hex si la piste coche « Mouvement AK », 0 sinon ;
   - concrètement : 1 hex de nuit (au lieu de 2), et 0 aux tours de jour pairs ;
-  - elle concerne TF7, TF8, TF10, les leurres tirés « transport » à pile ou face, et les suiveurs d'une tête de groupe qui est un transport.
+  - elle concerne les task forces qui ont des AK, les leurres tirés « transport » à pile ou face, et les suiveurs d'une tête de groupe qui est un transport.
 - **Le moteur joue les Japonais** :
   - il agit une seule fois par créneau, au début du Mouvement naval japonais : d'abord les meneurs, puis les suiveurs ;
   - le chemin est le plus court qui respecte les barrières et les passages ;
@@ -62,14 +66,16 @@ Sources lues : [useAssisted.js](../src/lib/useAssisted.js), [edges.js](../src/li
   - il est limité par les MP, et s'arrête dès que les règles refusent un pas (ZOC, par exemple).
 - **Hex-objectifs** :
   - chaque meneur en tire un parmi `ijnArrivalHexes`, différent des autres tant que c'est possible ;
-  - TF1, TF2 et TF3 reçoivent des objectifs groupés, à 5 hex au plus d'un même centre.
+  - les task forces de porte-avions (TF1, TF2 et TF3) reçoivent des objectifs groupés, à 5 hex au plus d'un même centre.
 - **Suiveurs** :
   - ils restent adjacents à leur meneur ;
   - si le meneur disparaît, le suiveur reprend son objectif et devient meneur à son tour.
 - **Mouvements particuliers** (ils remplacent la marche vers l'objectif) :
-  - TF7 et TF8 restent à plus de 6 hex de toute task force alliée repérée ;
-  - TF1 et TF2 foncent jusqu'à 5 hex du « Sighted Carrier » le plus proche. La première arrivée attend l'autre à 6 hex, pendant 2 tours au maximum ;
-  - TF1 ou TF2 repérée, sans porte-avions allié repéré : elle reste à plus de 6 hex de toute unité alliée.
+  - avec des AK : elle reste à plus de 6 hex de toute task force alliée repérée ;
+  - avec un CV ou un CVL : elle fonce jusqu'à 5 hex du « Sighted Carrier » le plus proche. La première arrivée attend les autres à 6 hex, pendant 2 tours au maximum ;
+  - avec un CV ou un CVL, repérée, sans porte-avions allié repéré : elle reste à plus de 6 hex de toute unité alliée ;
+  - rien que des DD : elle va jusqu'à la task force alliée non repérée la plus proche ;
+  - les autres : elles vont jusqu'à la task force alliée repérée la plus proche.
 - **Renfort de leurres** (tours 11 et 23) :
   - côté japonais, chaque leurre est posé sur l'hex de l'unité qu'il suivra, puis il s'en écarte ;
   - côté US, le joueur pose ses leurres sur ses propres task forces avant tout mouvement, jusqu'à 12 task forces sur la carte ; ils peuvent y rester empilés.
@@ -81,14 +87,12 @@ Sources lues : [useAssisted.js](../src/lib/useAssisted.js), [edges.js](../src/li
 
 2. **La ZOC terrestre s'applique entre navires**. Les deux règles par défaut sont actives. Une task force US adjacente à un leurre japonais est figée, et le leurre aussi. Ce blocage mutuel peut durer jusqu'à ce qu'un « Detected! » retire le leurre. Le fait que les barrières soient déclarées `blocksZoc` suggère que c'est voulu, mais le blocage mutuel ressemble à un effet de bord. Par ailleurs, seule la ZOC empêche un joueur US d'entrer dans un hex ennemi : [canEnterHex](../src/lib/useAssisted.js#L789) ne teste pas si l'hex est occupé par l'ennemi. Si on désactive la ZOC, cette entrée deviendra possible.
 
-3. **L'en-tête de useCoralSea ne correspond plus au code**.
-   - Le commentaire ([useCoralSea.js:17-36](../src/lib/useCoralSea.js#L17-L36)) dit : 5 leurres porteurs, 7 vrais leurres, et un « faux couple » formé des 2 restants.
-   - Le code ([useCoralSea.js:193-200](../src/lib/useCoralSea.js#L193-L200)) liste **6** task forces, TF10 comprise. Il y a donc 6 porteurs et 6 vrais leurres, et ces 6 vrais leurres servent tous d'escortes : **le faux couple n'existe jamais**.
+3. **Résolu — l'en-tête de useCoralSea ne correspondait plus au code**. Il décrit maintenant les formations : autant de leurres porteurs que de task forces dans la formation tirée, les autres servant d'escortes (porte-avions d'abord), puis de faux groupe s'il en reste.
 
-4. **Une même task force peut exister deux fois sur la carte**. Les vrais pions japonais TF1…TF10 (bande 0501-2701) restent posables depuis le panneau, alors que des leurres les portent déjà en secret. Le pion et son leurre recevraient chacun un objectif et un mouvement particulier. La reconnaissance dédoublonne déjà ce cas ([useCoralSea.js:514-517](../src/lib/useCoralSea.js#L514-L517)), mais pas le mouvement.
+4. **Une même task force peut exister deux fois sur la carte**. Les vrais pions japonais TF1…TF13 (bande 0501-2701) restent posables depuis le panneau, alors que des leurres les portent déjà en secret. Le pion et son leurre recevraient chacun un objectif et un mouvement particulier. La reconnaissance dédoublonne déjà ce cas, mais pas le mouvement.
 
-5. **TF10 est un transport sans comportement de fuite**. Elle se déplace comme TF7 et TF8, mais elle est absente de `AVOIDING_TASK_FORCES` ([useCoralSea.js:182](../src/lib/useCoralSea.js#L182)) et marche donc droit vers son objectif. C'est peut-être voulu, à confirmer.
+5. **Résolu — TF10 était un transport sans comportement de fuite**. Le comportement dépend désormais des navires : toute task force qui a des AK reste à l'écart des Alliés repérés.
 
-Le point 3 est une incohérence certaine du commentaire. Les points 2, 4 et 5 dépendent de ce que prévoit la règle du jeu.
+Les points 2 et 4 dépendent de ce que prévoit la règle du jeu.
 
 L'ancienne contradiction sur `hexForbidden` (règle documentée mais jamais implémentée) a disparu avec le retrait du code d'Arnhem.

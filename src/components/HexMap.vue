@@ -591,6 +591,11 @@ const moduleRules = useModuleRules(toRef(props, 'moduleId'), {
   terrain: props.module.terrain,
   // Tous les pions du module (cf. lib/useCoralSea.js, tirage des leurres).
   allCounters: () => allCounters.value,
+  // Scénario joué et catalogues de navires (cf. lib/moduleLoader.js) : de
+  // quoi composer les task forces (cf. lib/useCoralSea.js, formations).
+  scenario: (props.module.scenarios ?? []).find((scenario) => scenario.id === props.settings?.scenario)
+    ?? props.module.scenarios?.[0] ?? null,
+  fleets: props.module.fleetCatalog ?? {},
 })
 
 // Étiquette secrète d'un pion (cf. `moduleRules.privateLabel` — ex. vraie

@@ -14,12 +14,22 @@
 // panneau latéral, d'où les joueurs les posent sur la carte (zone d'entrée
 // IJN en haut de la carte ; USN n'importe où, à la mise en place).
 //
-// IDENTITÉ SECRÈTE DES LEURRES JAPONAIS : au coup d'envoi, 5 des 12 leurres
-// sont tirés au hasard pour porter en réalité une task force — les porte-
-// avions TF 1, TF 2, TF 3 et les flottes de transport TF 7, TF 8. Les 7
-// autres sont de vrais leurres, dont chacun se déplace, à pile ou face,
-// comme une task force normale ou comme un transport (pour ne pas se trahir
-// par son allure). Allures (cf. `movementAllowance`) :
+// FORMATION JAPONAISE : au coup d'envoi, sans intervention humaine, l'appli
+// tire à chances égales une des formations du scénario (`formations.ijn`,
+// cf. coral-sea.json et `drawFormation`) : deux groupements fixes, ou un
+// groupement ALÉATOIRE composé selon sa règle (cf. `composeRandomFormation`
+// — chaque CV avec 2 CA + 1 DD, le CVL avec 2 DD, les AK par 2 ou 3 avec 1
+// DD chacun, le reste en 2 groupes). Chaque task force prend un comportement
+// d'après ses navires (cf. `behaviorOfShips`, `movementPlan`). Les navires
+// viennent du catalogue de la flotte (cf. lib/moduleLoader.js) ; sans lui,
+// l'ancien tirage (TF1, TF2, TF3, TF7, TF8, TF10) s'applique.
+//
+// IDENTITÉ SECRÈTE DES LEURRES JAPONAIS : chaque task force de la formation
+// est portée en secret par un des 12 leurres, tiré au hasard. Les autres
+// (12 moins le nombre de task forces) sont de vrais leurres, dont chacun se
+// déplace, à pile ou face, comme une task force normale ou comme un
+// transport (pour ne pas se trahir par son allure). Allures (cf.
+// `movementAllowance`) :
 //   - normale : celle de la piste de tour (2 hex de nuit, 1 de jour) ;
 //   - transport (AK) : 1 hex de nuit, 1 hex aux tours de jour impairs, 0
 //     aux tours de jour pairs — exactement les tours où la piste coche
@@ -28,19 +38,23 @@
 // et HexMap.vue::logDeploymentOnce/startSharedJournal) : il survit donc au
 // rejeu et est commun à tous les joueurs en ligne.
 //
-// GROUPES : chacun des 5 leurres porteurs d'une task force reçoit un leurre
-// d'escorte, posé sur un hex adjacent de la zone de départ ; les 2 leurres
-// restants forment un faux couple, posé au hasard, le second adjacent au
-// premier (cf. `drawLeaders`, `arrangeInitialPositions`). Un suiveur suit
-// son meneur en restant adjacent, à SON allure (cf. `followTarget`,
+// GROUPES : chaque leurre porteur d'une task force reçoit un leurre
+// d'escorte, porte-avions d'abord, tant qu'il reste de vrais leurres, posé
+// sur un hex adjacent de la zone de départ ; les vrais leurres restants
+// forment un faux groupe, posé au hasard, les autres adjacents au premier
+// (cf. `drawLeaders`, `arrangeInitialPositions`). Un suiveur suit son
+// meneur en restant adjacent, à SON allure (cf. `followTarget`,
 // `isTransport`) ; si le meneur disparaît, il reprend son hex-objectif.
 //
 // MOUVEMENTS PARTICULIERS (cf. `movementPlan`), qui REMPLACENT la marche
-// vers l'hex-objectif : TF7/TF8 restent à plus de 6 hex de toute TF alliée
-// repérée ; TF1/TF2 foncent à 5 hex d'une TF alliée vue comme porte-avions
-// (en s'attendant l'une l'autre à 6 hex, 2 tours au plus), et, sans
-// porte-avions allié repéré, s'écartent à plus de 6 hex de toute unité
-// alliée dès qu'elles sont elles-mêmes repérées. Leurs suiveurs suivent.
+// vers l'hex-objectif, selon les navires de la task force : avec des AK,
+// elle reste à plus de 6 hex de toute TF alliée repérée ; avec un CV ou un
+// CVL, elle fonce à 5 hex d'une TF alliée vue comme porte-avions (les
+// porte-avions s'attendent à 6 hex, 2 tours au plus), et, sans porte-avions
+// allié repéré, s'écarte à plus de 6 hex de toute unité alliée dès qu'elle
+// est elle-même repérée ; rien que des DD, elle va vers la TF alliée non
+// repérée la plus proche ; les autres vont vers la TF alliée repérée la
+// plus proche. Leurs suiveurs suivent.
 //
 // HEX-OBJECTIF : chaque MENEUR (leurre porteur, tête du faux couple) reçoit
 // au coup d'envoi une destination tirée au hasard parmi les hex d'arrivée
@@ -182,30 +196,151 @@ export const SIGHTINGS = {
  *  renfort de leurres (cf. `planDummyReinforcement`). */
 const DUMMY_TOTAL = 12
 
-/** Mouvements particuliers des task forces japonaises (cf. `movementPlan`) :
- *  celles qui restent à l'écart des Alliés, celles qui attaquent un
- *  porte-avions repéré, et leurs distances. */
-const AVOIDING_TASK_FORCES = new Set(['ijn-tf7', 'ijn-tf8'])
-const ATTACKING_TASK_FORCES = new Set(['ijn-tf1', 'ijn-tf2'])
+/** Distances des mouvements particuliers des task forces japonaises (cf.
+ *  `movementPlan`) : écart gardé par celles qui évitent les Alliés, rayon
+ *  d'attaque des porte-avions et leur attente maximale, et distance à
+ *  laquelle les autres s'arrêtent de leur cible (adjacentes). */
 const AVOID_RANGE = 6
 const ATTACK_RADIUS = 5
 const MAX_WAIT_TURNS = 2
-/** Porte-avions dont les hex-objectifs sont tirés dans un même rayon (cf.
+const SEEK_RADIUS = 1
+/** Rayon dans lequel sont tirés les hex-objectifs des porte-avions (cf.
  *  `groupCarrierObjectives`). */
-const GROUPED_TASK_FORCES = new Set(['ijn-tf1', 'ijn-tf2', 'ijn-tf3'])
 const GROUPED_RADIUS = 5
 
-/** Task forces portées en secret par un leurre, avec leur allure. */
-const HIDDEN_TASK_FORCES = [
-  { tf: 'ijn-tf1', code: 'TF1', movement: 'normal' },
-  { tf: 'ijn-tf2', code: 'TF2', movement: 'normal' },
-  { tf: 'ijn-tf3', code: 'TF3', movement: 'normal' },
-  { tf: 'ijn-tf7', code: 'TF7', movement: 'transport' },
-  { tf: 'ijn-tf8', code: 'TF8', movement: 'transport' },
-  { tf: 'ijn-tf10', code: 'TF10', movement: 'transport' },
+/** Types de navires qui font d'une task force une task force de
+ *  porte-avions (cf. `behaviorOfShips`). */
+const CARRIER_TYPES = new Set(['CV', 'CVL'])
+
+/** Task forces portées en secret par un leurre quand le scénario ne déclare
+ *  pas de formations, ou que le catalogue de navires manque — et rôles d'un
+ *  journal antérieur aux formations (cf. `behaviorIn`). */
+const LEGACY_TASK_FORCES = [
+  { tf: 'ijn-tf1', code: 'TF1', movement: 'normal', behavior: 'carrier' },
+  { tf: 'ijn-tf2', code: 'TF2', movement: 'normal', behavior: 'carrier' },
+  { tf: 'ijn-tf3', code: 'TF3', movement: 'normal', behavior: 'carrier' },
+  { tf: 'ijn-tf7', code: 'TF7', movement: 'transport', behavior: 'transport' },
+  { tf: 'ijn-tf8', code: 'TF8', movement: 'transport', behavior: 'transport' },
+  { tf: 'ijn-tf10', code: 'TF10', movement: 'transport', behavior: 'transport' },
 ]
-/** Task forces (vrais pions) qui se déplacent toujours en transport. */
-const TRANSPORT_TASK_FORCES = new Set(HIDDEN_TASK_FORCES.filter((role) => role.movement === 'transport').map((role) => role.tf))
+
+/** Navires d'une liste d'ordre de bataille (`"id"` ou `{ ship, count }`,
+ *  cf. coral-sea.json), un id par navire. */
+function expandShips(list) {
+  return (list ?? []).flatMap((entry) => (typeof entry === 'string' ? [entry] : Array(entry?.count ?? 1).fill(entry?.ship)))
+}
+
+/** Comportement d'une task force d'après ses navires (`typeOf(id)` : type
+ *  du catalogue, CV, CVL, CA, CL, DD, AK) :
+ *   - 'carrier' : un CV ou un CVL — elle attaque ;
+ *   - 'transport' : des AK — allure de transport, à l'écart des Alliés ;
+ *   - 'destroyers' : rien que des DD — vers les TF alliées non repérées ;
+ *   - 'surface' : les autres — vers les TF alliées repérées. */
+function behaviorOfShips(ships, typeOf) {
+  const types = ships.map(typeOf)
+  if (types.some((type) => CARRIER_TYPES.has(type))) return 'carrier'
+  if (types.includes('AK')) return 'transport'
+  if (types.length && types.every((type) => type === 'DD')) return 'destroyers'
+  return 'surface'
+}
+
+/** Découpages de `total` en groupes dont la taille est dans `sizes` (ex. 6
+ *  en [2, 2, 2] ou [3, 3]), chacun trié. */
+function partitions(total, sizes) {
+  if (total === 0) return [[]]
+  const sorted = [...sizes].sort((a, b) => a - b)
+  return sorted.filter((size) => size <= total)
+    .flatMap((size) => partitions(total - size, sorted.filter((other) => other >= size)).map((rest) => [size, ...rest]))
+}
+
+/** Formation ALÉATOIRE (`random` d'une formation, cf. coral-sea.json),
+ *  composée à partir des navires de l'ordre de bataille (`pool`) :
+ *   - chaque CV avec `carrierEscort` (2 CA + 1 DD), chaque CVL avec
+ *     `lightCarrierEscort` (2 DD), pris au hasard ;
+ *   - les AK en groupes de `transportGroupSizes` (2 ou 3 — découpage tiré au
+ *     hasard parmi les possibles), chacun avec `transportEscort` (1 DD) ;
+ *   - le reste, mélangé et partagé en `remainderGroups` groupes équilibrés.
+ *  Les navires `spare` (le DD isolé) n'escortent personne et vont au reste —
+ *  sauf s'il ne reste plus d'autre DD pour un groupe d'AK.
+ *  Porte-avions (CV puis CVL) -> `carrierTaskForces`, dans l'ordre ; groupes
+ *  d'AK puis le reste -> `fleetTaskForces`. Task force -> ids des navires. */
+function composeRandomFormation(rule, pool, typeOf) {
+  const spare = new Set(rule.spare ?? [])
+  const left = shuffle(pool)
+  const take = (type, count, spareToo) => {
+    const out = []
+    while (out.length < count) {
+      let index = left.findIndex((id) => typeOf(id) === type && !spare.has(id))
+      if (index === -1 && spareToo) index = left.findIndex((id) => typeOf(id) === type)
+      if (index === -1) break
+      out.push(...left.splice(index, 1))
+    }
+    return out
+  }
+  const escort = (spec, spareToo = false) => Object.entries(spec ?? {}).flatMap(([type, count]) => take(type, count, spareToo))
+  const carriers = []
+  for (const [type, spec] of [['CV', rule.carrierEscort], ['CVL', rule.lightCarrierEscort]]) {
+    for (const ship of pool.filter((id) => typeOf(id) === type)) {
+      left.splice(left.indexOf(ship), 1)
+      carriers.push([ship, ...escort(spec)])
+    }
+  }
+  const transports = left.filter((id) => typeOf(id) === 'AK')
+  for (const ship of transports) left.splice(left.indexOf(ship), 1)
+  const splits = partitions(transports.length, rule.transportGroupSizes ?? [transports.length])
+  const sizes = splits.length ? splits[Math.floor(Math.random() * splits.length)] : [transports.length]
+  const fleets = []
+  let start = 0
+  for (const size of sizes.filter(Boolean)) {
+    fleets.push([...transports.slice(start, start += size), ...escort(rule.transportEscort, true)])
+  }
+  const rest = shuffle(left)
+  const groups = Math.min(rule.remainderGroups ?? 1, rest.length)
+  for (let group = 0; group < groups; group++) fleets.push(rest.filter((_, index) => index % groups === group))
+  const taskForces = {}
+  carriers.forEach((ships, index) => { if (rule.carrierTaskForces?.[index]) taskForces[rule.carrierTaskForces[index]] = ships })
+  fleets.forEach((ships, index) => { if (rule.fleetTaskForces?.[index]) taskForces[rule.fleetTaskForces[index]] = ships })
+  return taskForces
+}
+
+/** Formation des task forces japonaises, tirée au hasard (à chances égales)
+ *  parmi celles du scénario (`formations.ijn`, cf. coral-sea.json) : `{ id,
+ *  taskForces }` (task force -> ids de ses navires) et `typeOf` (id de
+ *  navire -> type), ou `null` sans formations ou sans catalogue (cf.
+ *  lib/moduleLoader.js). */
+function drawFormation(scenario, fleets) {
+  const options = scenario?.formations?.ijn
+  const catalog = fleets?.ijn?.ships
+  if (!options?.length || !catalog) return null
+  const types = new Map(catalog.map((ship) => [ship.id, ship.type]))
+  const typeOf = (id) => types.get(id) ?? null
+  const choice = options[Math.floor(Math.random() * options.length)]
+  const taskForces = choice.random
+    ? composeRandomFormation(choice.random, (scenario.orderOfBattle?.ijn ?? []).flatMap((group) => expandShips(group.ships)), typeOf)
+    : Object.fromEntries(Object.entries(choice.taskForces ?? {}).map(([tf, list]) => [tf, expandShips(list)]))
+  return { id: choice.id, taskForces, typeOf }
+}
+
+/** Task forces que portent les leurres pour la formation `formation` :
+ *  `{ tf, code, movement, behavior, ships }` (`code` lu sur le pion de la
+ *  task force), ou l'ancien tirage sans formation. */
+function hiddenTaskForces(formation, allCounters) {
+  if (!formation) return LEGACY_TASK_FORCES
+  return Object.entries(formation.taskForces).map(([tf, ships]) => {
+    const behavior = behaviorOfShips(ships, formation.typeOf)
+    const code = allCounters.find((counter) => String(counter.id) === tf)?.code ?? tf
+    return { tf, code, movement: behavior === 'transport' ? 'transport' : 'normal', behavior, ships }
+  })
+}
+
+/** Rôle de la task force `tf` parmi les rôles des leurres (`roles`), ou,
+ *  pour un journal antérieur aux formations (aucun rôle n'a de
+ *  `behavior`), celui de l'ancien tirage. */
+function taskForceRoleIn(roles, tf) {
+  const all = Object.values(roles)
+  const pool = all.some((role) => role.behavior) ? all : LEGACY_TASK_FORCES
+  return pool.find((role) => role.tf === tf) ?? null
+}
 
 /** Une task force JAPONAISE (vrai pion) ou un leurre japonais : les pions
  *  qui marchent seuls vers leur hex-objectif. */
@@ -229,24 +364,28 @@ function shuffle(list) {
   return copy
 }
 
-/** Tirage des rôles : id de leurre -> `{ tf, code, movement }` (`tf`/`code`
- *  `null` pour un vrai leurre). */
-function drawDummyRoles(dummyIds) {
+/** Tirage des rôles : id de leurre -> `{ tf, code, movement, behavior,
+ *  ships }` pour ceux qui portent une des task forces `hidden`, `{ tf: null,
+ *  code: null, movement }` pour les vrais leurres (tous les autres). */
+function drawDummyRoles(dummyIds, hidden) {
   const roles = {}
   shuffle(dummyIds).forEach((id, index) => {
-    roles[id] = HIDDEN_TASK_FORCES[index]
+    roles[id] = hidden[index]
       ?? { tf: null, code: null, movement: Math.random() < 0.5 ? 'normal' : 'transport' }
   })
   return roles
 }
 
 /** Groupes de départ : chaque leurre qui porte une task force reçoit un
- *  leurre d'escorte, et les leurres restants forment un faux couple (le
- *  premier mène, le second le suit). Suiveur id -> meneur id. */
+ *  leurre d'escorte, porte-avions d'abord, tant qu'il en reste ; les
+ *  leurres restants forment un faux couple (le premier mène, le second le
+ *  suit). Suiveur id -> meneur id. */
 function drawLeaders(roles) {
   const plain = shuffle(Object.keys(roles).filter((id) => !roles[id].tf))
   const leaders = {}
-  for (const id of Object.keys(roles).filter((id) => roles[id].tf)) {
+  const carried = Object.keys(roles).filter((id) => roles[id].tf)
+  const isCarrier = (id) => taskForceRoleIn(roles, roles[id].tf)?.behavior === 'carrier'
+  for (const id of [...carried.filter(isCarrier), ...carried.filter((id) => !isCarrier(id))]) {
     const escort = plain.shift()
     if (escort) leaders[escort] = id
   }
@@ -268,15 +407,16 @@ function drawObjectives(counterIds, arrivalHexes) {
   return objectives
 }
 
-/** Hex-objectifs GROUPÉS des porte-avions TF1, TF2, TF3 : un hex d'arrivée
- *  tiré au hasard sert de centre, et chacun reçoit un hex d'arrivée à 5 hex
- *  ou moins de lui (cf. `GROUPED_TASK_FORCES`). Concerne les leurres qui
- *  les portent (`roles`) comme les vrais pions. Remplace leur tirage dans
- *  `objectives`, renvoyé modifié. */
+/** Hex-objectifs GROUPÉS des task forces de porte-avions (comportement
+ *  'carrier', cf. `behaviorOfShips`) : un hex d'arrivée tiré au hasard sert
+ *  de centre, et chacune reçoit un hex d'arrivée à 5 hex ou moins de lui
+ *  (cf. `GROUPED_RADIUS`). Concerne les leurres qui les portent (`roles`)
+ *  comme les vrais pions. Remplace leur tirage dans `objectives`, renvoyé
+ *  modifié. */
 function groupCarrierObjectives(objectives, roles, arrivalHexes) {
   if (!arrivalHexes?.length) return objectives
   const center = hexOfId(arrivalHexes[Math.floor(Math.random() * arrivalHexes.length)])
-  const carriers = Object.keys(objectives).filter((id) => GROUPED_TASK_FORCES.has(roles[id]?.tf ?? id))
+  const carriers = Object.keys(objectives).filter((id) => taskForceRoleIn(roles, roles[id]?.tf ?? id)?.behavior === 'carrier')
   // Jamais deux task forces sur le même hex-objectif : ni entre elles, ni
   // avec un objectif déjà tiré pour une autre (tant qu'il reste de quoi).
   const taken = new Set(Object.keys(objectives).filter((id) => !carriers.includes(id)).map((id) => objectives[id]))
@@ -291,8 +431,13 @@ export function useCoralSea(moduleId, ctx = {}) {
   const active = computed(() => unref(moduleId) === CORAL_SEA_MODULE_ID)
 
   const allCounters = ctx.allCounters?.() ?? []
+  // Formation des task forces japonaises, tirée au hasard au coup d'envoi
+  // (cf. `drawFormation`) ; chacune est ensuite portée en secret par un
+  // leurre, les autres leurres restant de vrais leurres.
+  const drawn = active.value ? drawFormation(ctx.scenario, ctx.fleets) : null
+  const formationId = ref(drawn?.id ?? null)
   const dummyRoles = ref(active.value
-    ? drawDummyRoles(allCounters.filter(isDummy).map((counter) => String(counter.id)))
+    ? drawDummyRoles(allCounters.filter(isDummy).map((counter) => String(counter.id)), hiddenTaskForces(drawn, allCounters))
     : {})
   // Suiveurs (escortes, second du faux couple, leurres d'un renfort de
   // nuit) : id -> id de leur meneur, qu'ils suivent en restant adjacents
@@ -337,8 +482,14 @@ export function useCoralSea(moduleId, ctx = {}) {
    *  de la tête de son groupe. */
   function isTransport(counter) {
     const head = headOf(String(counter?.id))
-    if (TRANSPORT_TASK_FORCES.has(head)) return true
-    return dummyRoles.value[head]?.movement === 'transport'
+    const role = dummyRoles.value[head] ?? taskForceRoleIn(dummyRoles.value, head)
+    return role?.movement === 'transport'
+  }
+
+  /** Comportement de la task force `tf` (cf. `behaviorOfShips`), ou `null`
+   *  (vrai leurre, task force hors de la formation). */
+  function behaviorOf(tf) {
+    return tf ? taskForceRoleIn(dummyRoles.value, tf)?.behavior ?? null : null
   }
 
   /** Allure de transport : 1 hex aux tours "Mouvement AK" de la piste, 0
@@ -363,39 +514,54 @@ export function useCoralSea(moduleId, ctx = {}) {
     return String(counter?.id)
   }
 
-  // Attente de TF1/TF2 aux portes du rayon d'attaque (cf. `movementPlan`) :
-  // task force -> tour où elle a commencé à attendre l'autre.
+  // Attente des porte-avions aux portes du rayon d'attaque (cf.
+  // `movementPlan`) : task force -> tour où elle a commencé à attendre les
+  // autres.
   const waitingSince = new Map()
 
-  /** Mouvement PARTICULIER d'une task force japonaise, qui REMPLACE la
-   *  marche vers son hex-objectif (cf. HexMap.vue::runAutoMoves) — ses
-   *  suiveurs la suivent comme d'habitude :
-   *   - TF7, TF8 : toujours à plus de 6 hex de toute TF alliée repérée ;
-   *   - TF1, TF2, dès qu'une TF alliée est vue comme porte-avions ("Sighted
-   *     Carrier", vrai ou faux) : foncent sur la plus proche pour entrer à 5
-   *     hex ou moins d'elle. Ensemble, si possible : la première arrivée
-   *     attend à 6 hex que l'autre puisse entrer au même tour, si ça ne lui
-   *     coûte pas plus de 2 tours ;
-   *   - TF1, TF2 partiellement repérées (un "Sighted" sur elles), sans
-   *     porte-avions allié repéré : à plus de 6 hex de toute unité alliée.
+  /** Mouvement PARTICULIER d'une task force japonaise, selon son
+   *  comportement (cf. `behaviorOfShips`), qui REMPLACE la marche vers son
+   *  hex-objectif (cf. HexMap.vue::runAutoMoves) — ses suiveurs la suivent
+   *  comme d'habitude :
+   *   - transport (des AK) : toujours à plus de 6 hex de toute TF alliée
+   *     repérée ;
+   *   - porte-avions (un CV ou un CVL), dès qu'une TF alliée est vue comme
+   *     porte-avions ("Sighted Carrier", vrai ou faux) : foncent sur la plus
+   *     proche pour entrer à 5 hex ou moins d'elle. Ensemble, si possible :
+   *     la première arrivée attend à 6 hex que les autres puissent entrer au
+   *     même tour, si ça ne lui coûte pas plus de 2 tours ;
+   *   - porte-avions partiellement repérés (un "Sighted" sur eux), sans
+   *     porte-avions allié repéré : à plus de 6 hex de toute unité alliée ;
+   *   - rien que des DD : vers la TF alliée NON repérée la plus proche ;
+   *   - les autres : vers la TF alliée repérée ("Sighted Carrier" ou
+   *     "Sighted Fleet") la plus proche.
+   *  Sans cible, marche ordinaire vers l'hex-objectif.
    *  `{ kind: 'avoid', avoid: [hex], range }` (vers l'objectif, en restant à
    *  plus de `range` hex des `avoid`, ou en s'en éloignant), `{ kind:
-   *  'attack', target: hex, radius, hold }` (`hold` : s'arrêter à `radius`
-   *  + 1), ou `null` (marche ordinaire). `allowanceOf(pion)` : MP du tour. */
+   *  'attack', target: hex, radius, hold }` (jusqu'à `radius` hex de
+   *  `target` ; `hold` : s'arrêter à `radius` + 1), ou `null` (marche
+   *  ordinaire). `allowanceOf(pion)` : MP du tour. */
   function movementPlan(counter, counters, turn, allowanceOf) {
     if (!active.value) return null
     const tf = taskForceOf(counter)
-    if (!AVOIDING_TASK_FORCES.has(tf) && !ATTACKING_TASK_FORCES.has(tf)) return null
+    const behavior = behaviorOf(tf)
+    if (!behavior) return null
     const allies = counters.filter((other) => other.faction === 'usn' && other.type === 'task force')
     const sightingsOf = (unit) => counters.filter((marker) => marker.sighted && marker.attachedTo === String(unit.id)).map((marker) => marker.sighted)
-    const sightedAllies = allies.filter((unit) => sightingsOf(unit).some((sighting) => sighting === 'carrierTF' || sighting === 'fleetTF'))
+    const isSighted = (unit) => sightingsOf(unit).some((sighting) => sighting === 'carrierTF' || sighting === 'fleetTF')
+    const sightedAllies = allies.filter(isSighted)
     const hexOf = (unit) => ({ col: unit.col, row: unit.row })
-    if (AVOIDING_TASK_FORCES.has(tf)) {
+    const nearest = (units) => hexOf(units.reduce((best, unit) => (hexDistance(counter, unit) < hexDistance(counter, best) ? unit : best)))
+    if (behavior === 'transport') {
       return sightedAllies.length ? { kind: 'avoid', avoid: sightedAllies.map(hexOf), range: AVOID_RANGE } : null
+    }
+    if (behavior === 'destroyers' || behavior === 'surface') {
+      const targets = behavior === 'destroyers' ? allies.filter((unit) => !isSighted(unit)) : sightedAllies
+      return targets.length ? { kind: 'attack', target: nearest(targets), radius: SEEK_RADIUS, hold: false } : null
     }
     const carriers = allies.filter((unit) => sightingsOf(unit).includes('carrierTF'))
     if (carriers.length) {
-      const target = hexOf(carriers.reduce((best, unit) => (hexDistance(counter, unit) < hexDistance(counter, best) ? unit : best)))
+      const target = nearest(carriers)
       return { kind: 'attack', target, radius: ATTACK_RADIUS, hold: shouldHold(counter, tf, target, counters, turn, allowanceOf) }
     }
     waitingSince.delete(tf)
@@ -404,22 +570,24 @@ export function useCoralSea(moduleId, ctx = {}) {
     return partlySeen && allies.length ? { kind: 'avoid', avoid: allies.map(hexOf), range: AVOID_RANGE } : null
   }
 
-  /** TF1/TF2 qui pourrait entrer ce tour-ci dans le rayon d'attaque de
-   *  `target` doit-elle plutôt attendre l'autre (à 6 hex) ? Oui si l'autre
-   *  est sur la carte, n'y entrera pas ce tour-ci, mais y sera dans 2 tours
-   *  au plus — et pas plus de 2 tours d'attente en tout. */
+  /** Porte-avions qui pourrait entrer ce tour-ci dans le rayon d'attaque de
+   *  `target` : doit-il plutôt attendre les autres (à 6 hex) ? Oui si l'un
+   *  d'eux est sur la carte, n'y entrera pas ce tour-ci, mais y sera dans 2
+   *  tours au plus — et pas plus de 2 tours d'attente en tout. */
   function shouldHold(counter, tf, target, counters, turn, allowanceOf) {
     const steps = Math.max(1, allowanceOf(counter) ?? 1)
     const myGap = hexDistance(counter, target) - ATTACK_RADIUS
     if (myGap <= 0 || myGap > steps) { waitingSince.delete(tf); return false }
-    const partnerTf = tf === 'ijn-tf1' ? 'ijn-tf2' : 'ijn-tf1'
-    const partner = counters.find((other) => other.faction === 'ijn' && other.type === 'task force' && taskForceOf(other) === partnerTf)
-    const partnerGap = partner ? hexDistance(partner, target) - ATTACK_RADIUS : 0
-    const partnerSteps = Math.max(1, (partner && allowanceOf(partner)) || 1)
-    if (partnerGap <= partnerSteps) { waitingSince.delete(tf); return false }
+    const partners = counters.filter((other) => isIjnTaskForce(other) && taskForceOf(other)
+      && taskForceOf(other) !== tf && behaviorOf(taskForceOf(other)) === 'carrier')
+    const waits = partners.map((partner) => {
+      const gap = hexDistance(partner, target) - ATTACK_RADIUS
+      const partnerSteps = Math.max(1, allowanceOf(partner) || 1)
+      return gap <= partnerSteps ? 0 : Math.ceil(gap / partnerSteps) - 1
+    }).filter((wait) => wait > 0 && wait <= MAX_WAIT_TURNS)
+    if (!waits.length) { waitingSince.delete(tf); return false }
     const since = waitingSince.get(tf) ?? turn
-    const wait = Math.ceil(partnerGap / partnerSteps) - 1
-    if (wait > MAX_WAIT_TURNS || turn - since >= MAX_WAIT_TURNS) { waitingSince.delete(tf); return false }
+    if (turn - since >= MAX_WAIT_TURNS) { waitingSince.delete(tf); return false }
     waitingSince.set(tf, since)
     return true
   }
@@ -714,12 +882,17 @@ export function useCoralSea(moduleId, ctx = {}) {
 
   /** Tirage secret à inscrire au journal avec le déploiement. */
   function setupSecrets() {
-    return active.value ? { dummyRoles: dummyRoles.value, objectives: objectives.value, leaders: leaders.value } : null
+    return active.value
+      ? { formation: formationId.value, dummyRoles: dummyRoles.value, objectives: objectives.value, leaders: leaders.value }
+      : null
   }
 
-  /** Rétablit le tirage lu dans le journal (rejeu, partie en ligne). */
+  /** Rétablit le tirage lu dans le journal (rejeu, partie en ligne). Les
+   *  rôles des leurres portent la composition et le comportement de chaque
+   *  task force : la formation n'est pas retirée. */
   function restoreSetupSecrets(secrets) {
     if (!active.value) return
+    formationId.value = secrets?.formation ?? null
     if (secrets?.dummyRoles) dummyRoles.value = secrets.dummyRoles
     if (secrets?.objectives) objectives.value = secrets.objectives
     // Journal antérieur aux groupes : personne ne suit personne.

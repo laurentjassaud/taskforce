@@ -1,0 +1,1109 @@
+{
+  "_comment": [
+    "Catalogue des navires japonais (IJN) de la mer de Corail, généré depuis documentations/flotte-ijn.xlsx.",
+    "Les ordres de bataille des scénarios (coral-sea.json, scenarios[]) y piochent les navires par leur id.",
+    "Chaque navire a deux faces : 'intact' (pions C6F, CF4, CF5) et 'damaged' = dommages significatifs (pions CB4, CB5, CB6) ; 'damaged' vaut null quand la face manque.",
+    "Face : antiAir (en haut à droite), durability (en bas à gauche), firepower (en bas à droite), src (image).",
+    "firepowerSecondary : valeur après la barre des pions imprimés '4/8' ou '2/4' (KITAKAMI, ŌI) — sens à préciser d'après la règle.",
+    "carrierCode : code Carrier/Base des porte-avions CV. symbol : le '⊗' imprimé après 'BB' sur certains cuirassés — sens à préciser.",
+    "ijn-dd, ijn-dd-single et ijn-ak : pions génériques (destroyers, destroyer isolé, transports), sans nom de navire.",
+    "ijn-dd-single n'a pas de pion propre : un destroyer isolé est le pion DD posé sur sa face réduite (CB6 (8))."
+  ],
+  "faction": "ijn",
+  "types": {
+    "CV": "Porte-avions",
+    "CVL": "Porte-avions léger",
+    "BB": "Cuirassé",
+    "CA": "Croiseur lourd",
+    "CL": "Croiseur léger",
+    "DD": "Destroyers",
+    "AK": "Transports"
+  },
+  "ships": [
+    {
+      "id": "ijn-akagi",
+      "name": "AKAGI",
+      "type": "CV",
+      "nameJa": "赤城",
+      "carrierCode": "AKA",
+      "intact": {
+        "antiAir": 3,
+        "durability": 5,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (9).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (13).png"
+      }
+    },
+    {
+      "id": "ijn-hiryu",
+      "name": "HIRYŪ",
+      "type": "CV",
+      "nameJa": "飛龍",
+      "carrierCode": "HIR",
+      "intact": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (10).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (12).png"
+      }
+    },
+    {
+      "id": "ijn-kaga",
+      "name": "KAGA",
+      "type": "CV",
+      "nameJa": "加賀",
+      "carrierCode": "KA",
+      "intact": {
+        "antiAir": 3,
+        "durability": 5,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (11).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (11).png"
+      }
+    },
+    {
+      "id": "ijn-shokaku",
+      "name": "SHŌKAKU",
+      "type": "CV",
+      "nameJa": "翔鶴",
+      "carrierCode": "SHO",
+      "intact": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (12).png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (10).png"
+      }
+    },
+    {
+      "id": "ijn-soryu",
+      "name": "SŌRYŪ",
+      "type": "CV",
+      "nameJa": "蒼龍",
+      "carrierCode": "SOR",
+      "intact": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (13).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (9).png"
+      }
+    },
+    {
+      "id": "ijn-zuikaku",
+      "name": "ZUIKAKU",
+      "type": "CV",
+      "nameJa": "瑞鶴",
+      "carrierCode": "ZUI",
+      "intact": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (14).png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (8).png"
+      }
+    },
+    {
+      "id": "ijn-hiyo",
+      "name": "HIYŌ",
+      "type": "CVL",
+      "nameJa": "飛鷹",
+      "intact": {
+        "antiAir": 3,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (15).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (21).png"
+      }
+    },
+    {
+      "id": "ijn-junyo",
+      "name": "JUN'YŌ",
+      "type": "CVL",
+      "nameJa": "隼鷹",
+      "intact": {
+        "antiAir": 3,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (16).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (20).png"
+      }
+    },
+    {
+      "id": "ijn-ryujo",
+      "name": "RYŪJŌ",
+      "type": "CVL",
+      "nameJa": "龍驤",
+      "intact": {
+        "antiAir": 3,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (17).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 2,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (19).png"
+      }
+    },
+    {
+      "id": "ijn-shoho",
+      "name": "SHŌHŌ",
+      "type": "CVL",
+      "nameJa": "祥鳳",
+      "intact": {
+        "antiAir": 3,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (18).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 2,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (18).png"
+      }
+    },
+    {
+      "id": "ijn-unyo",
+      "name": "UN'YŌ",
+      "type": "CVL",
+      "nameJa": "雲鷹",
+      "intact": {
+        "antiAir": 3,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (19).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (17).png"
+      }
+    },
+    {
+      "id": "ijn-zuiho",
+      "name": "ZUIHŌ",
+      "type": "CVL",
+      "nameJa": "瑞鳳",
+      "intact": {
+        "antiAir": 3,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (20).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 2,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (16).png"
+      }
+    },
+    {
+      "id": "ijn-fuso",
+      "name": "FUSŌ",
+      "type": "BB",
+      "nameJa": "扶桑",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (21).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (15).png"
+      }
+    },
+    {
+      "id": "ijn-haruna",
+      "name": "HARUNA",
+      "type": "BB",
+      "nameJa": "榛名",
+      "intact": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (22).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (28).png"
+      }
+    },
+    {
+      "id": "ijn-hiei",
+      "name": "HIEI",
+      "type": "BB",
+      "nameJa": "比叡",
+      "intact": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (23).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (27).png"
+      }
+    },
+    {
+      "id": "ijn-hyuga",
+      "name": "HYŪGA",
+      "type": "BB",
+      "nameJa": "日向",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 3,
+        "durability": 8,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (24).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (26).png"
+      }
+    },
+    {
+      "id": "ijn-ise",
+      "name": "ISE",
+      "type": "BB",
+      "nameJa": "伊勢",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 3,
+        "durability": 8,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (25).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (25).png"
+      }
+    },
+    {
+      "id": "ijn-kirishima",
+      "name": "KIRISHIMA",
+      "type": "BB",
+      "nameJa": "霧島",
+      "intact": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (26).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (24).png"
+      }
+    },
+    {
+      "id": "ijn-kongo",
+      "name": "KONGŌ",
+      "type": "BB",
+      "nameJa": "金剛",
+      "intact": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (27).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (23).png"
+      }
+    },
+    {
+      "id": "ijn-musashi",
+      "name": "MUSASHI",
+      "type": "BB",
+      "nameJa": "武蔵",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 12,
+        "firepower": 14,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (28).png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 10,
+        "firepower": 11,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (22).png"
+      }
+    },
+    {
+      "id": "ijn-mutsu",
+      "name": "MUTSU",
+      "type": "BB",
+      "nameJa": "陸奥",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 3,
+        "durability": 9,
+        "firepower": 10,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (29).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (30).png"
+      }
+    },
+    {
+      "id": "ijn-nagato",
+      "name": "NAGATO",
+      "type": "BB",
+      "nameJa": "長門",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 3,
+        "durability": 9,
+        "firepower": 10,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF4 (30).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB4 (29).png"
+      }
+    },
+    {
+      "id": "ijn-yamashiro",
+      "name": "YAMASHIRO",
+      "type": "BB",
+      "nameJa": "山城",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (1).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (7).png"
+      }
+    },
+    {
+      "id": "ijn-yamato",
+      "name": "YAMATO",
+      "type": "BB",
+      "nameJa": "大和",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 12,
+        "firepower": 14,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (2).png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 10,
+        "firepower": 11,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (6).png"
+      }
+    },
+    {
+      "id": "ijn-aoba",
+      "name": "AOBA",
+      "type": "CA",
+      "nameJa": "青葉",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (3).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (5).png"
+      }
+    },
+    {
+      "id": "ijn-ashigara",
+      "name": "ASHIGARA",
+      "type": "CA",
+      "nameJa": "足柄",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (4).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (4).png"
+      }
+    },
+    {
+      "id": "ijn-atago",
+      "name": "ATAGO",
+      "type": "CA",
+      "nameJa": "愛宕",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (5).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (3).png"
+      }
+    },
+    {
+      "id": "ijn-chikuma",
+      "name": "CHIKUMA",
+      "type": "CA",
+      "nameJa": "筑摩",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (6).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (2).png"
+      }
+    },
+    {
+      "id": "ijn-chokai",
+      "name": "CHŌKAI",
+      "type": "CA",
+      "nameJa": "鳥海",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (7).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (1).png"
+      }
+    },
+    {
+      "id": "ijn-furutaka",
+      "name": "FURUTAKA",
+      "type": "CA",
+      "nameJa": "古鷹",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (8).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (14).png"
+      }
+    },
+    {
+      "id": "ijn-haguro",
+      "name": "HAGURO",
+      "type": "CA",
+      "nameJa": "羽黒",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (9).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (13).png"
+      }
+    },
+    {
+      "id": "ijn-kako",
+      "name": "KAKO",
+      "type": "CA",
+      "nameJa": "加古",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (10).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (12).png"
+      }
+    },
+    {
+      "id": "ijn-kinugasa",
+      "name": "KINUGASA",
+      "type": "CA",
+      "nameJa": "衣笠",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (11).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (11).png"
+      }
+    },
+    {
+      "id": "ijn-kumano",
+      "name": "KUMANO",
+      "type": "CA",
+      "nameJa": "熊野",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (12).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (10).png"
+      }
+    },
+    {
+      "id": "ijn-maya",
+      "name": "MAYA",
+      "type": "CA",
+      "nameJa": "摩耶",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (13).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (9).png"
+      }
+    },
+    {
+      "id": "ijn-mikuma",
+      "name": "MIKUMA",
+      "type": "CA",
+      "nameJa": "三隈",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (14).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (8).png"
+      }
+    },
+    {
+      "id": "ijn-mogami",
+      "name": "MOGAMI",
+      "type": "CA",
+      "nameJa": "最上",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (15).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (21).png"
+      }
+    },
+    {
+      "id": "ijn-myoko",
+      "name": "MYŌKŌ",
+      "type": "CA",
+      "nameJa": "妙高",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (16).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (20).png"
+      }
+    },
+    {
+      "id": "ijn-nachi",
+      "name": "NACHI",
+      "type": "CA",
+      "nameJa": "那智",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (17).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (19).png"
+      }
+    },
+    {
+      "id": "ijn-suzuya",
+      "name": "SUZUYA",
+      "type": "CA",
+      "nameJa": "鈴谷",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (18).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (18).png"
+      }
+    },
+    {
+      "id": "ijn-takao",
+      "name": "TAKAO",
+      "type": "CA",
+      "nameJa": "高雄",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (19).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (17).png"
+      }
+    },
+    {
+      "id": "ijn-tone",
+      "name": "TONE",
+      "type": "CA",
+      "nameJa": "利根",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (20).png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (16).png"
+      }
+    },
+    {
+      "id": "ijn-abukuma",
+      "name": "ABUKUMA",
+      "type": "CL",
+      "nameJa": "阿武隈",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (21).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (15).png"
+      }
+    },
+    {
+      "id": "ijn-isuzu",
+      "name": "ISUZU",
+      "type": "CL",
+      "nameJa": "五十鈴",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (22).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (28).png"
+      }
+    },
+    {
+      "id": "ijn-jintsu",
+      "name": "JINTSŪ",
+      "type": "CL",
+      "nameJa": "神通",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (23).png"
+      },
+      "damaged": null
+    },
+    {
+      "id": "ijn-kinu",
+      "name": "KINU",
+      "type": "CL",
+      "nameJa": "鬼怒",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (24).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (26).png"
+      }
+    },
+    {
+      "id": "ijn-kiso",
+      "name": "KISO",
+      "type": "CL",
+      "nameJa": "木曾",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (25).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (25).png"
+      }
+    },
+    {
+      "id": "ijn-kitakami",
+      "name": "KITAKAMI",
+      "type": "CL",
+      "nameJa": "北上",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "firepowerSecondary": 8,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (26).png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 2,
+        "firepower": 2,
+        "firepowerSecondary": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (24).png"
+      }
+    },
+    {
+      "id": "ijn-nagara",
+      "name": "NAGARA",
+      "type": "CL",
+      "nameJa": "長良",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (27).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (23).png"
+      }
+    },
+    {
+      "id": "ijn-naka",
+      "name": "NAKA",
+      "type": "CL",
+      "nameJa": "那珂",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (28).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (22).png"
+      }
+    },
+    {
+      "id": "ijn-oi",
+      "name": "ŌI",
+      "type": "CL",
+      "nameJa": "大井",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "firepowerSecondary": 8,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (29).png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 2,
+        "firepower": 2,
+        "firepowerSecondary": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (30).png"
+      }
+    },
+    {
+      "id": "ijn-sendai",
+      "name": "SENDAI",
+      "type": "CL",
+      "nameJa": "川内",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CF5 (30).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB5 (29).png"
+      }
+    },
+    {
+      "id": "ijn-tama",
+      "name": "TAMA",
+      "type": "CL",
+      "nameJa": "多摩",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/C6F (1).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB6 (7).png"
+      }
+    },
+    {
+      "id": "ijn-tatsuta",
+      "name": "TATSUTA",
+      "type": "CL",
+      "nameJa": "龍田",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/C6F (2).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB6 (6).png"
+      }
+    },
+    {
+      "id": "ijn-tenryu",
+      "name": "TENRYŪ",
+      "type": "CL",
+      "nameJa": "天龍",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/C6F (3).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB6 (5).png"
+      }
+    },
+    {
+      "id": "ijn-yubari",
+      "name": "YŪBARI",
+      "type": "CL",
+      "nameJa": "夕張",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/C6F (4).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB6 (4).png"
+      }
+    },
+    {
+      "id": "ijn-yura",
+      "name": "YURA",
+      "type": "CL",
+      "nameJa": "由良",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/C6F (5).png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB6 (3).png"
+      }
+    },
+    {
+      "id": "ijn-dd",
+      "name": "DD",
+      "type": "DD",
+      "intact": {
+        "antiAir": 1,
+        "durability": 1,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/C6F (6).png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB6 (8).png"
+      }
+    },
+    {
+      "id": "ijn-ak",
+      "name": "AK",
+      "type": "AK",
+      "intact": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/C6F (27).png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB6 (29).png"
+      }
+    },
+    {
+      "id": "ijn-dd-single",
+      "name": "DD",
+      "type": "DD",
+      "intact": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/ijn/fleet/CB6 (8).png"
+      },
+      "damaged": null
+    }
+  ]
+}

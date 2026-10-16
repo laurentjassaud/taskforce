@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HexMap from '../components/HexMap.vue'
 import { stashPendingReplay } from '../lib/journalStorage.js'
+import { fetchModule } from '../lib/moduleLoader.js'
 import { resolveSettings, describeSettings, scenarioOptions } from '../lib/gameSettings.js'
 import { registerModuleTexts } from '../i18n/index.js'
 import { APP_RELEASE, APP_VERSION } from '../lib/bugReport.js'
@@ -48,8 +49,7 @@ onMounted(async () => {
   moduleId.value = route.query.module || 'coral-sea'
   const index = await fetch('/modules/index.json', { cache: 'no-store' }).then((response) => response.json())
   const entry = index.find((moduleEntry) => moduleEntry.id === moduleId.value) ?? index.find((moduleEntry) => moduleEntry.id === 'coral-sea')
-  const res = await fetch(entry.path, { cache: 'no-store' })
-  const data = await res.json()
+  const data = await fetchModule(entry.path)
   registerModuleTexts(data)
   module.value = data
   document.title = module.value.name

@@ -6,7 +6,7 @@
     "en": {
       "Japonais": "Japanese",
       "Américains": "Americans",
-      "Historique": "Historical",
+      "Scenario 5 : Bataille de la mer de Corail": "Scenario 5: Battle of the Coral Sea",
       "Renfort japonais": "Japanese reinforcements",
       "Renfort américains": "American reinforcements",
       "Mouvement naval": "Naval Movement",
@@ -781,11 +781,100 @@
       }
     ]
   },
+  "fleets": {
+    "ijn": "/modules/coral-sea/fleet-ijn.json"
+  },
   "scenarios": [
     {
-      "id": "historique",
-      "label": "Historique",
-      "deployment": "setup"
+      "id": "scenario-5",
+      "label": "Scenario 5 : Bataille de la mer de Corail",
+      "deployment": "setup",
+      "orderOfBattle": {
+        "ijn": [
+          {
+            "id": "task-force-mo",
+            "name": "Task Force MO",
+            "ships": [
+              "ijn-zuikaku",
+              "ijn-shokaku",
+              "ijn-myoko",
+              "ijn-haguro",
+              { "ship": "ijn-dd", "count": 3 }
+            ]
+          },
+          {
+            "id": "covering-group",
+            "name": "Covering Group (6th Cruiser Division)",
+            "ships": [
+              "ijn-shoho",
+              "ijn-aoba",
+              "ijn-kako",
+              "ijn-furutaka",
+              "ijn-kinugasa",
+              "ijn-dd-single"
+            ]
+          },
+          {
+            "id": "support-group",
+            "name": "Support Group (18th Cruiser Div.)",
+            "ships": [
+              "ijn-tenryu",
+              "ijn-tatsuta"
+            ]
+          },
+          {
+            "id": "port-moresby-invasion-group",
+            "name": "Port Moresby Invasion Group (6th Destroyer Squadron)",
+            "ships": [
+              "ijn-yubari",
+              { "ship": "ijn-dd", "count": 3 },
+              { "ship": "ijn-ak", "count": 6 }
+            ]
+          }
+        ]
+      },
+      "formations": {
+        "ijn": [
+          {
+            "id": "formation-1",
+            "taskForces": {
+              "ijn-tf1": ["ijn-zuikaku", "ijn-furutaka", "ijn-kako", "ijn-aoba", "ijn-dd"],
+              "ijn-tf2": ["ijn-shokaku", "ijn-myoko", "ijn-haguro", "ijn-kinugasa", "ijn-dd"],
+              "ijn-tf3": ["ijn-shoho", "ijn-tenryu", "ijn-tatsuta"],
+              "ijn-tf7": [{ "ship": "ijn-ak", "count": 2 }, "ijn-dd"],
+              "ijn-tf8": ["ijn-ak", "ijn-dd", "ijn-yubari"],
+              "ijn-tf10": [{ "ship": "ijn-ak", "count": 3 }, { "ship": "ijn-dd", "count": 2 }, "ijn-dd-single"]
+            }
+          },
+          {
+            "id": "formation-2",
+            "taskForces": {
+              "ijn-tf1": ["ijn-zuikaku", "ijn-furutaka", "ijn-tatsuta"],
+              "ijn-tf2": ["ijn-shokaku", "ijn-kinugasa", "ijn-tenryu"],
+              "ijn-tf3": ["ijn-shoho", "ijn-aoba", "ijn-yubari"],
+              "ijn-tf7": [{ "ship": "ijn-dd", "count": 2 }],
+              "ijn-tf8": [{ "ship": "ijn-ak", "count": 3 }],
+              "ijn-tf9": ["ijn-myoko", "ijn-haguro", "ijn-kako", "ijn-dd"],
+              "ijn-tf10": [{ "ship": "ijn-ak", "count": 3 }],
+              "ijn-tf11": [{ "ship": "ijn-dd", "count": 2 }],
+              "ijn-tf12": ["ijn-dd", "ijn-dd-single"]
+            }
+          },
+          {
+            "id": "random",
+            "random": {
+              "carrierEscort": { "CA": 2, "DD": 1 },
+              "lightCarrierEscort": { "DD": 2 },
+              "transportGroupSizes": [2, 3],
+              "transportEscort": { "DD": 1 },
+              "remainderGroups": 2,
+              "spare": ["ijn-dd-single"],
+              "carrierTaskForces": ["ijn-tf1", "ijn-tf2", "ijn-tf3"],
+              "fleetTaskForces": ["ijn-tf7", "ijn-tf8", "ijn-tf9", "ijn-tf10", "ijn-tf11", "ijn-tf12", "ijn-tf13"]
+            }
+          }
+        ]
+      }
     }
   ],
   "turnStructure": {
@@ -856,6 +945,39 @@
         "setup": "0501-2701"
       },
       {
+        "id": "ijn-tf4",
+        "name": "TF 4",
+        "code": "TF4",
+        "type": "task force",
+        "role": "fleet",
+        "faction": "ijn",
+        "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-4.png",
+        "turn": 1,
+        "setup": "0501-2701"
+      },
+      {
+        "id": "ijn-tf5",
+        "name": "TF 5",
+        "code": "TF5",
+        "type": "task force",
+        "role": "fleet",
+        "faction": "ijn",
+        "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-5.png",
+        "turn": 1,
+        "setup": "0501-2701"
+      },
+      {
+        "id": "ijn-tf6",
+        "name": "TF 6",
+        "code": "TF6",
+        "type": "task force",
+        "role": "fleet",
+        "faction": "ijn",
+        "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-6.png",
+        "turn": 1,
+        "setup": "0501-2701"
+      },
+      {
         "id": "ijn-tf7",
         "name": "TF 7",
         "code": "TF7",
@@ -878,6 +1000,17 @@
         "setup": "0501-2701"
       },
       {
+        "id": "ijn-tf9",
+        "name": "TF 9",
+        "code": "TF9",
+        "type": "task force",
+        "role": "fleet",
+        "faction": "ijn",
+        "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-9.png",
+        "turn": 1,
+        "setup": "0501-2701"
+      },
+      {
         "id": "ijn-tf10",
         "name": "TF 10",
         "code": "TF10",
@@ -885,6 +1018,39 @@
         "role": "fleet",
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-10.png",
+        "turn": 1,
+        "setup": "0501-2701"
+      },
+      {
+        "id": "ijn-tf11",
+        "name": "TF 11",
+        "code": "TF11",
+        "type": "task force",
+        "role": "fleet",
+        "faction": "ijn",
+        "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-11.png",
+        "turn": 1,
+        "setup": "0501-2701"
+      },
+      {
+        "id": "ijn-tf12",
+        "name": "TF 12",
+        "code": "TF12",
+        "type": "task force",
+        "role": "fleet",
+        "faction": "ijn",
+        "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-12.png",
+        "turn": 1,
+        "setup": "0501-2701"
+      },
+      {
+        "id": "ijn-tf13",
+        "name": "TF 13",
+        "code": "TF13",
+        "type": "task force",
+        "role": "fleet",
+        "faction": "ijn",
+        "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-13.png",
         "turn": 1,
         "setup": "0501-2701"
       },
