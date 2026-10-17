@@ -46,6 +46,11 @@ export const INERT_RULES = Object.freeze({
    *  jusqu'à `checks` de ses hex par phase (`[{ source, targets: [{ col,
    *  row }] }]`), ou `null`. */
   reconChecks: () => null,
+  /** Hex que le moteur explore maintenant parmi ses checks ouverts : `{ source, target, side, action, priority, trace,
+   *  options }`, ou `null` (le moteur tire alors au hasard, cf. HexMap.vue::continueEngineRecon). */
+  reconChoice: () => null,
+  /** Une unité reçoit un état de repérage (en jeu comme au rejeu) : de quoi s'en souvenir. */
+  noteSighting: () => {},
   /** Ce pion est-il une cible de reconnaissance pour ce camp ? */
   reconTargetOf: () => false,
   /** Camp qui fait SES reconnaissances à la main (clic source puis cible), ou `null`. */
@@ -82,7 +87,8 @@ export const INERT_RULES = Object.freeze({
   followTarget: () => null,
   /** Réarrange le déploiement initial (`placed`, modifié sur place). */
   arrangeInitialPositions: () => {},
-  /** Mouvement particulier d'un pion à hex-objectif, qui remplace sa marche (cf. `runAutoMoves`), ou `null`. */
+  /** Mouvement particulier d'un pion à hex-objectif, qui remplace sa marche (cf. `runAutoMoves`), ou `null`.
+   *  Son 5e argument facultatif, `onDecision({ side, action, trace, plan })`, reçoit la décision de l'IA (journal de debug). */
   movementPlan: () => null,
   /** Phase (id de la piste) où le moteur lance ses raids aériens, ou `null`. */
   raidPhase: null,

@@ -54,7 +54,9 @@
 // allié repéré, s'écarte à plus de 6 hex de toute unité alliée dès qu'elle
 // est elle-même repérée ; rien que des DD, elle va vers la TF alliée non
 // repérée la plus proche ; les autres vont vers la TF alliée repérée la
-// plus proche. Leurs suiveurs suivent.
+// plus proche. Leurs suiveurs suivent. Ces règles forment un ARBRE DE
+// DÉCISION, décrit en données dans lib/ai/coralSeaTrees.js, sur ce que sait
+// le Japonais (cf. lib/ai/coralSeaPerception.js).
 //
 // HEX-OBJECTIF : chaque MENEUR (leurre porteur, tête du faux couple) reçoit
 // au coup d'envoi une destination tirée au hasard parmi les hex d'arrivée
@@ -69,15 +71,17 @@
 // les bases aériennes japonaises (Rabaul 0506, Buka 1004, Gasmata 0510, Lae
 // 0115) et les task forces de porte-avions japonaises sur la carte (`role`
 // "carrier", cf. coral-sea.json — vrais pions, ou leurres qui les portent en
-// secret). Chacune tire au hasard UN hex à explorer parmi ceux, à 8 hex ou
-// moins d'elle, où se trouve une task force ou un leurre allié pas encore
-// exploré (cf. `reconChecks` et HexMap.vue::continueEngineRecon) — un
-// porte-avions qui a trois leurres à portée n'en explore qu'un. Et
+// secret). Chacune explore UN hex parmi ceux, à 8 hex ou moins d'elle, où se
+// trouve une task force ou un leurre allié pas encore exploré (cf.
+// `reconChecks` et HexMap.vue::continueEngineRecon) — un porte-avions qui a
+// trois leurres à portée n'en explore qu'un. Lequel, et quelle source joue
+// d'abord, c'est l'arbre de décision du repérage qui le choisit (cf.
+// `reconChoice`, lib/ai/coralSeaTrees.js::reconTree). Et
 // seulement un hex COUVERT : assez d'unités japonaises (task forces,
 // leurres et bases) à 8 hex ou moins de lui — 4 avec 12 task forces et
 // leurres japonais en jeu, 3 de 8 à 11, 2 de 4 à 7, 1 en dessous (cf.
 // `ijnCoverageFilter`). Les sources
-// jouent une par une, dans un ordre tiré au hasard ; pour chacune, le
+// jouent une par une, dans l'ordre que choisit l'arbre ; pour chacune, le
 // joueur ouvre le rapport (clic droit sur l'unité) et un chit est tiré de
 // la tasse de recherche (cf. `drawSearch`) : 30 Detected!, 12 Misdirect,
 // 12 Contact Lost. Les chits tirés ne retournent pas dans la tasse : elle
@@ -153,6 +157,9 @@
 import { computed, ref, unref } from 'vue'
 import { INERT_RULES } from './moduleRules.js'
 import { hexDistance } from './hex.js'
+import { decide } from './ai/decisionTree.js'
+import { perceiveTaskForce, perceiveReconTarget } from './ai/coralSeaPerception.js'
+import { movementTree, movementTests, movementActions, reconTree, reconTests } from './ai/coralSeaTrees.js'
 
 export const CORAL_SEA_MODULE_ID = 'coral-sea'
 
@@ -230,14 +237,6 @@ export const SIGHTINGS = {
  *  renfort de leurres (cf. `planDummyReinforcement`). */
 const DUMMY_TOTAL = 12
 
-/** Distances des mouvements particuliers des task forces japonaises (cf.
- *  `movementPlan`) : écart gardé par celles qui évitent les Alliés, rayon
- *  d'attaque des porte-avions et leur attente maximale, et distance à
- *  laquelle les autres s'arrêtent de leur cible (adjacentes). */
-const AVOID_RANGE = 6
-const ATTACK_RADIUS = 5
-const MAX_WAIT_TURNS = 2
-const SEEK_RADIUS = 1
 /** Rayon dans lequel sont tirés les hex-objectifs des porte-avions (cf.
  *  `groupCarrierObjectives`). */
 const GROUPED_RADIUS = 5
@@ -553,77 +552,38 @@ export function useCoralSea(moduleId, ctx = {}) {
   // autres.
   const waitingSince = new Map()
 
-  /** Mouvement PARTICULIER d'une task force japonaise, selon son
-   *  comportement (cf. `behaviorOfShips`), qui REMPLACE la marche vers son
-   *  hex-objectif (cf. HexMap.vue::runAutoMoves) — ses suiveurs la suivent
-   *  comme d'habitude :
-   *   - transport (des AK) : toujours à plus de 6 hex de toute TF alliée
-   *     repérée ;
-   *   - porte-avions (un CV ou un CVL), dès qu'une TF alliée est vue comme
-   *     porte-avions ("Sighted Carrier", vrai ou faux) : foncent sur la plus
-   *     proche pour entrer à 5 hex ou moins d'elle. Ensemble, si possible :
-   *     la première arrivée attend à 6 hex que les autres puissent entrer au
-   *     même tour, si ça ne lui coûte pas plus de 2 tours ;
-   *   - porte-avions partiellement repérés (un "Sighted" sur eux), sans
-   *     porte-avions allié repéré : à plus de 6 hex de toute unité alliée ;
-   *   - rien que des DD : vers la TF alliée NON repérée la plus proche ;
-   *   - les autres : vers la TF alliée repérée ("Sighted Carrier" ou
-   *     "Sighted Fleet") la plus proche.
-   *  Sans cible, marche ordinaire vers l'hex-objectif.
+  /** Mouvement PARTICULIER d'une task force japonaise, qui REMPLACE la
+   *  marche vers son hex-objectif (cf. HexMap.vue::runAutoMoves) — ses
+   *  suiveurs la suivent comme d'habitude. Décidé par l'arbre
+   *  `movementTree` (cf. lib/ai/coralSeaTrees.js, où il est dessiné) sur ce
+   *  que sait le Japonais : la carte, plus le comportement de la task force
+   *  et ses porte-avions partenaires (cf. lib/ai/coralSeaPerception.js).
+   *  Seule la feuille 'hold' (attendre les partenaires) entretient la
+   *  mémoire d'attente ; toute autre décision l'efface.
    *  `{ kind: 'avoid', avoid: [hex], range }` (vers l'objectif, en restant à
    *  plus de `range` hex des `avoid`, ou en s'en éloignant), `{ kind:
    *  'attack', target: hex, radius, hold }` (jusqu'à `radius` hex de
    *  `target` ; `hold` : s'arrêter à `radius` + 1), ou `null` (marche
-   *  ordinaire). `allowanceOf(pion)` : MP du tour. */
-  function movementPlan(counter, counters, turn, allowanceOf) {
-    if (!active.value) return null
+   *  ordinaire). `allowanceOf(pion)` : MP du tour. `onDecision({ side,
+   *  action, trace, plan })` (facultatif) reçoit la décision de chaque task
+   *  force japonaise — `action`, nom de la feuille atteinte ; `trace`, le
+   *  chemin suivi (cf. lib/ai/decisionTree.js::decide) — pour le journal de
+   *  debug (cf. HexMap.vue::logAiDecision). */
+  function movementPlan(counter, counters, turn, allowanceOf, onDecision = null) {
+    if (!active.value || !isIjnTaskForce(counter)) return null
     const tf = taskForceOf(counter)
     const behavior = behaviorOf(tf)
-    if (!behavior) return null
-    const allies = counters.filter((other) => other.faction === 'usn' && other.type === 'task force')
-    const sightingsOf = (unit) => counters.filter((marker) => marker.sighted && marker.attachedTo === String(unit.id)).map((marker) => marker.sighted)
-    const isSighted = (unit) => sightingsOf(unit).some((sighting) => sighting === 'carrierTF' || sighting === 'fleetTF')
-    const sightedAllies = allies.filter(isSighted)
-    const hexOf = (unit) => ({ col: unit.col, row: unit.row })
-    const nearest = (units) => hexOf(units.reduce((best, unit) => (hexDistance(counter, unit) < hexDistance(counter, best) ? unit : best)))
-    if (behavior === 'transport') {
-      return sightedAllies.length ? { kind: 'avoid', avoid: sightedAllies.map(hexOf), range: AVOID_RANGE } : null
-    }
-    if (behavior === 'destroyers' || behavior === 'surface') {
-      const targets = behavior === 'destroyers' ? allies.filter((unit) => !isSighted(unit)) : sightedAllies
-      return targets.length ? { kind: 'attack', target: nearest(targets), radius: SEEK_RADIUS, hold: false } : null
-    }
-    const carriers = allies.filter((unit) => sightingsOf(unit).includes('carrierTF'))
-    if (carriers.length) {
-      const target = nearest(carriers)
-      return { kind: 'attack', target, radius: ATTACK_RADIUS, hold: shouldHold(counter, tf, target, counters, turn, allowanceOf) }
-    }
-    waitingSince.delete(tf)
-    const partlySeen = counters.some((marker) => marker.attachedTo === String(counter.id)
-      && (marker.sighted === 'carrierTF' || marker.sighted === 'fleetTF'))
-    return partlySeen && allies.length ? { kind: 'avoid', avoid: allies.map(hexOf), range: AVOID_RANGE } : null
-  }
-
-  /** Porte-avions qui pourrait entrer ce tour-ci dans le rayon d'attaque de
-   *  `target` : doit-il plutôt attendre les autres (à 6 hex) ? Oui si l'un
-   *  d'eux est sur la carte, n'y entrera pas ce tour-ci, mais y sera dans 2
-   *  tours au plus — et pas plus de 2 tours d'attente en tout. */
-  function shouldHold(counter, tf, target, counters, turn, allowanceOf) {
-    const steps = Math.max(1, allowanceOf(counter) ?? 1)
-    const myGap = hexDistance(counter, target) - ATTACK_RADIUS
-    if (myGap <= 0 || myGap > steps) { waitingSince.delete(tf); return false }
-    const partners = counters.filter((other) => isIjnTaskForce(other) && taskForceOf(other)
-      && taskForceOf(other) !== tf && behaviorOf(taskForceOf(other)) === 'carrier')
-    const waits = partners.map((partner) => {
-      const gap = hexDistance(partner, target) - ATTACK_RADIUS
-      const partnerSteps = Math.max(1, allowanceOf(partner) || 1)
-      return gap <= partnerSteps ? 0 : Math.ceil(gap / partnerSteps) - 1
-    }).filter((wait) => wait > 0 && wait <= MAX_WAIT_TURNS)
-    if (!waits.length) { waitingSince.delete(tf); return false }
-    const since = waitingSince.get(tf) ?? turn
-    if (turn - since >= MAX_WAIT_TURNS) { waitingSince.delete(tf); return false }
-    waitingSince.set(tf, since)
-    return true
+    const partners = behavior === 'carrier'
+      ? counters.filter((other) => isIjnTaskForce(other) && taskForceOf(other)
+        && taskForceOf(other) !== tf && behaviorOf(taskForceOf(other)) === 'carrier')
+      : []
+    const facts = perceiveTaskForce(counter, counters, { behavior, partners, allowanceOf, turn, waitingSince: waitingSince.get(tf) ?? null })
+    const { leaf, trace } = decide(movementTree, facts, movementTests)
+    if (leaf.do === 'hold') waitingSince.set(tf, waitingSince.get(tf) ?? turn)
+    else waitingSince.delete(tf)
+    const plan = movementActions[leaf.do](facts, leaf)
+    onDecision?.({ side: 'ijn', action: leaf.do, trace, plan })
+    return plan
   }
 
   /** Raid aérien japonais de la phase "Opérations aériennes" : TF1, TF2 et
@@ -787,6 +747,44 @@ export function useCoralSea(moduleId, ctx = {}) {
       const fresh = targets.filter((hex) => undetected.has(hex.col + ',' + hex.row))
       return { source, targets: fresh.length ? fresh : targets }
     })
+  }
+
+  // Mémoire des repérages : unité id -> dernier "carrierTF" ou "fleetTF" posé
+  // sur elle, gardé quand son pion "Sighted" tombe au retour des chits (cf.
+  // `noteSighting`, `reconChoice`).
+  const lastSightings = new Map()
+
+  /** L'unité `unitId` reçoit l'état de repérage `sighting` (cf.
+   *  HexMap.vue::applySighting, en jeu comme au rejeu) : l'IA s'en souvient
+   *  s'il dit ce qu'elle est. Un "Contact Lost" n'efface pas ce qu'on a vu. */
+  function noteSighting(unitId, sighting) {
+    if (active.value && (sighting === 'carrierTF' || sighting === 'fleetTF')) lastSightings.set(String(unitId), sighting)
+  }
+
+  /** Hex que le moteur explore maintenant, parmi les checks encore ouverts
+   *  du camp japonais (`checks`, cf. `reconChecks` — sources qui ont un
+   *  check et des cibles) : chaque couple source/hex passe dans l'arbre
+   *  `reconTree` (cf. lib/ai/coralSeaTrees.js), qui lui donne une priorité.
+   *  Le plus prioritaire l'emporte ; à égalité, celui de la source qui a le
+   *  moins de cibles (elle n'a pas d'autre choix), puis au hasard. `{ source,
+   *  target, side, action, priority, trace, options }` — `options`, nombre
+   *  de couples pesés —, ou `null` sans check. */
+  function reconChoice(checks, counters) {
+    if (!active.value) return null
+    const own = counters.filter(isIjnTaskForce)
+    const ownCarriers = own.filter((counter) => behaviorOf(taskForceOf(counter)) === 'carrier')
+    const ownTransports = own.filter((counter) => behaviorOf(taskForceOf(counter)) === 'transport')
+    const lastSeen = (id) => lastSightings.get(id) ?? null
+    const options = shuffle(checks.flatMap((check) => check.targets.map((target) => {
+      const facts = perceiveReconTarget(target, counters, { ownCarriers, ownTransports, lastSeen })
+      return { check, target, ...decide(reconTree, facts, reconTests) }
+    })))
+    if (!options.length) return null
+    const better = (a, b) => a.leaf.priority > b.leaf.priority
+      || (a.leaf.priority === b.leaf.priority && a.check.targets.length < b.check.targets.length)
+    const best = options.reduce((top, option) => (better(option, top) ? option : top))
+    return { source: best.check.source, target: best.target, side: 'ijn', action: best.leaf.do,
+      priority: best.leaf.priority, trace: best.trace, options: options.length }
   }
 
   /** Règle de couverture des reconnaissances JAPONAISES : un hex n'est
@@ -977,13 +975,16 @@ export function useCoralSea(moduleId, ctx = {}) {
     if (secrets?.objectives) objectives.value = secrets.objectives
     // Journal antérieur aux groupes : personne ne suit personne.
     leaders.value = secrets?.leaders ?? {}
+    // Le rejeu repart du déploiement : la mémoire des repérages se refait
+    // avec ses entrées `search` (cf. `noteSighting`).
+    lastSightings.clear()
   }
 
   // Les autres règles : celles du composable inerte (aucune particularité).
   return {
     ...INERT_RULES, active, autoPlacesAtLoad, setupCount, movementAllowance, privateLabel,
     privateLabelSide: 'ijn', setupSecrets, restoreSetupSecrets, autoMoveTarget, autoMoveSide: 'ijn',
-    reconPhase: RECON_PHASE, reconChecks, reconTargetOf, manualReconSide: 'usn', searchBag, searchBagFull: SEARCH_CHITS, drawSearch, refillSearchBag, restoreSearchBag, searchChitsReturn,
+    reconPhase: RECON_PHASE, reconChecks, reconChoice, noteSighting, reconTargetOf, manualReconSide: 'usn', searchBag, searchBagFull: SEARCH_CHITS, drawSearch, refillSearchBag, restoreSearchBag, searchChitsReturn,
     searchResults: SEARCH_RESULTS, searchOutcome, sightings: SIGHTINGS,
     isReusableDummy: isDummy, dummyReinforcementTurn, planDummyReinforcement, applyDummyReinforcement, playerDummyReinforcement,
     followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan,

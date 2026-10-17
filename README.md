@@ -65,7 +65,12 @@ la partie**.
 
 Onglet « Journal » du panneau latéral (`JournalPanel.vue`) : chaque évènement
 (déploiement, tour, phase, déplacement avec MP, entrée en jeu, recherche,
-élimination…) y est inscrit avec de quoi le **rejouer**.
+élimination…) y est inscrit avec de quoi le **rejouer**. En mode **debug**, il
+montre aussi, sur fond rouge japonais, la décision de l'IA pour chaque task
+force qu'elle déplace et chaque hex qu'elle choisit d'explorer en
+reconnaissance : le chemin suivi dans son arbre de décision (cf.
+`src/lib/ai/coralSeaTrees.js`) et ce qu'elle en conclut. Ces entrées sont
+toujours enregistrées (export, rapport de bug), mais cachées hors debug.
 - **Local** : sauvegarde automatique (navigateur) proposée en reprise au
   chargement suivant ; export/import JSON ; lecteur de rejeu (pas à pas ou
   avance rapide). Une sauvegarde faite avec d'autres réglages relance la
@@ -158,6 +163,8 @@ src/
     ├── autoMove.js      plus court chemin d'un pion qui marche seul vers son hex-objectif
     ├── moduleRules.js   registre des règles particulières par module
     ├── useCoralSea.js   règles particulières du module Coral Sea (patron pour d'autres modules)
+    ├── ai/              IA symbolique du camp japonais : moteur d'arbre de décision (decisionTree.js),
+    │                    ce que sait le Japonais (coralSeaPerception.js), arbres et réglages (coralSeaTrees.js)
     ├── rules.js         paramètres des règles génériques (module.rules), structure du tour (module.turnStructure)
     ├── turnTrack.js     piste de tour détaillée (initiative, détail et conditions par tour, mise en place)
     ├── setup.js         notation `setup` des pions (hex, plage, n'importe où)

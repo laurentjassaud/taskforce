@@ -31,6 +31,10 @@ const props = defineProps({
   // chargement de fichier ou de "Vider le journal" (le journal ne serait
   // plus le même que celui des autres joueurs). L'export reste possible.
   shared: { type: Boolean, default: false },
+  // Mode debug (case "debug" de la barre d'outils, cf. HexMap.vue) : montre
+  // aussi les décisions de l'IA (entrées `ai`, cf. HexMap.vue::
+  // logAiDecision), toujours enregistrées mais cachées sinon.
+  debug: { type: Boolean, default: false },
 })
 
 // `loaded` : journal à rejouer sur la carte (cf. HexMap.vue::onJournalLoaded).
@@ -70,7 +74,8 @@ function saveLabel(isAutosave) {
 // HexMap.vue::undo qui vise une entrée par id). 'desc' = position courante
 // (comme avant) ; 'asc' = lecture depuis le début (plus ancien en tête).
 const order = ref('desc')
-const displayEntries = computed(() => (order.value === 'asc' ? [...entries.value].reverse() : entries.value))
+const visibleEntries = computed(() => (props.debug ? entries.value : entries.value.filter((entry) => entry.kind !== 'ai')))
+const displayEntries = computed(() => (order.value === 'asc' ? [...visibleEntries.value].reverse() : visibleEntries.value))
 
 /** Retourne l'id de l'entrée ajoutée — permet à l'appelant (cf.
  *  HexMap.vue::undo) de retirer précisément cette entrée plus tard sans
@@ -473,6 +478,12 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
 .jn-row.jn-place,
 .jn-row.jn-return {
   background: var(--selection-a14);
+}
+
+/* Décision de l'IA (mode debug) : fond rouge japonais, le camp qu'elle joue. */
+.jn-row.jn-ai {
+  background: color-mix(in srgb, var(--c-ijn, #b75f4a) 32%, transparent);
+  font-size: var(--fs-xs, 0.75rem);
 }
 
 .jn-t {

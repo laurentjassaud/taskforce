@@ -275,6 +275,52 @@ export default {
     conceded: '{side} concede the game',
   },
 
+  // AI decisions in the journal, in debug mode (see HexMap.vue::
+  // logAiDecision, lib/ai/coralSeaTrees.js).
+  ai: {
+    entry: '{side} AI — {unit}: {path} ⇒ {action}',
+    reconEntry: '{side} AI — search from {from} at {hex} ({options}): {path} ⇒ {action}',
+    reconOptions: 'only possible target | best of {count} possible targets',
+    step: '{question}: {answer}',
+    yes: 'yes',
+    no: 'no',
+    questions: {
+      alliesPresent: 'Allied TFs on the map',
+      alliesSighted: 'Allied TF sighted',
+      unsightedAlliesPresent: 'unsighted Allied TF',
+      alliedCarrierSighted: 'Allied unit seen as a carrier',
+      canStrikeThisTurn: 'can enter strike range this turn',
+      partnerJoinsSoon: 'a partner arrives within 2 turns',
+      waitedTooLong: 'already waiting for 2 turns',
+      selfSighted: 'sighted itself',
+      unsighted: 'unsighted Allied TF in the hex',
+      nearOwnCarrier: 'within 5 hexes of our carriers',
+      rememberedAsCarrier: 'already seen as a carrier',
+      nearOwnTransport: 'within 6 hexes of our transports',
+    },
+    answers: {
+      behavior: {
+        none: 'true dummy',
+        transport: 'transport',
+        destroyers: 'destroyers',
+        surface: 'surface',
+        carrier: 'carrier',
+      },
+    },
+    actions: {
+      objective: 'heads for its objective hex {hex}',
+      noObjective: 'no objective hex',
+      avoid: 'keeps more than {range} hexes from {count} Allied TF | keeps more than {range} hexes from {count} Allied TFs',
+      attack: 'closes to {radius} hexes of {hex}',
+      hold: 'waits for its partners {radius} hexes from {hex}',
+      threat: 'threat to our carriers (priority {priority})',
+      carrierLead: 'carrier lost from sight (priority {priority})',
+      escort: 'screening our transports (priority {priority})',
+      scout: 'scouting (priority {priority})',
+      recheck: 'second look (priority {priority})',
+    },
+  },
+
   phaseButton: {
     newPhase: 'Next phase',
     newTurn: 'New turn',

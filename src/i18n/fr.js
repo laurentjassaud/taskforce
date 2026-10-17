@@ -277,6 +277,52 @@ export default {
     conceded: '{side} concède la partie',
   },
 
+  // Décisions de l'IA au journal, en mode debug (cf. HexMap.vue::
+  // logAiDecision, lib/ai/coralSeaTrees.js).
+  ai: {
+    entry: 'IA {side} — {unit} : {path} ⇒ {action}',
+    reconEntry: 'IA {side} — reconnaissance depuis {from} en {hex} ({options}) : {path} ⇒ {action}',
+    reconOptions: 'seule cible possible | meilleure de {count} cibles possibles',
+    step: '{question} : {answer}',
+    yes: 'oui',
+    no: 'non',
+    questions: {
+      alliesPresent: 'TF alliées sur la carte',
+      alliesSighted: 'TF alliée repérée',
+      unsightedAlliesPresent: 'TF alliée non repérée',
+      alliedCarrierSighted: 'allié vu comme porte-avions',
+      canStrikeThisTurn: "peut entrer ce tour-ci dans le rayon d'attaque",
+      partnerJoinsSoon: 'un partenaire arrive dans 2 tours au plus',
+      waitedTooLong: 'attend déjà depuis 2 tours',
+      selfSighted: 'elle-même repérée',
+      unsighted: "TF alliée non repérée sur l'hex",
+      nearOwnCarrier: 'à 5 hex ou moins de nos porte-avions',
+      rememberedAsCarrier: 'déjà vue comme porte-avions',
+      nearOwnTransport: 'à 6 hex ou moins de nos transports',
+    },
+    answers: {
+      behavior: {
+        none: 'vrai leurre',
+        transport: 'transport',
+        destroyers: 'destroyers',
+        surface: 'surface',
+        carrier: 'porte-avions',
+      },
+    },
+    actions: {
+      objective: 'marche vers son hex-objectif {hex}',
+      noObjective: "pas d'hex-objectif",
+      avoid: "s'écarte à plus de {range} hex de {count} TF alliée | s'écarte à plus de {range} hex de {count} TF alliées",
+      attack: 'va à {radius} hex de {hex}',
+      hold: 'attend ses partenaires à {radius} hex de {hex}',
+      threat: 'menace sur nos porte-avions (priorité {priority})',
+      carrierLead: 'porte-avions perdu de vue (priorité {priority})',
+      escort: 'escorte de nos transports (priorité {priority})',
+      scout: 'éclairage (priorité {priority})',
+      recheck: 'nouvelle vérification (priorité {priority})',
+    },
+  },
+
   phaseButton: {
     newPhase: 'Nouvelle phase',
     newTurn: 'Nouveau tour',

@@ -1647,9 +1647,11 @@ function planAutoMoves() {
   for (const counter of counters.value) {
     if (leaderOf.has(counter)) continue
     // Mouvement particulier du module (cf. `moduleRules.movementPlan`) : il
-    // remplace la marche vers l'hex-objectif.
-    const plan = moduleRules.movementPlan(counter, counters.value, turnInfo.value.turn, movementAllowance)
+    // remplace la marche vers l'hex-objectif. La décision de l'IA va au
+    // journal (cf. `logAiDecision`).
     const objective = moduleRules.autoMoveTarget(counter)
+    const plan = moduleRules.movementPlan(counter, counters.value, turnInfo.value.turn, movementAllowance,
+      (decision) => logAiDecision(counter, decision, objective))
     if (plan?.kind === 'attack') {
       walkToward(counter, plan.target,
         (next) => plan.hold && hexDistance(next, plan.target) <= plan.radius,
@@ -1686,6 +1688,50 @@ function planAutoMoves() {
         (next) => next.col === leader.col && next.row === leader.row, (pos) => hexDistance(pos, leader) <= 1)
     }
   }
+}
+
+// --- Décisions de l'IA (cf. lib/ai/decisionTree.js) : chaque task force que
+// le moteur déplace inscrit au journal le chemin suivi dans l'arbre de
+// décision et ce qu'elle a décidé (entrée `ai`), juste avant ses pas ; de
+// même chaque hex qu'il choisit d'explorer (cf. `logAiRecon`). L'entrée est
+// toujours écrite — l'export et le rapport de bug la gardent — mais n'est
+// AFFICHÉE qu'en mode debug (cf. JournalPanel.vue, prop `debug`, sur fond
+// aux couleurs du camp de l'IA) : elle dévoile l'identité secrète des
+// leurres. Le rejeu l'ignore (cf. applyReplayEntry).
+const aiHex = (hex) => hexId(hex.col + 1, hex.row)
+/** Chemin suivi dans un arbre (`trace` de decisionTree.js::decide), en clair. */
+const aiPathText = (trace) => trace.map(({ question, answer }) => (typeof answer === 'boolean'
+  ? t('ai.step', { question: t(`ai.questions.${question}`), answer: t(answer ? 'ai.yes' : 'ai.no') })
+  : t(`ai.answers.${question}.${answer}`))).join(' › ')
+/** Nom d'une unité du moteur, avec son identité secrète (cf.
+ *  `moduleRules.privateLabel`). */
+function aiUnitName(counter) {
+  const label = moduleRules.privateLabel(counter)
+  return label && label !== counter.name ? `${counter.name} (${label})` : counter.name
+}
+
+/** Mouvement que le moteur a décidé pour `counter` (cf.
+ *  `moduleRules.movementPlan`, `planAutoMoves`), au journal de l'IA. */
+function logAiDecision(counter, { side, action, trace, plan }, objective) {
+  const actionText = {
+    objective: () => (objective ? t('ai.actions.objective', { hex: aiHex(objective) }) : t('ai.actions.noObjective')),
+    avoid: () => t('ai.actions.avoid', { range: plan.range, count: plan.avoid.length }, plan.avoid.length),
+    attack: () => t('ai.actions.attack', { radius: plan.radius, hex: aiHex(plan.target) }),
+    // Arrêt à `radius` + 1 hex, cf. planAutoMoves.
+    hold: () => t('ai.actions.hold', { radius: plan.radius + 1, hex: aiHex(plan.target) }),
+  }[action]?.() ?? action
+  log('ai', t('ai.entry', { side: sideLabel(side), unit: aiUnitName(counter), path: aiPathText(trace), action: actionText }),
+    { side, counterId: counter.id, action, trace, plan })
+}
+
+/** Hex que le moteur a choisi d'explorer (cf. `moduleRules.reconChoice`,
+ *  `continueEngineRecon`), au journal de l'IA. */
+function logAiRecon({ source, target, side, action, priority, trace, options }) {
+  const sourceUnit = source.unitId && counters.value.find((counter) => String(counter.id) === source.unitId)
+  const from = source.base ?? (sourceUnit ? aiUnitName(sourceUnit) : source.name)
+  log('ai', t('ai.reconEntry', { side: sideLabel(side), from, hex: aiHex(target), path: aiPathText(trace),
+    action: t(`ai.actions.${action}`, { priority }), options: t('ai.reconOptions', { count: options }, options) }),
+    { side, recon: true, source: source.key, target: { col: target.col, row: target.row }, action, priority, trace, options })
 }
 
 // --- Animation des déplacements automatiques : le moteur joue tous ses pas
@@ -1884,9 +1930,11 @@ watch([phase, () => turnInfo.value.step, () => turnInfo.value.activeSideKey, isR
 // `checks` hex différents de sa portée. Un chit est tiré de la tasse de
 // recherche, son pion posé sur l'unité explorée et son résultat appliqué
 // (cf. `performSearch`, entrée `search` du journal).
-//   - Camp du MOTEUR (`moduleRules.autoMoveSide`) : il tire une source au
-//     hasard parmi celles qui ont encore un check et une cible, puis l'une
-//     de ses cibles (surlignée sur la carte), et attend : le joueur ouvre le
+//   - Camp du MOTEUR (`moduleRules.autoMoveSide`) : parmi les sources qui
+//     ont encore un check et une cible, il choisit une source et l'une de
+//     ses cibles (surlignée sur la carte) par l'arbre de décision du module
+//     (`moduleRules.reconChoice`, décision inscrite au journal, cf.
+//     `logAiRecon` — au hasard sans arbre), et attend : le joueur ouvre le
 //     "Rapport de reconnaissance" d'un clic droit sur une unité de cet hex
 //     (cf. `reportRecon`). Puis la source suivante ; quand il n'en reste
 //     plus, le joueur passe la phase ("suivant").
@@ -1926,7 +1974,11 @@ function continueEngineRecon() {
   reconTarget.value = null
   if (reconPhaseOf(moduleRules.autoMoveSide) && searchBagLeft()) {
     const checks = openReconChecks(moduleRules.autoMoveSide)
-    if (checks.length) {
+    const choice = checks.length ? moduleRules.reconChoice(checks, counters.value) : null
+    if (choice) {
+      reconTarget.value = { ...choice.target, source: choice.source }
+      logAiRecon(choice)
+    } else if (checks.length) {
       const check = checks[Math.floor(Math.random() * checks.length)]
       reconTarget.value = { ...check.targets[Math.floor(Math.random() * check.targets.length)], source: check.source }
     }
@@ -2057,6 +2109,7 @@ const sightings = ref(new Map())
 function applySighting(unitId, sighting, sighted) {
   const key = String(unitId)
   sightings.value = new Map(sightings.value).set(key, sighting)
+  moduleRules.noteSighting(key, sighting)
   const stacks = keepsOwnLook(counters.value.find((counter) => String(counter.id) === key))
   if (!stacks) counters.value = counters.value.filter((counter) => !(counter.sighted && counter.attachedTo === key))
   if (sighted) counters.value.push({ ...sighted })
@@ -3042,7 +3095,7 @@ function onMapDragEnd() {
         <SearchBagPanel v-else-if="tab.key === 'searchBag'" :bag="moduleRules.searchBag.value"
           :full="moduleRules.searchBagFull ?? {}" :looks="moduleRules.searchResults ?? {}" />
         <JournalPanel v-else-if="tab.key === 'journal'" ref="journalRef" :module-id="moduleId || module.name"
-          :turn="turnInfo.turn" :settings="settings" :shared="online" @loaded="onJournalLoaded"
+          :turn="turnInfo.turn" :settings="settings" :shared="online" :debug="debug" @loaded="onJournalLoaded"
           @settings-mismatch="(settings) => emit('restart-with', settings)" />
         <ReinforcementsPanel v-else :reinforcements="reinforcementsForTab(tab.key)"
           :selected-id="selectedReinforcementId" :current-turn="turnInfo.turn" :draggable="draggable || phase === PHASE_SETUP"

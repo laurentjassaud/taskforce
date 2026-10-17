@@ -45,6 +45,11 @@
 //      HexMap.vue::runAutoMoves) : une ligne par pion reliant le centre des
 //      hex qu'il a parcourus depuis le début de la partie, un petit rond à
 //      chaque début/fin de tour, et une croix sur son hex-objectif.
+//   5. les DÉCISIONS DE L'IA au journal (entrées `ai`, cf. HexMap.vue::
+//      logAiDecision) : chemin suivi dans l'arbre de décision et décision
+//      de chaque task force que déplace le moteur, sur fond aux couleurs de
+//      son camp. Seule exception à la règle ci-dessus : le filtre vit dans
+//      JournalPanel.vue (prop `debug`), qui possède les entrées du journal.
 //
 // Paramètres reçus (tous déjà calculés/définis côté HexMap.vue — ce
 // composable ne fait QUE les recombiner, il ne récupère ni ne recalcule rien
