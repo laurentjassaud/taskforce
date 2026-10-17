@@ -1313,7 +1313,9 @@ const { debug, adjacentCotLabels, isInRange, entrySurchargeLabels, autoMoveTrail
 // dessous).
 const STACK_STEP = 0.1
 const stackOffsets = computed(() => {
-  const hexKey = (counter) => counter.col + ',' + counter.row
+  // Hex AFFICHÉ (cf. `shownHex`) : un pion qui attend son animation s'empile
+  // encore à son hex de départ.
+  const hexKey = (counter) => { const at = shownHex(counter); return at.col + ',' + at.row }
   const stackAt = (idx) => ({ dx: -STACK_STEP * idx, dy: -STACK_STEP * idx })
   const markerHexes = new Set(counters.value.filter((counter) => !isUnit(counter) && !counter.attachedTo).map(hexKey))
   const unitCounts = new Map()
@@ -1350,7 +1352,7 @@ const ZERO_OFFSET = { dx: 0, dy: 0 }
 // Coupée pendant un glisser et à l'ouverture d'un menu contextuel.
 const hoveredCounter = ref(null) // { id, col, row, anchor: rect écran } | null
 function onCounterHover(id, ev) {
-  if (draggedCounterId.value != null) return
+  if (draggedCounterId.value != null || autoMoveAnimating.value) return
   const counter = counters.value.find((counter) => String(counter.id) === String(id))
   if (!counter) return
   const { left, top, right, bottom } = ev.target.getBoundingClientRect()
@@ -1593,6 +1595,7 @@ function stepCounter(counter, hex) {
     { counterId: counter.id, col: counter.col, row: counter.row, mp: spentMpOf(counter), enteredFrom: counter.enteredFrom })
   pushMoveHistory(counter.id, from, { col: counter.col, row: counter.row }, journalId, previousEntry)
   markMoved(counter.id, from, previousEntry)
+  autoMoveRecorder?.(counter, from)
 }
 
 // --- Pions à HEX-OBJECTIF (cf. lib/moduleRules.js::autoMoveTarget — ex.
@@ -1614,6 +1617,25 @@ function runAutoMoves() {
   const step = turnInfo.value.step
   if (autoMovedStep === step) return
   autoMovedStep = step
+  // Pas joués, par pion dans l'ordre où ils bougent : montrés ensuite un
+  // pion après l'autre (cf. `animateAutoMoves`).
+  const moves = new Map()
+  autoMoveRecorder = (counter, from) => {
+    const key = String(counter.id)
+    if (!moves.has(key)) moves.set(key, [from])
+    moves.get(key).push({ col: counter.col, row: counter.row })
+  }
+  try {
+    planAutoMoves()
+  } finally {
+    autoMoveRecorder = null
+  }
+  animateAutoMoves(moves)
+}
+
+/** Déplacements automatiques du moteur (cf. `runAutoMoves`), joués d'un
+ *  coup : positions, MP et journal sont aussitôt à jour. */
+function planAutoMoves() {
   // Suiveurs (cf. `moduleRules.followTarget`) : meneur de chacun, résolu
   // AVANT tout mouvement — un suiveur dont le meneur a disparu reprend
   // alors son objectif et marche comme un meneur.
@@ -1664,6 +1686,85 @@ function runAutoMoves() {
         (next) => next.col === leader.col && next.row === leader.row, (pos) => hexDistance(pos, leader) <= 1)
     }
   }
+}
+
+// --- Animation des déplacements automatiques : le moteur joue tous ses pas
+// d'un coup (cf. `runAutoMoves`), puis la carte les MONTRE un pion après
+// l'autre, chacun glissant d'hex en hex (`AUTO_MOVE_HEX_MS` par hex). Les
+// pions qui attendent leur tour restent affichés à leur hex de départ
+// (`autoMoveHeld`), celui qui bouge à sa position en cours (`autoMovePx`) ;
+// leurs pions de repérage les suivent. Tant que dure l'animation, la saisie
+// et la piste de tour sont fermées (cf. `phaseControlsLocked`). Rien n'est
+// animé au rejeu (cf. `runAutoMoves`).
+const AUTO_MOVE_HEX_MS = 800
+// Pause entre deux pions.
+const AUTO_MOVE_GAP_MS = 150
+let autoMoveRecorder = null // (pion, hex de départ du pas) => void, pendant `runAutoMoves`
+const autoMoveHeld = ref(new Map()) // id -> { col, row } affiché, tant que le pion n'a pas fini
+const autoMovePx = ref(null) // { id, x, y } : pion en train de glisser
+const autoMoveAnimating = computed(() => autoMoveHeld.value.size > 0)
+let autoMoveFrame = null
+
+/** Centre en pixels de l'hex (même formule que Counter.vue). */
+function hexCenterPx({ col, row }) {
+  const { x0, y0, colStep, rowStep } = calibration
+  return { x: x0 + col * colStep, y: y0 + (row - 1) * rowStep + (col % 2 === 1 ? rowStep / 2 : 0) }
+}
+// Accélère puis freine sur chaque hex : on compte les hex parcourus.
+const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - (-2 * p + 2) ** 3 / 2)
+
+/** Montre les pas `moves` (id -> [départ, hex 1, hex 2...]), pion par pion. */
+function animateAutoMoves(moves) {
+  stopAutoMoveAnimation()
+  const queue = [...moves].map(([id, path]) => ({ id, path })).filter((move) => move.path.length > 1)
+  if (!queue.length) return
+  autoMoveHeld.value = new Map(queue.map((move) => [move.id, move.path[0]]))
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  let index = 0
+  let startedAt = null
+  const frame = (now) => {
+    const move = queue[index]
+    startedAt ??= now
+    const elapsed = now - startedAt
+    const steps = move.path.length - 1
+    if (elapsed >= steps * AUTO_MOVE_HEX_MS) {
+      // Arrivé : le pion reprend sa vraie position ; au suivant, après une pause.
+      const held = new Map(autoMoveHeld.value)
+      held.delete(move.id)
+      autoMoveHeld.value = held
+      autoMovePx.value = null
+      index += 1
+      startedAt = now + AUTO_MOVE_GAP_MS
+      if (index >= queue.length) { autoMoveFrame = null; return }
+    } else if (elapsed >= 0) {
+      const step = Math.floor(elapsed / AUTO_MOVE_HEX_MS)
+      const from = hexCenterPx(move.path[step])
+      const to = hexCenterPx(move.path[step + 1])
+      // Mouvement réduit : le pion saute d'hex en hex, au même rythme.
+      const k = reduced ? 0 : easeInOut((elapsed - step * AUTO_MOVE_HEX_MS) / AUTO_MOVE_HEX_MS)
+      autoMovePx.value = { id: move.id, x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k }
+    }
+    autoMoveFrame = requestAnimationFrame(frame)
+  }
+  autoMoveFrame = requestAnimationFrame(frame)
+}
+
+function stopAutoMoveAnimation() {
+  if (autoMoveFrame != null) cancelAnimationFrame(autoMoveFrame)
+  autoMoveFrame = null
+  autoMoveHeld.value = new Map()
+  autoMovePx.value = null
+}
+
+/** Hex où AFFICHER `counter` : son hex de départ s'il attend d'être animé
+ *  (ou celui de l'unité qu'il suit, pour un pion de repérage). */
+function shownHex(counter) {
+  return autoMoveHeld.value.get(String(counter.attachedTo ?? counter.id)) ?? counter
+}
+/** Position en pixels de `counter` s'il est en train de glisser, ou `null`. */
+function shownPx(counter) {
+  const px = autoMovePx.value
+  return px && px.id === String(counter.attachedTo ?? counter.id) ? px : null
 }
 
 /** Hex de la carte le plus éloigné des hex `avoided` (au plus près de
@@ -2227,6 +2328,7 @@ function onCounterDragEnd(ev) {
 onUnmounted(() => {
   window.removeEventListener('mousemove', onCounterDragMove)
   window.removeEventListener('mouseup', onCounterDragEnd)
+  stopAutoMoveAnimation()
 })
 
 /** Convertit un point en coordonnées SVG vers l'hex logique le plus proche —
@@ -2570,7 +2672,7 @@ const moveTimeLocked = computed(() => moveTimeExpired.value && phase.value === 0
 // qu'il reste à faire. `phaseControlsLocked` est donc ce qui ferme AUSSI la
 // piste de tour, et `inputLocked`, qui lui ajoute le temps écoulé, reste la
 // garde de toutes les autres entrées.
-const phaseControlsLocked = computed(() => actionsLocked.value || (props.online && !isLocalTurn.value))
+const phaseControlsLocked = computed(() => actionsLocked.value || (props.online && !isLocalTurn.value) || autoMoveAnimating.value)
 const inputLocked = computed(() => phaseControlsLocked.value || moveTimeLocked.value)
 
 // --- Timings "Limité" et "Blitz" (cf. lib/gameSettings.js, MoveTimer.vue).
@@ -2909,19 +3011,19 @@ function onMapDragEnd() {
             :row="counter.row" :calibration="calibration" :selected="selectedCounterId === counter.id" :selectable="false"
             :offset="stackOffsets.get(counter.id) ?? ZERO_OFFSET" :drag-px="draggedCounterId === counter.id ? dragCurrentPx : null"
             @dragstart="onCounterDragStart" @hex-click="onMarkerClick" @hover="onCounterHover" @unhover="onCounterUnhover" />
-          <Counter v-for="counter in counters.filter(isUnit)" :key="counter.id" :id="counter.id" :src="unitSrc(counter)" :col="counter.col"
-            :row="counter.row" :calibration="calibration" :selected="selectedCounterId === counter.id" :selectable="selectable"
-            :moved="showMovedRings && movedThisTurnIds.has(String(counter.id))" :label="privateLabelOf(counter)"
-            :offset="stackOffsets.get(counter.id) ?? ZERO_OFFSET" :drag-px="draggedCounterId === counter.id ? dragCurrentPx : null"
+          <Counter v-for="counter in counters.filter(isUnit)" :key="counter.id" :id="counter.id" :src="unitSrc(counter)" :col="shownHex(counter).col"
+            :row="shownHex(counter).row" :calibration="calibration" :selected="selectedCounterId === counter.id" :selectable="selectable"
+            :moved="showMovedRings && movedThisTurnIds.has(String(counter.id)) && !autoMoveHeld.has(String(counter.id))" :label="privateLabelOf(counter)"
+            :offset="stackOffsets.get(counter.id) ?? ZERO_OFFSET" :drag-px="draggedCounterId === counter.id ? dragCurrentPx : shownPx(counter)"
             @select="onCounterSelect" @dragstart="onCounterDragStart" @contextmenu="onCounterContextMenu"
             @hover="onCounterHover" @unhover="onCounterUnhover" />
           <!-- Résultats de recherche (cf. `reportRecon`) : posés SUR la pile
                qu'ils renseignent, transparents aux clics (cf.
                `syncSearchMarkers`). Les pions "Sighted" qui remplacent
                l'image de leur unité n'y sont pas (cf. `unitSrc`). -->
-          <Counter v-for="counter in counters.filter((counter) => counter.attachedTo && !replacesUnitImage(counter))" :key="counter.id" :id="counter.id" :src="counter.src" :col="counter.col"
-            :row="counter.row" :calibration="calibration" :selected="false" :selectable="false"
-            :offset="stackOffsets.get(counter.id) ?? ZERO_OFFSET" class="search-marker" />
+          <Counter v-for="counter in counters.filter((counter) => counter.attachedTo && !replacesUnitImage(counter))" :key="counter.id" :id="counter.id" :src="counter.src" :col="shownHex(counter).col"
+            :row="shownHex(counter).row" :calibration="calibration" :selected="false" :selectable="false"
+            :offset="stackOffsets.get(counter.id) ?? ZERO_OFFSET" :drag-px="shownPx(counter)" class="search-marker" />
         </g>
       </svg>
     </main>
