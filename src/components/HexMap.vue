@@ -1785,13 +1785,14 @@ function farthestFrom(counter, avoided) {
  *  S'arrête avant un pas `refuse(next)`, ou après un pas qui l'amène en
  *  `pos` tel que `done(pos)`. `allowStep(from, to)` (hex `{ col, row }`)
  *  écarte des pas du chemin lui-même, qui contourne alors ce qu'il refuse.
- *  Empilement : il traverse un hex occupé par une unité AMIE, mais ne s'y
- *  arrête jamais (il s'arrête alors avant) ; un hex occupé par l'ennemi, il
- *  ne s'y aventure pas. */
+ *  Empilement : il traverse un hex occupé par des unités AMIES, mais ne
+ *  s'y arrête pas si elles y sont déjà autant que la limite d'empilement
+ *  de son camp (cf. lib/rules.js::stackingLimitOf — il s'arrête alors
+ *  avant ; sans limite, il s'y arrête librement) ; un hex occupé par
+ *  l'ennemi, il ne s'y aventure pas. */
 function walkToward(counter, target, refuse, done = () => false, allowStep = () => true) {
   const hexKey = (hex) => hex.col + ',' + hex.row
   const others = counters.value.filter((other) => isUnit(other) && other.id !== counter.id)
-  const friendly = new Set(others.filter((other) => !isEnemyOf(counter, other)).map(hexKey))
   const hostile = new Set(others.filter((other) => isEnemyOf(counter, other)).map(hexKey))
   const path = pathToward({ col: counter.col, row: counter.row, enteredFrom: counter.enteredFrom ?? null }, target, {
     hexOnMap,
@@ -1804,7 +1805,8 @@ function walkToward(counter, target, refuse, done = () => false, allowStep = () 
     cost: (from, to) => terrainCost(to, from),
   })
   // Pas de ce tour-ci, d'après les MP qui restent — puis, s'il finirait sur
-  // un hex ami, on raccourcit jusqu'au dernier hex libre.
+  // un hex ami déjà plein, on raccourcit jusqu'au dernier hex où il peut
+  // s'arrêter.
   let left = remainingMp(counter) ?? Infinity
   let at = { col: counter.col, row: counter.row }
   const steps = []
@@ -1817,7 +1819,9 @@ function walkToward(counter, target, refuse, done = () => false, allowStep = () 
     at = next
     if (done(next)) break
   }
-  while (steps.length && friendly.has(hexKey(steps[steps.length - 1]))) steps.pop()
+  const limit = stackingLimitOf(rules, sideOfCounter(counter))
+  const friendsAt = (hex) => others.filter((other) => !isEnemyOf(counter, other) && hexKey(other) === hexKey(hex)).length
+  while (steps.length && friendsAt(steps.at(-1)) >= limit) steps.pop()
   for (const next of steps) {
     const hex = { c: next.col, r: next.row }
     if (!canEnterHex(counter, hex, { c: counter.col, r: counter.row })) break

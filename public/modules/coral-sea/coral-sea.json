@@ -904,10 +904,7 @@
     ]
   },
   "rules": {
-    "stackingLimit": {
-      "ijn": 1,
-      "usn": "none"
-    }
+    "stackingLimit": "none"
   },
   "counters": {
     "ijn": [

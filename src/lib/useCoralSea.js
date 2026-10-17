@@ -123,8 +123,9 @@
 // MISE EN PLACE US : le joueur pose 12 task forces, leurres compris (cf.
 // `setupCount`) — moins, il confirme qu'il commence quand même ; plus, il
 // ne peut pas commencer. Il peut les empiler, pendant la mise en place comme
-// pendant ses mouvements (`rules.stackingLimit` du module : aucune limite
-// pour le camp "usn").
+// pendant ses mouvements (`rules.stackingLimit` du module : aucune limite,
+// pour aucun camp — les task forces japonaises s'empilent aussi, ce qui
+// laisse le moteur les déplacer sans qu'elles se bloquent entre elles).
 //
 // Aux mêmes tours, le joueur US peut lui aussi poser des leurres, AVANT de
 // bouger quoi que ce soit dans sa phase de Mouvement : chacun sur l'hex d'une

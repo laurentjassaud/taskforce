@@ -43,7 +43,7 @@ Sources lues : [useAssisted.js](../src/lib/useAssisted.js), [edges.js](../src/li
 - **Terrain** : aucun type de terrain, chaque hex coûte 1 MP.
 - **Barrières côtières** (`seaBarriers`, 126 arêtes) : elles sont infranchissables et coupent la ZOC.
 - **Passages d'île** (`seaPassages`, 13 hex) : ils appliquent la règle des côtés colorés.
-- **Empilement** : `stackingLimit: { ijn: 1, usn: "none" }` — une unité japonaise par hex, aucune limite pour les task forces américaines. La ZOC n'est pas déclarée, donc **ses valeurs par défaut s'appliquent : les deux règles sont actives**.
+- **Empilement** : `stackingLimit: "none"` — aucune limite, pour aucun camp : les task forces japonaises, que le moteur déplace, ne se bloquent plus entre elles. La ZOC n'est pas déclarée, donc **ses valeurs par défaut s'appliquent : les deux règles sont actives**.
 - **Potentiel** : 2 hex de nuit, 1 hex de jour, pour tous les camps.
 - **Phases entremêlées** : on joue le Mouvement naval du camp qui a l'initiative, puis celui de l'autre camp. C'est la seule phase où l'on bouge.
 - **Mise en place US** (tour 0) : les task forces se posent n'importe où sur la carte (`setup "*"`), sans aucun déplacement, et peuvent s'y empiler. Il en faut 12, leurres compris : avec moins, une modale demande si l'on commence quand même ; avec plus, une modale refuse de commencer.
