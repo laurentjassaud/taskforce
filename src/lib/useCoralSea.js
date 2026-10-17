@@ -132,6 +132,16 @@
 // sur la carte ; puis il fait son mouvement (cf.
 // `playerDummyReinforcement`).
 //
+// SUPPORT DE TASK FORCE (cf. `fleetDisplay`, FleetDisplayModal.vue) :
+// pendant SA phase d'Opérations aériennes, le joueur US clique une task
+// force japonaise repérée ("Sighted Carrier" ou "Sighted Fleet") pour voir
+// ses navires posés sur leur support, d'après ce qu'elle est VRAIMENT :
+// avec un porte-avions (CV, CVL), celui-ci au centre du support "Carrier TF"
+// et ses escortes au hasard dans les 4 cases autour ; sinon, ses navires
+// dans l'ordre d'un tirage au hasard sur les cases 1, 2, 3... du support
+// "Fleet TF". La disposition, tirée à la première ouverture, ne change plus
+// de la partie.
+//
 // Un porte-avions repéré COMME porte-avions ("Sighted Carrier" sur un vrai
 // porte-avions) n'a plus rien à cacher : il cherche sans règle de
 // couverture.
@@ -167,6 +177,29 @@ const RAID_MARKERS = {
   'ijn-tf2': { name: 'Raid TF2', src: '/modules/coral-sea/images/counters/markers/Marker_Raid-IJN-TF2.png' },
   'ijn-tf3': { name: 'Raid TF3', src: '/modules/coral-sea/images/counters/markers/Marker_Raid-IJN-TF3.png' },
 }
+/** Supports de task force (cf. `fleetDisplay`) : image, taille en px, et
+ *  cases où poser les navires, en px de l'image. "Carrier TF" : la case du
+ *  porte-avions et les 4 cases d'escorte autour (haut, gauche, droite,
+ *  bas) ; "Fleet TF" : les cases numérotées 1 à 9. */
+const DISPLAYS = '/modules/coral-sea/images/displays/'
+export const FLEET_DISPLAYS = {
+  carrier: {
+    src: `${DISPLAYS}carrier-tf.png`, width: 667, height: 699,
+    carrier: { x: 237, y: 468, w: 201, h: 100 },
+    escorts: [
+      { x: 237, y: 360, w: 201, h: 101 },
+      { x: 28, y: 468, w: 201, h: 100 },
+      { x: 446, y: 468, w: 201, h: 100 },
+      { x: 237, y: 576, w: 201, h: 100 },
+    ],
+  },
+  fleet: {
+    src: `${DISPLAYS}fleet-tf.png`, width: 1970, height: 130,
+    slots: Array.from({ length: 9 }, (_, index) => ({ x: 117 + index * 204, y: 15, w: 203, h: 100 })),
+  },
+}
+const FLEET_DISPLAY_PHASE = 'airOperations'
+
 const hexOfId = (id) => ({ col: Number(id.slice(0, 2)) - 1, row: Number(id.slice(2)) })
 
 /** Tasse de recherche pleine : nombre de chits par résultat, et pion posé
@@ -880,6 +913,52 @@ export function useCoralSea(moduleId, ctx = {}) {
     dummyRoles.value = { ...dummyRoles.value, ...plan.roles }
   }
 
+  // Disposition de chaque task force sur son support (cf. `fleetDisplay`),
+  // tirée à la première ouverture : task force -> disposition.
+  const displayLayouts = new Map()
+
+  /** Navires de la task force que ce pion EST VRAIMENT (cf. `taskForceOf`),
+   *  posés sur son support : `{ kind: 'carrier', carrier, escorts: [{ ship,
+   *  cell }], extra }` (case d'escorte de `FLEET_DISPLAYS.carrier`) ou `{
+   *  kind: 'fleet', slots: [{ ship, slot }], extra }` (case 0 à 8) ;
+   *  `extra` : navires de trop pour les cases. Chaque navire : `{ key, id,
+   *  name, type, src }` (face intacte du catalogue). `null` : pas une task
+   *  force japonaise, vrai leurre, ou composition inconnue (journal antérieur
+   *  aux formations, catalogue manquant). */
+  function fleetDisplay(counter) {
+    if (!active.value || !isIjnTaskForce(counter)) return null
+    const tf = taskForceOf(counter)
+    if (!tf) return null
+    if (displayLayouts.has(tf)) return displayLayouts.get(tf)
+    const catalog = new Map((ctx.fleets?.ijn?.ships ?? []).map((ship) => [ship.id, ship]))
+    const ships = (taskForceRoleIn(dummyRoles.value, tf)?.ships ?? [])
+      .map((id, index) => {
+        const ship = catalog.get(id)
+        return ship && { key: `${id}-${index}`, id, name: ship.name, type: ship.type, src: ship.intact?.src }
+      })
+      .filter((ship) => ship?.src)
+    if (!ships.length) return null
+    const carrierIndex = ships.findIndex((ship) => CARRIER_TYPES.has(ship.type))
+    let layout
+    if (carrierIndex >= 0) {
+      const cells = FLEET_DISPLAYS.carrier.escorts.length
+      const escorts = shuffle(ships.filter((_, index) => index !== carrierIndex))
+      const order = shuffle([...Array(cells).keys()])
+      layout = {
+        kind: 'carrier',
+        carrier: ships[carrierIndex],
+        escorts: escorts.slice(0, cells).map((ship, index) => ({ ship, cell: order[index] })),
+        extra: escorts.slice(cells),
+      }
+    } else {
+      const slots = FLEET_DISPLAYS.fleet.slots.length
+      const order = shuffle(ships)
+      layout = { kind: 'fleet', slots: order.slice(0, slots).map((ship, slot) => ({ ship, slot })), extra: order.slice(slots) }
+    }
+    displayLayouts.set(tf, layout)
+    return layout
+  }
+
   /** Tirage secret à inscrire au journal avec le déploiement. */
   function setupSecrets() {
     return active.value
@@ -907,5 +986,6 @@ export function useCoralSea(moduleId, ctx = {}) {
     searchResults: SEARCH_RESULTS, searchOutcome, sightings: SIGHTINGS,
     isReusableDummy: isDummy, dummyReinforcementTurn, planDummyReinforcement, applyDummyReinforcement, playerDummyReinforcement,
     followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan,
+    fleetDisplay, fleetDisplays: FLEET_DISPLAYS, fleetDisplayPhase: FLEET_DISPLAY_PHASE, fleetDisplaySide: 'usn',
   }
 }

@@ -43,6 +43,7 @@ import SearchBagPanel from './SearchBagPanel.vue'
 import ContextMenu from './ContextMenu.vue'
 import Toast from './Toast.vue'
 import StackPopup from './StackPopup.vue'
+import FleetDisplayModal from './FleetDisplayModal.vue'
 import RollModal from './RollModal.vue'
 import GameEndModal from './GameEndModal.vue'
 import PhaseBlockedModal from './PhaseBlockedModal.vue'
@@ -704,7 +705,7 @@ const { showGrid, selectable, draggable, canControl, phase, phaseLabels, phaseIn
   PHASE_SETUP, initPhase, canPlaceReinforcementNow, canEnterHex, canEnterTerrain, spendMp, refundMp, resetMp, terrainCost, remainingMp, enemyZocSet, isEnemyOf, entrySurcharge, spendEntryCost, unspendEntryCost, wouldOverstack, canLeaveAfterEntering, canLeaveAfterReinforcementEntry, isOverstacked, stackedHexes, noteEntered, isZocFrozen, setPhase, setSpentMp, resetTurnState } = useAssisted(toRef(props, 'assisted'), turnTrackerRef, props.module.terrain, counters, props.module.sides, hexOnMap, rules, turnStructure, moduleRules)
 
 /** Camp (clé de `module.sides`) de l'unité `counter` — sa faction à défaut
- *  de `sides` (même repli que RoomLobby.vue). */
+ *  de `sides`. */
 function sideOfCounter(counter) {
   const sides = props.module.sides
   if (!counter) return null
@@ -1399,6 +1400,9 @@ function onCounterSelect(id) {
   // Reconnaissance du joueur (cf. `onManualRecon`) : le clic choisit une
   // source ou explore une cible, rien d'autre.
   if (onManualRecon({ c: counter.col, r: counter.row }, counter)) return
+  // Opérations aériennes du joueur : une task force ennemie repérée montre
+  // son support (cf. `openFleetDisplay`).
+  if (openFleetDisplay(counter)) return
   // Mise en place : rien ne bouge. Un clic sur un pion déjà posé vaut clic
   // sur son hex, pour y empiler le renfort choisi.
   if (phase.value === PHASE_SETUP) {
@@ -1858,6 +1862,38 @@ function onManualRecon(hex, clicked = null) {
     // Plus rien à faire pour cette source : elle se désélectionne.
     if (!manualReconCheck.value) manualReconSource.value = null
   }
+  return true
+}
+
+// --- Support de task force (cf. `moduleRules.fleetDisplay`,
+// FleetDisplayModal.vue) : pendant SA phase d'Opérations aériennes (mode
+// Assisté), le joueur clique une task force ennemie repérée ("Sighted
+// Carrier" ou "Sighted Fleet") pour voir ses navires sur leur support.
+const fleetDisplay = ref(null) // { layout, title } | null
+watch(() => turnInfo.value.step, () => { fleetDisplay.value = null })
+
+const fleetDisplayActive = computed(() => props.assisted && !!moduleRules.fleetDisplayPhase
+  && turnInfo.value.activeSideKey === moduleRules.fleetDisplaySide
+  && turnTrackerRef.value?.currentSlot?.phase === moduleRules.fleetDisplayPhase)
+const isSightedTaskForce = (counter) => ['carrierTF', 'fleetTF'].includes(sightings.value.get(String(counter.id)))
+
+/** Support de `counter` à montrer maintenant, ou `null`. */
+function fleetDisplayOf(counter) {
+  if (!fleetDisplayActive.value || sideOfCounter(counter) === moduleRules.fleetDisplaySide || !isSightedTaskForce(counter)) return null
+  return moduleRules.fleetDisplay(counter)
+}
+/** Hex des task forces dont le support peut s'ouvrir (surlignés). */
+const fleetDisplayHexes = computed(() => (fleetDisplayActive.value
+  ? new Set(counters.value.filter((counter) => isUnit(counter) && fleetDisplayOf(counter)).map((counter) => counter.col + ',' + counter.row))
+  : new Set()))
+
+/** Ouvre le support de `counter` s'il en a un maintenant. Vrai si le clic a
+ *  été consommé. */
+function openFleetDisplay(counter) {
+  const layout = fleetDisplayOf(counter)
+  if (!layout) return false
+  const sighting = t(`sighting.${sightings.value.get(String(counter.id))}`)
+  fleetDisplay.value = { layout, title: t('fleetDisplay.title', { sighting, hex: hexId(counter.col + 1, counter.row) }) }
   return true
 }
 
@@ -2827,6 +2863,13 @@ function onMapDragEnd() {
             :points="hex.pts" vector-effect="non-scaling-stroke" />
         </g>
 
+        <!-- Opérations aériennes du joueur : task forces ennemies repérées
+             dont le support s'ouvre au clic (cf. `openFleetDisplay`). -->
+        <g v-if="fleetDisplayHexes.size">
+          <polygon v-for="hex in hexes.filter((hex) => fleetDisplayHexes.has(hex.c + ',' + hex.r))" :key="'fd' + hex.id"
+            class="hex-fleet-display" :points="hex.pts" vector-effect="non-scaling-stroke" />
+        </g>
+
         <g v-if="showLabels">
           <text v-for="hex in hexes" :key="'t' + hex.id" class="coordtxt" :x="hex.cx" :y="hex.cy + calibration.a * 0.18"
             text-anchor="middle" :font-size="calibration.a * 0.42">{{ hex.id }}</text>
@@ -2905,6 +2948,8 @@ function onMapDragEnd() {
     <Toast :message="reconToast" @close="reconToast = null" />
     <ContextMenu v-if="contextMenu" :left-px="contextMenu.x" :top-px="contextMenu.y" :items="contextMenu.items"
       @choose="chooseContextMenuItem" @close="closeContextMenu" />
+    <FleetDisplayModal v-if="fleetDisplay" :layout="fleetDisplay.layout" :displays="moduleRules.fleetDisplays"
+      :title="fleetDisplay.title" @close="fleetDisplay = null" />
     <StackPopup v-if="hoveredStackCounters.length" :counters="hoveredStackCounters" :anchor="hoveredCounter.anchor"
       :title="$t('stack.title', { hex: hexId(hoveredCounter.col + 1, hoveredCounter.row), n: hoveredStackCounters.length })" />
 
@@ -3200,6 +3245,12 @@ polygon.hex.entry:hover {
   fill: rgba(79, 195, 247, 0.3);
   stroke: #4fc3f7;
   stroke-width: 4;
+  pointer-events: none;
+}
+.hex-fleet-display {
+  fill: rgba(255, 140, 0, 0.18);
+  stroke: var(--color-orange);
+  stroke-width: 3;
   pointer-events: none;
 }
 @keyframes recon-pulse {

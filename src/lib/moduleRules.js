@@ -90,6 +90,14 @@ export const INERT_RULES = Object.freeze({
   raidSide: null,
   /** Raids à lancer : `[{ targetId, raiders: [{ tf, name, src }] }]`. */
   raidPlan: () => [],
+  /** Navires de cette task force posés sur son support (cf.
+   *  FleetDisplayModal.vue), ou `null`. */
+  fleetDisplay: () => null,
+  /** Supports de task force : `{ carrier, fleet }` (image, taille, cases), ou `null`. */
+  fleetDisplays: null,
+  /** Phase (id de la piste) où `fleetDisplaySide` peut voir les supports des task forces ennemies repérées, ou `null`. */
+  fleetDisplayPhase: null,
+  fleetDisplaySide: null,
 })
 
 const REGISTRY = {

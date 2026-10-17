@@ -186,6 +186,11 @@ export default {
     fleetTF: 'Fleet TF',
   },
 
+  fleetDisplay: {
+    title: '{sighting} repérée en {hex}',
+    extra: 'Hors du support : {ships}',
+  },
+
   recon: {
     toast: 'Reconnaissance en {hex} : {sighting}',
     toastRemoved: 'Reconnaissance en {hex} : {sighting} — leurre détecté, retiré du jeu',

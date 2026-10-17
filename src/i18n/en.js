@@ -184,6 +184,11 @@ export default {
     fleetTF: 'Fleet TF',
   },
 
+  fleetDisplay: {
+    title: '{sighting} sighted in {hex}',
+    extra: 'Off the display: {ships}',
+  },
+
   recon: {
     toast: 'Reconnaissance in {hex}: {sighting}',
     toastRemoved: 'Reconnaissance in {hex}: {sighting} — dummy detected, removed from play',
