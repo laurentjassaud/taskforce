@@ -8,9 +8,8 @@ import { resolveSettings, describeSettings, scenarioOptions } from '../lib/gameS
 import { registerModuleTexts } from '../i18n/index.js'
 import { APP_RELEASE, APP_VERSION } from '../lib/bugReport.js'
 
-// Chargement direct d'un module en local, sans passer par le lobby
-// multijoueur — pratique pour tester le moteur de jeu (HexMap) seul.
-// Le choix du module/scénario/options vient de l'assistant LocalGameSetup.vue
+// Partie solo : le module joué et ses réglages (scénario, mode Libre ou
+// Assisté) viennent de la page d'accueil SoloHome.vue
 // (query string) ; si absent (accès direct à /demo), on retombe sur Coral Sea.
 
 const route = useRoute()

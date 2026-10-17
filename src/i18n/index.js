@@ -63,13 +63,6 @@ export function setLocale(locale) {
   }
 }
 
-/** Message d'erreur lisible pour un code renvoyé par le serveur
- *  ('not-found', 'room-full'...) ; un code inconnu est affiché tel quel. */
-export function errorMessage(code) {
-  const key = `errors.${code}`
-  return i18n.global.te(key) ? t(key) : String(code)
-}
-
 // --- Libellés des modules -----------------------------------------------------
 // Dictionnaires `i18n` des modules chargés, par langue : { en: { fr: en } }.
 const moduleTexts = reactive({})

@@ -92,7 +92,7 @@ const props = defineProps({
   // JournalPanel.vue::saveLabel). À défaut (non fourni par l'appelant), on
   // retombe sur `module.name`.
   moduleId: { type: String, default: '' },
-  // Partie "Assistée" (cf. LocalGameSetup.vue, param `party`) : variante
+  // Partie "Assistée" (cf. SoloHome.vue, param `party`) : variante
   // opt-in avec garde-fous (grille, sélection au clic, restriction de tour
   // — cf. lib/useAssisted.js). Comportement PAR DÉFAUT (`false`) : "Libre",
   // bac à sable sans garde-fous.

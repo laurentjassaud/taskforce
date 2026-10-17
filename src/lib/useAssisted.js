@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // Ce composable centralise TOUTES les règles qui différencient les deux
-// modes de partie proposés dans LocalGameSetup.vue (paramètre `party`) :
+// modes de partie proposés dans SoloHome.vue (paramètre `party`) :
 //
 //   • Mode "Libre"   (assisted = false, valeur PAR DÉFAUT)
 //       → un vrai bac à sable, sans aucun garde-fou :

@@ -45,6 +45,16 @@
   --light-text-faint: #999;
   --light-accent: #2563eb;       /* boutons, choix sélectionné */
   --light-accent-bg: #eff6ff;
+
+  /* --- Marque Task Force : page d'accueil et création de partie (maquette
+         Figma) ------------------------------------------------------------- */
+  --brand-orange: #f6512b;       /* bouton principal, liens, choix retenu */
+  --brand-orange-strong: #e1401b;
+  --brand-blue: #6d9fb6;         /* titre "Task Force" */
+  --brand-ink: #375e6e;          /* sur-titre, sous-titre, intitulés */
+  --brand-line: #d7d7d7;         /* bordures, langue inactive */
+  --brand-line-strong: #b5c3c9;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --light-danger: #b91c1c;       /* messages d'erreur */
   --light-success: #10b981;      /* joueur en ligne, partie lancée */
   --light-success-strong: #047857;

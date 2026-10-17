@@ -1,222 +1,232 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { PARTY_OPTIONS, TIMING_OPTIONS, TIMING_HINTS, WEATHER_AVAILABLE, timingNeedsValue, timingAllowed, scenarioOptions } from '../lib/gameSettings.js'
-import { registerModuleTexts } from '../i18n/index.js'
+import { ref, computed, watch } from 'vue'
+import { PARTY_OPTIONS } from '../lib/gameSettings.js'
 
-// Étapes 1 à 4 de la création d'une partie, communes au local
-// (LocalGameSetup.vue) et à l'en ligne (CreateGame.vue) : module, scénario,
-// options, mode de jeu. Le parent gère la navigation (`step`) et reçoit le
-// module choisi et les réglages (format lib/gameSettings.js) via v-model.
+// Étapes de la création d'une partie solo (cf. SoloHome.vue) : 1. scénario,
+// 2. mode de jeu (Libre ou Assisté). Le parent gère la navigation (`step`),
+// fournit les scénarios du module (cf. gameSettings.js::scenarioOptions) et
+// reçoit les réglages (format lib/gameSettings.js) via v-model. La météo
+// (pas encore appliquée par le moteur) et le chronomètre ne sont plus
+// proposés : ils gardent leur valeur par défaut.
 
-defineProps({ step: { type: Number, required: true } })
-
-const moduleId = defineModel('moduleId', { type: String, default: '' })
-const settings = defineModel('settings', { type: Object, required: true })
-
-const modules = ref([])
-// JSON du module choisi (étape 1) — pour ses scénarios (cf.
-// gameSettings.js::scenarioOptions) ; `null` tant qu'il n'est pas chargé.
-const moduleData = ref(null)
-const scenarios = computed(() => scenarioOptions(moduleData.value))
-
-const scenario = ref(settings.value.scenario)
-const weather = ref(settings.value.weather === '1')
-const party = ref(settings.value.party)
-const timing = ref(settings.value.timing)
-const timingValue = ref(settings.value.timingValue ? Number(settings.value.timingValue) : null)
-
-// Chargement du module choisi, pour lister SES scénarios à l'étape 2.
-watch([moduleId, modules], async ([id, list]) => {
-  const entry = list.find((mod) => mod.id === id)
-  if (!entry) { moduleData.value = null; return }
-  try {
-    const data = await fetch(entry.path, { cache: 'no-store' }).then((res) => res.json())
-    registerModuleTexts(data)
-    if (moduleId.value === id) moduleData.value = data
-  } catch {
-    moduleData.value = null
-  }
+const props = defineProps({
+  step: { type: Number, required: true },
+  scenarios: { type: Array, default: () => [] },
 })
 
-// Changement de module : un scénario qui n'existe pas (ou n'est pas
-// disponible) dans le nouveau module est remplacé par son premier scénario
-// disponible.
-watch(scenarios, (list) => {
+const settings = defineModel('settings', { type: Object, required: true })
+
+const scenario = ref(settings.value.scenario)
+const party = ref(settings.value.party)
+
+// Un scénario qui n'existe pas (ou n'est pas disponible) dans le module est
+// remplacé par son premier scénario disponible.
+watch(() => props.scenarios, (list) => {
   if (!list.some((option) => option.id === scenario.value && option.available)) {
     scenario.value = list.find((option) => option.available)?.id ?? scenario.value
   }
-})
+}, { immediate: true })
 
-// Un scénario peut rendre la météo obligatoire (`weather: 'required'`, ex. un
-// placement libre : pas de conditions historiques connues à appliquer par
-// défaut).
-const weatherRequired = computed(() => scenarios.value.find((option) => option.id === scenario.value)?.weather === 'required')
-watch(weatherRequired, (required) => {
-  if (required) weather.value = true
-})
+// Un scénario peut rendre la météo obligatoire (`weather: 'required'`).
+const weatherRequired = computed(() => props.scenarios.find((option) => option.id === scenario.value)?.weather === 'required')
 
-// Une seule valeur saisie à la fois : on la réinitialise si l'utilisateur
-// change de timing pour éviter de renvoyer une ancienne valeur incohérente.
-watch(timing, () => {
-  timingValue.value = null
-})
-
-// Le chronomètre n'existe qu'en partie Assistée (cf. gameSettings.js::
-// timingAllowed) : repasser en Libre remet le timing à "Libre", les autres
-// choix étant grisés (cf. template).
-watch(party, (val) => {
-  if (!timingAllowed(val)) timing.value = 'libre'
-})
-
-watch([scenario, weather, party, timing, timingValue], () => {
+watch([scenario, party], () => {
   settings.value = {
+    ...settings.value,
     scenario: scenario.value,
-    weather: weather.value ? '1' : '0',
+    weather: weatherRequired.value ? '1' : '0',
     party: party.value,
-    timing: timing.value,
-    timingValue: timingNeedsValue(timing.value) && timingValue.value > 0 ? String(timingValue.value) : '',
+    timing: 'libre',
+    timingValue: '',
   }
-})
-
-onMounted(async () => {
-  const res = await fetch('/modules/index.json', { cache: 'no-store' })
-  modules.value = await res.json()
-})
-
-function chooseModule(mod) {
-  if (mod.active === false) return
-  moduleId.value = mod.id
-}
+}, { immediate: true })
 </script>
 
 <template>
-  <section v-if="step === 1">
-    <h2>{{ $t('setup.chooseModule') }}</h2>
-    <ul class="choice-list">
-      <li v-for="mod in modules" :key="mod.id">
-        <button
-          type="button"
-          :class="{ selected: moduleId === mod.id }"
-          :disabled="mod.active === false"
-          @click="chooseModule(mod)"
-        >
-          {{ mod.name }}
-          <span v-if="mod.active === false" class="badge">{{ $t('common.comingSoon') }}</span>
-        </button>
-      </li>
-    </ul>
-    <slot name="module-status" />
-  </section>
-
-  <section v-else-if="step === 2">
-    <h2>{{ $t('setup.chooseScenario') }}</h2>
-    <ul class="choice-list">
-      <li v-for="opt in scenarios" :key="opt.id">
-        <button type="button" :class="{ selected: scenario === opt.id }" :disabled="opt.available === false"
-          @click="scenario = opt.id">
-          {{ opt.label }}
-          <span v-if="opt.available === false" class="badge">{{ $t('common.comingSoon') }}</span>
-        </button>
-      </li>
-    </ul>
-  </section>
-
-  <section v-else-if="step === 3">
-    <h2>{{ $t('setup.options') }}</h2>
-    <label class="checkbox-choice" :class="{ disabled: !WEATHER_AVAILABLE || weatherRequired }">
-      <input type="checkbox" v-model="weather" :disabled="!WEATHER_AVAILABLE || weatherRequired" />
-      {{ $t('setup.weather') }}
-      <span v-if="!WEATHER_AVAILABLE" class="badge">{{ $t('common.comingSoon') }}</span>
-    </label>
-    <p v-if="!WEATHER_AVAILABLE" class="hint">{{ $t('setup.weatherNotYet') }}</p>
-    <p v-else-if="weatherRequired" class="hint">{{ $t('setup.weatherRequired') }}</p>
-  </section>
-
-  <section v-else-if="step === 4">
-    <h2>{{ $t('setup.gameMode') }}</h2>
-
-    <h3>{{ $t('setup.party') }}</h3>
-    <ul class="choice-list">
-      <li v-for="opt in PARTY_OPTIONS" :key="opt.id">
-        <label class="checkbox-choice">
-          <input type="radio" name="party" :value="opt.id" v-model="party" />
-          {{ opt.label }}
+  <Transition name="step" mode="out-in">
+    <section v-if="step === 1" key="scenario" class="step">
+      <p class="step-index">{{ $t('setup.stepOf', { step, total: 2 }) }}</p>
+      <h2>{{ $t('setup.chooseScenario') }}</h2>
+      <div class="choices" role="radiogroup" :aria-label="$t('setup.chooseScenario')">
+        <label v-for="opt in scenarios" :key="opt.id" class="choice"
+          :class="{ selected: scenario === opt.id, disabled: opt.available === false }">
+          <input v-model="scenario" type="radio" name="scenario" :value="opt.id" :disabled="opt.available === false" />
+          <span class="choice-mark" aria-hidden="true" />
+          <span class="choice-body">
+            <span class="choice-title">{{ opt.label }}</span>
+            <span v-if="opt.available === false" class="badge">{{ $t('common.comingSoon') }}</span>
+          </span>
         </label>
-      </li>
-    </ul>
+      </div>
+    </section>
 
-    <h3>{{ $t('setup.timing') }}</h3>
-    <ul class="choice-list">
-      <li v-for="opt in TIMING_OPTIONS" :key="opt.id">
-        <label class="checkbox-choice" :class="{ disabled: opt.id !== 'libre' && !timingAllowed(party) }">
-          <input type="radio" name="timing" :value="opt.id" v-model="timing" :disabled="opt.id !== 'libre' && !timingAllowed(party)" />
-          {{ opt.label }}
+    <section v-else-if="step === 2" key="mode" class="step">
+      <p class="step-index">{{ $t('setup.stepOf', { step, total: 2 }) }}</p>
+      <h2>{{ $t('setup.gameMode') }}</h2>
+      <div class="choices two" role="radiogroup" :aria-label="$t('setup.gameMode')">
+        <label v-for="opt in PARTY_OPTIONS" :key="opt.id" class="choice" :class="{ selected: party === opt.id }">
+          <input v-model="party" type="radio" name="party" :value="opt.id" />
+          <span class="choice-mark" aria-hidden="true" />
+          <span class="choice-body">
+            <span class="choice-title">{{ opt.label }}</span>
+            <span class="choice-text">{{ $t(`setup.partyHint.${opt.id}`) }}</span>
+          </span>
         </label>
-      </li>
-    </ul>
-    <p v-if="!timingAllowed(party)" class="hint">{{ $t('settings.timingLocked') }}</p>
-    <div v-if="timingNeedsValue(timing)" class="timing-value">
-      <label>
-        {{ timing === 'limite' ? $t('setup.limitedDuration') : $t('setup.blitzDuration') }}
-        <input type="number" min="1" v-model.number="timingValue" />
-      </label>
-      <p class="hint">{{ TIMING_HINTS[timing] }}</p>
-    </div>
-  </section>
+      </div>
+    </section>
+  </Transition>
 </template>
 
 <style scoped>
-.choice-list {
-  list-style: none;
-  padding: 0;
+.step {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-.choice-list button {
+  align-items: center;
   width: 100%;
-  text-align: left;
-  padding: 10px 12px;
-  border: 1px solid var(--light-border);
-  border-radius: var(--radius-6);
+}
+.step-index {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-blue);
+}
+h2 {
+  margin-top: 4px;
+  font-size: clamp(22px, 2.2vw, 28px);
+  font-weight: 600;
+  color: var(--brand-ink);
+  text-align: center;
+}
+.choices {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 560px);
+  margin-top: 24px;
+}
+.choices.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 760px);
+}
+@media (max-width: 640px) {
+  .choices.two {
+    grid-template-columns: 1fr;
+  }
+}
+.choice {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 22px;
   background: var(--color-white);
+  border: 1px solid var(--brand-line);
+  border-radius: 8px;
   cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 160ms var(--ease-out);
 }
-.choice-list button.selected {
-  border-color: var(--light-accent);
-  background: var(--light-accent-bg);
+@media (hover: hover) and (pointer: fine) {
+  .choice:not(.disabled):not(.selected):hover {
+    border-color: var(--brand-blue);
+  }
 }
-.choice-list button:disabled {
+.choice:not(.disabled):active {
+  transform: scale(0.98);
+}
+.choice.selected {
+  border-color: var(--brand-orange);
+  box-shadow: inset 0 0 0 1px var(--brand-orange), 0 8px 24px -12px rgba(246, 81, 43, 0.45);
+}
+.choice.disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
+}
+.choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.choice:has(input:focus-visible) {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 3px;
+}
+.choice-mark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1.5px solid var(--brand-line-strong);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  transition: border-color 150ms ease;
+}
+.choice-mark::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-orange);
+  transform: scale(0.5);
+  opacity: 0;
+  transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+.choice.selected .choice-mark {
+  border-color: var(--brand-orange);
+}
+.choice.selected .choice-mark::after {
+  transform: scale(1);
+  opacity: 1;
+}
+.choice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.choice-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--brand-ink);
+}
+.choice-text {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--light-text-medium);
 }
 .badge {
-  margin-left: 8px;
-  font-size: var(--font-size-em-075);
+  align-self: flex-start;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--light-text-muted);
+  background: var(--light-bg-muted);
+  border-radius: 999px;
 }
-.checkbox-choice {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+
+.step-enter-active {
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
-.checkbox-choice.disabled {
-  color: var(--light-text-faint);
+.step-leave-active {
+  transition: opacity 140ms ease, transform 140ms ease;
 }
-.hint {
-  color: var(--light-text-muted);
-  font-size: var(--font-size-em-090);
+.step-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
 }
-h3 {
-  margin: 16px 0 8px;
-  font-size: var(--font-size-em-100);
+.step-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
-.timing-value {
-  margin-top: 12px;
-}
-.timing-value input {
-  margin-left: 8px;
-  width: 80px;
-  padding: 4px 6px;
+@media (prefers-reduced-motion: reduce) {
+  .step-enter-from,
+  .step-leave-to {
+    transform: none;
+  }
 }
 </style>

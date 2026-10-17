@@ -22,7 +22,7 @@ export const AUTOSAVE_KEY = 'generic-wargame:journal-autosave'
 const PENDING_KEY = 'generic-wargame:pending-replay'
 
 /** Réglages de partie qui comptent pour rejouer un journal (cf.
- *  LocalGameSetup.vue). Normalisés en chaînes, pour comparer sans surprise
+ *  SoloHome.vue). Normalisés en chaînes, pour comparer sans surprise
  *  une valeur venue de l'URL et une valeur relue d'un fichier. */
 export const SETTING_KEYS = ['scenario', 'weather', 'party', 'timing', 'timingValue']
 

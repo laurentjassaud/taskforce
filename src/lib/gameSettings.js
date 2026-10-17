@@ -1,6 +1,5 @@
 // Réglages d'une partie (scénario, météo, mode Libre/Assisté, timing),
-// communs à la partie en local (LocalGameSetup.vue -> DemoPlay.vue) et à la
-// partie en ligne (CreateGame.vue -> serveur -> RoomLobby.vue). Mêmes clés que
+// choisis sur la page d'accueil (SoloHome.vue -> DemoPlay.vue). Mêmes clés que
 // lib/journalStorage.js::SETTING_KEYS, toutes en chaînes (format de l'URL).
 // Les libellés sont des getters : lus au moment de l'affichage, ils suivent
 // la langue choisie (cf. src/i18n).

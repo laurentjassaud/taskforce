@@ -16,19 +16,6 @@ export default {
     gotIt: 'Got it',
   },
 
-  errors: {
-    'not-found': 'This game does not exist (anymore).',
-    'bad-passcode': 'Wrong passcode.',
-    'room-full': 'This room is already full.',
-    'side-taken': 'This side is already taken by another player.',
-    'already-started': 'This game has already started.',
-    'not-started': 'The game has not started yet.',
-    'bad-name': 'Invalid nickname (1 to 40 characters).',
-    'bad-side': 'Invalid side.',
-    'too-many-games': 'Too many games running on the server: try again later.',
-    'unknown-error': 'Unknown server error.',
-  },
-
   settings: {
     scenarioHistorical: 'Historical',
     party: { libre: 'Free', assiste: 'Assisted' },
@@ -49,64 +36,37 @@ export default {
 
   setup: {
     stepOf: 'Step {step} / {total}',
-    chooseModule: '1. Choose the module',
-    chooseScenario: '2. Choose the scenario',
-    options: '3. Options',
-    gameMode: '4. Game mode',
-    party: 'Mode',
-    timing: 'Timing',
+    chooseScenario: 'Choose the scenario',
+    gameMode: 'Choose the game mode',
+    partyHint: {
+      libre: 'A sandbox, just like around a table: move any counter freely, at any time, and apply the rules yourself.',
+      assiste: 'The game runs the phases of the turn and enforces the rules: active side, movement points, zones of control, stacking.',
+    },
     weather: 'Weather',
-    weatherNotYet: 'Weather rules are not applied by the engine yet.',
-    weatherRequired: 'Required for this scenario.',
-    limitedDuration: 'Length of the movement phase (minutes)',
-    blitzDuration: 'Total movement time per player (minutes)',
-    loadingModule: 'Loading the module…',
-    moduleLoadError: 'Unable to load this module.',
+    moduleLoadError: 'Unable to load the game. Reload the page to try again.',
   },
 
-  createGame: {
-    title: 'Create an online game',
-    playerCount: '5. Number of players',
-    playerRange: 'Between {min} and {max} players for this module.',
-    creating: 'Creating…',
-    create: 'Create the game',
+  home: {
+    siteLink: 'GameBoxHeroes — back to the website',
+    kicker: 'Solo play',
+    start: 'Start a game',
+    play: 'Play',
+    about: {
+      intro: 'Task Force is a virtual game box developed by GameBoxHeroes to help you learn the game system.',
+      origin: 'It is based on “{game}”, published in 2023 by {publisher}. This is an unofficial, volunteer, non-profit project, not affiliated with the publisher.',
+      publisher: 'Vuca Simulations',
+      required: 'You need to own the physical game and have a basic knowledge of its system to use this box.',
+      differences: 'The game system may differ slightly from the original game, due to simplifications made during development or to misreadings of the rules.',
+    },
+    credits: {
+      art: 'All artwork is the exclusive property of Vuca Simulations and of its designer {designer}, art direction by {artist}.',
+      free: 'The game components are made available to users free of charge, for educational purposes, and are not subject to any financial transaction.',
+      shop: "You can find the game on the publisher's website: {site}",
+      takedown: 'To have an element removed promptly at the request of the rights holders, {contact}. See also the GameBoxHeroes {legal}.',
+      contact: 'contact us',
+      legal: 'legal notice',
+    },
   },
-
-  localGame: {
-    title: 'Local game',
-    start: 'Start the game',
-  },
-
-  gamesList: {
-    title: 'Open games',
-    localGame: 'Local game',
-    createGame: 'Create a game',
-    created: 'Game created! Passcode for room {room}: {passcode} — share it with the other players.',
-    players: '{count} / {max} players',
-    status: { lobby: 'waiting', started: 'in progress' },
-    variants: 'Variants: {list}',
-    empty: 'No game in progress. Create one!',
-  },
-
-  lobby: {
-    backToGames: 'Back to games',
-    loadingGame: 'Loading the game…',
-    replayWarning: 'This save was played with different settings from this online game: it cannot be resumed here.',
-    genericSide: 'Side {n}',
-    nickname: 'Nickname',
-    side: 'Side',
-    taken: 'taken',
-    passcode: 'Passcode',
-    joining: 'Connecting…',
-    join: 'Join the room',
-    waiting: 'Waiting for the other players… ({count} / {max})',
-    started: 'The game has started!',
-    you: 'you',
-    online: 'online',
-    offline: 'offline',
-  },
-
-
 
   eliminated: {
     empty: 'No unit eliminated.',
@@ -129,12 +89,9 @@ export default {
     title: 'Time left for the Movement phase',
   },
 
-
   turnTracker: {
     nextTurn: 'Next turn',
   },
-
-
 
   dice: {
     result: 'Result:',
@@ -146,7 +103,6 @@ export default {
     title: 'Cannot change phase',
     stacks: 'Several friendly units share the same hex. Move one of them before ending the Movement phase:',
   },
-
 
   bugReport: {
     intro: 'An export of the game will be made and put into a GitHub bug report. You need a GitHub account to continue.',
@@ -202,7 +158,6 @@ export default {
     loaded: 'Log loaded',
     loadErrorTitle: 'Loading error',
   },
-
 
   phases: {
     setup: 'Setup',
@@ -264,7 +219,6 @@ export default {
     partiallyDetected: 'Fleet partially detected',
   },
 
-
   gameEnd: {
     title: 'Game over',
     bravo: 'Congratulations, victory for the {side}!',
@@ -322,8 +276,6 @@ export default {
     otherPlayer: 'Other player',
   },
 
-
-
   toolbar: {
     gameOverTag: 'Game over — {side} loses on time',
     concede: 'Concede the game',
@@ -347,7 +299,6 @@ export default {
     help: 'Help',
     helpTitle: 'Interface guide',
   },
-
 
   guide: {
     stepOf: 'Step {step} / {total}',

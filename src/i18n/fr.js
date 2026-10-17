@@ -18,19 +18,6 @@ export default {
     gotIt: 'Compris',
   },
 
-  errors: {
-    'not-found': "Cette partie n'existe pas (ou plus).",
-    'bad-passcode': "Code d'accès incorrect.",
-    'room-full': 'Cette room est déjà complète.',
-    'side-taken': 'Ce camp est déjà pris par un autre joueur.',
-    'already-started': 'Cette partie a déjà commencé.',
-    'not-started': "La partie n'a pas encore commencé.",
-    'bad-name': 'Pseudo invalide (1 à 40 caractères).',
-    'bad-side': 'Camp invalide.',
-    'too-many-games': 'Trop de parties en cours sur le serveur : réessaie plus tard.',
-    'unknown-error': 'Erreur inconnue du serveur.',
-  },
-
   settings: {
     scenarioHistorical: 'Historique',
     party: { libre: 'Libre', assiste: 'Assisté' },
@@ -51,64 +38,37 @@ export default {
 
   setup: {
     stepOf: 'Étape {step} / {total}',
-    chooseModule: '1. Choisir le module',
-    chooseScenario: '2. Choisir le scénario',
-    options: '3. Options',
-    gameMode: '4. Mode de jeu',
-    party: 'Partie',
-    timing: 'Timing',
+    chooseScenario: 'Choisir le scénario',
+    gameMode: 'Choisir le mode de jeu',
+    partyHint: {
+      libre: "Un bac à sable, comme autour d'une table : vous déplacez librement n'importe quel pion, à tout moment, et appliquez vous-même les règles.",
+      assiste: 'Le jeu déroule les phases du tour et applique les règles : tour du camp actif, points de mouvement, zones de contrôle, empilement.',
+    },
     weather: 'Météo',
-    weatherNotYet: 'Les règles de météo ne sont pas encore appliquées par le moteur.',
-    weatherRequired: 'Obligatoire pour ce scénario.',
-    limitedDuration: 'Durée de la phase de mouvement (minutes)',
-    blitzDuration: 'Temps total de mouvement par joueur (minutes)',
-    loadingModule: 'Chargement du module…',
-    moduleLoadError: 'Impossible de charger ce module.',
+    moduleLoadError: 'Impossible de charger le jeu. Rechargez la page pour réessayer.',
   },
 
-  createGame: {
-    title: 'Créer une partie en ligne',
-    playerCount: '5. Nombre de joueurs',
-    playerRange: 'Entre {min} et {max} joueurs pour ce module.',
-    creating: 'Création…',
-    create: 'Créer la partie',
+  home: {
+    siteLink: 'GameBoxHeroes — retour au site',
+    kicker: 'Jouer en solo',
+    start: 'Lancer une partie',
+    play: 'Jouer',
+    about: {
+      intro: "Task Force est une boîte de jeu virtuelle développée par GameBoxHeroes dans un but d'apprentissage du système de jeu.",
+      origin: "Elle reprend le jeu « {game} », édité en 2023 par les {publisher}. Il s'agit d'un projet non officiel, bénévole, à but non lucratif et non affilié à l'éditeur.",
+      publisher: 'éditions Vuca Simulations',
+      required: "La possession du jeu physique ainsi qu'une connaissance minimale du système de jeu sont nécessaires pour utiliser cette boîte.",
+      differences: "Le système de jeu peut présenter des différences mineures par rapport au jeu original dues à des choix de simplification du développement ou à des erreurs d'interprétation des règles.",
+    },
+    credits: {
+      art: 'Tous les éléments graphiques sont la propriété exclusive de Vuca Simulations et de son créateur {designer}, direction artistique {artist}.',
+      free: "Les éléments de jeu sont mis gracieusement à la disposition des utilisateurs dans un but pédagogique et ne font l'objet d'aucune transaction financière.",
+      shop: "Vous pouvez retrouver le jeu sur le site de l'éditeur : {site}",
+      takedown: "Pour tout retrait rapide d'un élément à la demande des ayants droit, {contact}. Voir aussi {legal} de GameBoxHeroes.",
+      contact: 'contactez-nous',
+      legal: 'les mentions légales',
+    },
   },
-
-  localGame: {
-    title: 'Partie en local',
-    start: 'Lancer la partie',
-  },
-
-  gamesList: {
-    title: 'Parties en cours',
-    localGame: 'Partie en local',
-    createGame: 'Créer une partie',
-    created: "Partie créée ! Code d'accès pour la room {room} : {passcode} — transmets-le aux autres joueurs.",
-    players: '{count} / {max} joueurs',
-    status: { lobby: 'en attente', started: 'en cours' },
-    variants: 'Variantes : {list}',
-    empty: 'Aucune partie en cours. Crée-en une !',
-  },
-
-  lobby: {
-    backToGames: 'Retour aux parties',
-    loadingGame: 'Chargement de la partie…',
-    replayWarning: "Cette sauvegarde a été jouée avec d'autres réglages que cette partie en ligne : impossible de la reprendre ici.",
-    genericSide: 'Camp {n}',
-    nickname: 'Pseudo',
-    side: 'Camp',
-    taken: 'pris',
-    passcode: "Code d'accès",
-    joining: 'Connexion…',
-    join: 'Rejoindre la room',
-    waiting: 'En attente des autres joueurs… ({count} / {max})',
-    started: 'La partie est lancée !',
-    you: 'vous',
-    online: 'en ligne',
-    offline: 'hors ligne',
-  },
-
-
 
   eliminated: {
     empty: 'Aucune unité éliminée.',
@@ -131,12 +91,9 @@ export default {
     title: 'Temps restant pour la phase de Mouvement',
   },
 
-
   turnTracker: {
     nextTurn: 'Tour suivant',
   },
-
-
 
   dice: {
     result: 'Résultat :',
@@ -148,7 +105,6 @@ export default {
     title: 'Impossible de changer de phase',
     stacks: 'Plusieurs unités amies occupent le même hex. Déplacez-en une avant de terminer la phase Mouvement :',
   },
-
 
   bugReport: {
     intro: 'Un export du jeu sera réalisé, et placé dans un rapport de bug GitHub. Il vous faut un compte GitHub pour poursuivre.',
@@ -204,7 +160,6 @@ export default {
     loaded: 'Journal chargé',
     loadErrorTitle: 'Erreur de chargement',
   },
-
 
   phases: {
     setup: 'Mise en place',
@@ -266,7 +221,6 @@ export default {
     partiallyDetected: 'Flotte partiellement détectée',
   },
 
-
   gameEnd: {
     title: 'Fin de la partie',
     bravo: 'Bravo, victoire des {side} !',
@@ -324,8 +278,6 @@ export default {
     otherPlayer: 'Autre joueur',
   },
 
-
-
   toolbar: {
     gameOverTag: 'Partie terminée — {side} perd au temps',
     concede: 'Concéder la partie',
@@ -349,7 +301,6 @@ export default {
     help: 'Aide',
     helpTitle: "Guide de l'interface",
   },
-
 
   guide: {
     stepOf: 'Étape {step} / {total}',
