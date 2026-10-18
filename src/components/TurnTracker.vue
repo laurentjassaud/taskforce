@@ -418,17 +418,15 @@ const conditionRows = computed(() => {
   font-weight: 600;
 }
 
-.tt-condition-value {
-  color: var(--panel-text, inherit);
-}
-
+/* ✓ / ✗ sur le fond clair de la barre d'outils : vert et rouge assombris
+   vers l'encre, pour rester lisibles (contraste d'au moins 4,5:1). */
 .tt-condition.allowed .tt-condition-value {
-  color: color-mix(in srgb, var(--c-green) 60%, var(--c-white));
+  color: color-mix(in srgb, var(--c-green) 45%, var(--c-ink));
   font-weight: 700;
 }
 
 .tt-condition.forbidden .tt-condition-value {
-  color: color-mix(in srgb, var(--c-red) 65%, var(--c-white));
+  color: color-mix(in srgb, var(--c-red) 85%, var(--c-ink));
   font-weight: 700;
 }
 
