@@ -1,0 +1,59 @@
+{
+  "_comment": [
+    "Catalogue des avions japonais (IJN) de la mer de Corail, relevé sur les pions. Pas encore utilisé par le jeu (à brancher avec les opérations aériennes).",
+    "Chaque avion a deux faces : 'full' (pion orange) et 'reduced' (pion blanc et orange), comme les navires ont 'intact' et 'damaged' (cf. fleet-ijn.json).",
+    "Face : mission (lettre en haut à gauche : F chasse, T torpille, B bombardement, DB bombardement en piqué), attack (chiffre sous la lettre, absent des chasseurs), airCombat (en haut à droite), code (en bas à gauche, s'il est imprimé), src (image).",
+    "KATE change de mission d'une face à l'autre (B sur la face pleine, T sur la face réduite) : relevé tel qu'imprimé, sens à préciser d'après la règle."
+  ],
+  "faction": "ijn",
+  "missions": {
+    "F": "Chasse",
+    "T": "Torpille",
+    "B": "Bombardement",
+    "DB": "Bombardement en piqué"
+  },
+  "aircraft": [
+    {
+      "id": "ijn-zero",
+      "name": "ZERO",
+      "model": "A6M",
+      "full": { "mission": "F", "attack": null, "airCombat": 5, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/zero-full.png" },
+      "reduced": { "mission": "F", "attack": null, "airCombat": 3, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/zero-reduced.png" }
+    },
+    {
+      "id": "ijn-claude",
+      "name": "CLAUDE",
+      "model": "A5M",
+      "full": { "mission": "F", "attack": null, "airCombat": 3, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/claude-full.png" },
+      "reduced": { "mission": "F", "attack": null, "airCombat": 2, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/claude-reduced.png" }
+    },
+    {
+      "id": "ijn-kate",
+      "name": "KATE",
+      "model": "B5N",
+      "full": { "mission": "B", "attack": 2, "airCombat": 1, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/kate-full.png" },
+      "reduced": { "mission": "T", "attack": 3, "airCombat": 0, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/kate-reduced.png" }
+    },
+    {
+      "id": "ijn-val",
+      "name": "VAL",
+      "model": "D3A",
+      "full": { "mission": "DB", "attack": 5, "airCombat": 2, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/val-full.png" },
+      "reduced": { "mission": "DB", "attack": 2, "airCombat": 1, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/val-reduced.png" }
+    },
+    {
+      "id": "ijn-betty",
+      "name": "BETTY",
+      "model": "G4M",
+      "full": { "mission": "T", "attack": 6, "airCombat": 2, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/betty-full.png" },
+      "reduced": { "mission": "T", "attack": 3, "airCombat": 1, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/betty-reduced.png" }
+    },
+    {
+      "id": "ijn-nell",
+      "name": "NELL",
+      "model": "G3M",
+      "full": { "mission": "B", "attack": 2, "airCombat": 1, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/nell-full.png" },
+      "reduced": { "mission": "B", "attack": 1, "airCombat": 0, "code": "GEN", "src": "/modules/coral-sea/images/counters/ijn/air/nell-reduced.png" }
+    }
+  ]
+}
