@@ -98,16 +98,16 @@ const warning = computed(() => running.value && remaining.value > 0 && low.value
   gap: 8px;
   padding: 3px 10px;
   border-radius: var(--radius-6);
-  background: var(--black-a25);
-  color: var(--panel-text-muted);
-  font-size: var(--font-size-080);
+  background: color-mix(in srgb, var(--c-ink) 25%, transparent);
+  color: var(--c-brand-ink);
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
 .mt-value {
   font-variant-numeric: tabular-nums;
-  font-size: var(--font-size-095);
-  color: var(--color-gold);
+  font-size: var(--fs-md);
+  color: var(--c-gold);
 }
 
 /* Pendule à l'arrêt (Blitz, camp qui n'est pas en Mouvement) : atténuée. */
@@ -116,7 +116,7 @@ const warning = computed(() => running.value && remaining.value > 0 && low.value
 }
 
 .move-timer.low .mt-value {
-  color: var(--color-alert);
+  color: var(--c-brand);
 }
 
 .move-timer.warning {
@@ -132,7 +132,7 @@ const warning = computed(() => running.value && remaining.value > 0 && low.value
 @media (prefers-reduced-motion: reduce) {
   .move-timer.warning {
     animation: none;
-    outline: 2px solid var(--color-alert);
+    outline: 2px solid var(--c-brand);
   }
 }
 </style>

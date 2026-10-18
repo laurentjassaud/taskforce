@@ -375,7 +375,7 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: var(--font-size-080);
+  font-size: var(--fs-sm);
 }
 
 .jn-empty {
@@ -399,21 +399,21 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
 .jn-btn {
   padding: 6px 10px;
   background: transparent;
-  border: 1px solid var(--white-a35);
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   border-radius: var(--radius-4);
-  font-size: var(--font-size-072);
+  font-size: var(--fs-xs);
   letter-spacing: 0.3px;
   color: inherit;
   cursor: pointer;
 }
 
 .jn-btn:hover:not(:disabled) {
-  background: var(--white-a12);
+  background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 .jn-btn.on {
-  background: var(--white-a25);
-  border-color: var(--white-a70);
+  background: color-mix(in srgb, currentColor 25%, transparent);
+  border-color: color-mix(in srgb, currentColor 70%, transparent);
 }
 
 .jn-btn:disabled {
@@ -427,7 +427,7 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
 
 .jn-autosave {
   margin: 0;
-  font-size: var(--font-size-070);
+  font-size: var(--fs-xs);
   opacity: 0.65;
   font-variant-numeric: tabular-nums;
 }
@@ -438,8 +438,8 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
   gap: 6px;
   padding: 8px 10px;
   border-radius: var(--radius-4);
-  background: var(--gold-a22);
-  border: 1px solid var(--gold-a50);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
 }
 
 .jn-resume-msg {
@@ -457,27 +457,27 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
   gap: 8px;
   padding: 6px 10px;
   border-radius: var(--radius-4);
-  background: var(--white-a10);
+  background: color-mix(in srgb, currentColor 10%, transparent);
   line-height: 1.35;
 }
 
 .jn-row.jn-turn {
-  background: var(--gold-a22);
+  background: color-mix(in srgb, currentColor 20%, transparent);
   font-weight: 600;
 }
 
 .jn-row.jn-phase {
-  background: var(--gold-a12);
+  background: color-mix(in srgb, currentColor 5%, transparent);
   font-style: italic;
 }
 
 .jn-row.jn-eliminate {
-  background: var(--danger-a20);
+  background: color-mix(in srgb, var(--c-red) 20%, transparent);
 }
 
 .jn-row.jn-place,
 .jn-row.jn-return {
-  background: var(--selection-a14);
+  background: color-mix(in srgb, var(--c-green) 14%, transparent);
 }
 
 /* Décision de l'IA (mode debug) : fond rouge japonais, le camp qu'elle joue. */
@@ -501,9 +501,9 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
   margin-top: 4px;
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid var(--white-a35);
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   border-radius: var(--radius-4);
-  font-size: var(--font-size-072);
+  font-size: var(--fs-xs);
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: inherit;
@@ -511,14 +511,14 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
 }
 
 .jn-clear:hover {
-  background: var(--white-a12);
+  background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 .jn-modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: var(--z-journal-modal);
-  background: var(--black-a50);
+  background: color-mix(in srgb, var(--c-ink) 50%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -526,27 +526,27 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
 
 .jn-modal {
   width: min(90vw, 360px);
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   border-radius: var(--radius-10);
   box-shadow: var(--shadow-modal);
   padding: 20px 22px;
-  border-top: 4px solid var(--color-selection);
+  border-top: 4px solid var(--c-green);
 }
 
 .jn-modal-error {
-  border-top-color: var(--color-danger);
+  border-top-color: var(--c-red);
 }
 
 .jn-modal-title {
   margin: 0 0 8px;
   font-weight: 700;
-  font-size: var(--font-size-100);
+  font-size: var(--fs-base);
 }
 
 .jn-modal-msg {
   margin: 0 0 16px;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 

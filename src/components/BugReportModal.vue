@@ -122,7 +122,7 @@ function onSubmit(event) {
   position: fixed;
   inset: 0;
   z-index: var(--z-bug-report);
-  background: var(--black-a50);
+  background: color-mix(in srgb, var(--c-ink) 50%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -134,8 +134,8 @@ function onSubmit(event) {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--tab-4-bg);
-  color: var(--tab-4-ink);
+  background: color-mix(in srgb, var(--c-panel) 85%, var(--c-white));
+  color: var(--c-panel-text);
   border-radius: var(--radius-4);
   box-shadow: var(--shadow-modal);
   padding: 0 12px 12px;
@@ -146,19 +146,19 @@ function onSubmit(event) {
   position: relative;
   margin: 0 -12px;
   padding: 8px 48px;
-  background: linear-gradient(var(--report-head-top), var(--report-head-bottom));
-  border-bottom: 1px solid var(--report-divider);
+  background: linear-gradient(color-mix(in srgb, var(--c-panel) 80%, var(--c-brand-ink)), var(--c-panel));
+  border-bottom: 1px solid color-mix(in srgb, var(--c-steel) 50%, var(--c-panel));
   text-align: center;
 }
 
 .br-head h3 {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: var(--font-size-170);
+  font-size: var(--fs-2xl);
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--color-white);
+  color: var(--c-white);
 }
 
 .br-close {
@@ -170,16 +170,16 @@ function onSubmit(event) {
   height: 24px;
   border: none;
   border-radius: var(--radius-round);
-  background: var(--report-close);
-  color: var(--color-white);
-  font-size: var(--font-size-110);
+  background: color-mix(in srgb, var(--c-steel) 60%, var(--c-panel));
+  color: var(--c-white);
+  font-size: var(--fs-lg);
   line-height: 24px;
   padding: 0;
   cursor: pointer;
 }
 
 .br-close:hover {
-  background: var(--report-close-hover);
+  background: var(--c-steel);
 }
 
 .br-text,
@@ -187,7 +187,7 @@ function onSubmit(event) {
 .br-warn {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: var(--font-size-095);
+  font-size: var(--fs-md);
   line-height: 1.45;
 }
 
@@ -196,36 +196,36 @@ function onSubmit(event) {
 }
 
 .br-orange {
-  background: var(--report-banner-info);
+  background: color-mix(in srgb, var(--c-orange) 70%, var(--c-ink));
 }
 
 .br-red {
-  background: var(--report-banner-danger);
+  background: var(--c-red);
 }
 
 .br-warn {
-  color: var(--report-warn);
-  font-size: var(--font-size-085);
+  color: var(--c-gold);
+  font-size: var(--fs-sm);
 }
 
 .br-field {
   width: 100%;
   padding: 6px 10px;
-  border: 1px solid var(--report-border);
+  border: 1px solid var(--c-steel);
   border-radius: var(--radius-2);
-  background: var(--report-field-bg);
-  color: var(--report-text);
+  background: color-mix(in srgb, var(--c-white) 8%, var(--c-panel));
+  color: var(--c-panel-text);
   font-family: var(--font-serif);
-  font-size: var(--font-size-110);
+  font-size: var(--fs-lg);
   resize: vertical;
 }
 
 .br-field::placeholder {
-  color: var(--report-placeholder);
+  color: var(--c-steel);
 }
 
 .br-field:focus {
-  outline: 2px solid var(--report-focus);
+  outline: 2px solid var(--c-usn);
   outline-offset: -1px;
 }
 
@@ -238,15 +238,15 @@ function onSubmit(event) {
   padding: 6px 12px;
   border: none;
   border-radius: var(--radius-2);
-  background: var(--report-btn);
-  color: var(--color-white);
-  font-size: var(--font-size-125);
+  background: color-mix(in srgb, var(--c-steel) 60%, var(--c-panel));
+  color: var(--c-white);
+  font-size: var(--fs-xl);
   text-decoration: none;
   cursor: pointer;
 }
 
 .br-btn:hover:not(.disabled) {
-  background: var(--report-btn-hover);
+  background: var(--c-steel);
 }
 
 .br-btn.disabled {

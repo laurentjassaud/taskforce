@@ -84,9 +84,9 @@ onMounted(async () => {
 .setup-banner {
   margin: 0;
   padding: 6px 12px;
-  font-size: var(--font-size-em-085);
-  color: var(--light-text-soft);
-  background: var(--light-bg-muted);
-  border-bottom: 1px solid var(--light-border-soft);
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border-bottom: 1px solid var(--c-line);
 }
 </style>

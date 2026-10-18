@@ -72,7 +72,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
-  background: var(--black-a50);
+  background: color-mix(in srgb, var(--c-ink) 50%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -84,25 +84,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   border-radius: var(--radius-12);
-  border-top: 4px solid var(--color-orange);
+  border-top: 4px solid var(--c-orange);
   box-shadow: var(--shadow-modal);
   padding: 14px 18px 16px;
 }
 
 .pb-modal h3 {
   margin: 0 0 8px;
-  font-size: var(--font-size-095);
+  font-size: var(--fs-md);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-orange);
+  color: var(--c-orange);
 }
 
 .pb-modal p {
   margin: 0 0 10px;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 
@@ -110,9 +110,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   margin: 0;
   padding: 8px 10px 8px 26px;
   overflow-y: auto;
-  background: var(--white-a06);
+  background: color-mix(in srgb, var(--c-white) 6%, transparent);
   border-radius: var(--radius-8);
-  font-size: var(--font-size-080);
+  font-size: var(--fs-sm);
 }
 
 /* Les deux listes (empilements, combats) ne coexistent jamais en pratique
@@ -126,12 +126,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 }
 
 .pb-hex {
-  color: var(--color-gold);
+  color: var(--c-gold);
   font-variant-numeric: tabular-nums;
 }
 
 .pb-vs {
-  color: var(--panel-text-faint);
+  color: var(--c-steel);
   margin: 0 6px;
 }
 
@@ -143,27 +143,27 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 }
 
 .pb-cancel {
-  border: 1px solid var(--white-a25);
+  border: 1px solid color-mix(in srgb, var(--c-white) 25%, transparent);
   background: transparent;
-  color: var(--panel-text);
-  font-size: var(--font-size-082);
+  color: var(--c-panel-text);
+  font-size: var(--fs-sm);
   padding: 8px 16px;
   border-radius: var(--radius-8);
   cursor: pointer;
 }
 
 .pb-cancel:hover {
-  background: var(--white-a10);
+  background: color-mix(in srgb, var(--c-white) 10%, transparent);
 }
 
 .pb-ok {
   border: none;
-  background: var(--color-orange);
-  color: var(--panel-bg);
+  background: var(--c-orange);
+  color: var(--c-panel);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  font-size: var(--font-size-082);
+  font-size: var(--fs-sm);
   padding: 8px 20px;
   border-radius: var(--radius-8);
   cursor: pointer;

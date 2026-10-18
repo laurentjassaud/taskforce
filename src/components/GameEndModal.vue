@@ -73,7 +73,7 @@ const bravo = computed(() => (props.winner ? t('gameEnd.bravo', { side: props.wi
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
-  background: var(--black-a50);
+  background: color-mix(in srgb, var(--c-ink) 50%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,34 +85,34 @@ const bravo = computed(() => (props.winner ? t('gameEnd.bravo', { side: props.wi
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   border-radius: var(--radius-12);
-  border-top: 4px solid var(--color-gold);
+  border-top: 4px solid var(--c-gold);
   box-shadow: var(--shadow-modal);
   padding: 14px 18px 16px;
 }
 
 .ge-modal h3 {
   margin: 0 0 8px;
-  font-size: var(--font-size-095);
+  font-size: var(--fs-md);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-gold);
+  color: var(--c-gold);
 }
 
 .ge-modal p {
   margin: 0 0 8px;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
 }
 
 .ge-bravo {
-  font-size: var(--font-size-095) !important;
+  font-size: var(--fs-md) !important;
   font-weight: 700;
 }
 
 .ge-reason {
-  color: var(--panel-text-muted);
+  color: var(--c-brand-ink);
 }
 
 .ge-foot {
@@ -128,20 +128,20 @@ const bravo = computed(() => (props.winner ? t('gameEnd.bravo', { side: props.wi
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  font-size: var(--font-size-082);
+  font-size: var(--fs-sm);
   padding: 8px 20px;
   border-radius: var(--radius-8);
   cursor: pointer;
 }
 
 .ge-ok {
-  background: var(--color-gold);
-  color: var(--panel-bg);
+  background: var(--c-gold);
+  color: var(--c-panel);
 }
 
 .ge-cancel {
-  background: var(--white-a06);
-  color: var(--panel-text);
+  background: color-mix(in srgb, var(--c-white) 6%, transparent);
+  color: var(--c-panel-text);
 }
 
 .ge-ok:hover,

@@ -94,15 +94,15 @@ function onMouseDown(ev) {
 
 .counter-ring {
   fill: none;
-  stroke: var(--color-selection);
+  stroke: var(--c-green);
   stroke-width: 4;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
 
 .counter-label {
-  fill: #fff;
-  stroke: #000;
+  fill: var(--c-white);
+  stroke: var(--c-ink);
   stroke-width: 3;
   paint-order: stroke;
   font-weight: 700;
@@ -113,7 +113,7 @@ function onMouseDown(ev) {
 
 .counter-moved-ring {
   fill: none;
-  stroke: var(--color-orange);
+  stroke: var(--c-orange);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
   pointer-events: none;

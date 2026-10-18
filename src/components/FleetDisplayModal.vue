@@ -85,7 +85,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
-  background: var(--black-a50);
+  background: color-mix(in srgb, var(--c-ink) 50%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -97,10 +97,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   flex-direction: column;
   max-width: 100%;
   max-height: 100%;
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   border-radius: var(--radius-12);
-  border-top: 4px solid var(--color-orange);
+  border-top: 4px solid var(--c-orange);
   box-shadow: var(--shadow-modal);
   padding: 12px 16px 16px;
   outline: none;
@@ -124,10 +124,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 }
 .fd-head h3 {
   margin: 0;
-  font-size: var(--font-size-095);
+  font-size: var(--fs-md);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-orange);
+  color: var(--c-orange);
 }
 .fd-close {
   flex: none;
@@ -135,16 +135,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   height: 28px;
   border: none;
   border-radius: var(--radius-6);
-  background: var(--white-a10);
+  background: color-mix(in srgb, var(--c-white) 10%, transparent);
   color: inherit;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   line-height: 1;
   cursor: pointer;
   transition: background-color 150ms ease, transform 120ms ease-out;
 }
 @media (hover: hover) and (pointer: fine) {
   .fd-close:hover {
-    background: var(--white-a20);
+    background: color-mix(in srgb, var(--c-white) 20%, transparent);
   }
 }
 .fd-close:active {
@@ -166,7 +166,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 .fd-ship {
   position: absolute;
   object-fit: contain;
-  filter: drop-shadow(0 2px 3px var(--black-a40));
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--c-ink) 40%, transparent));
   user-select: none;
   animation: fd-ship-in 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
   animation-delay: calc(80ms + var(--i) * 40ms);
@@ -174,7 +174,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 .fd-extra {
   margin: 10px 0 0;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
 }
 
 @keyframes fd-in {

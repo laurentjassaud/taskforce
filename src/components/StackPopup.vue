@@ -64,16 +64,16 @@ watch(() => [props.anchor, props.counters.length], () => nextTick(place), { imme
   position: fixed;
   z-index: var(--z-overlay);
   pointer-events: none;
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   border-radius: var(--radius-6);
   box-shadow: var(--shadow-menu);
   padding: 8px 10px 6px;
 }
 
 .sp-title {
-  color: var(--panel-text-muted);
-  font-size: var(--font-size-075);
+  color: var(--c-brand-ink);
+  font-size: var(--fs-xs);
   font-weight: 600;
   margin-bottom: 6px;
   white-space: nowrap;
@@ -103,8 +103,8 @@ watch(() => [props.anchor, props.counters.length], () => nextTick(place), { imme
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--font-size-070);
-  color: var(--panel-text-muted);
+  font-size: var(--fs-xs);
+  color: var(--c-brand-ink);
 }
 
 .sp-name-full {
@@ -118,7 +118,7 @@ watch(() => [props.anchor, props.counters.length], () => nextTick(place), { imme
   max-width: 64px;
   text-align: center;
   line-height: 1.2;
-  font-size: var(--font-size-070);
-  color: var(--panel-text);
+  font-size: var(--fs-xs);
+  color: var(--c-panel-text);
 }
 </style>

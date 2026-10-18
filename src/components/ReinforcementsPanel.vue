@@ -98,14 +98,14 @@ const groups = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
 }
 .rf-empty {
   opacity: 0.75;
 }
 .rf-turn-title {
   margin: 0 0 8px;
-  font-size: var(--font-size-095);
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 .rf-grid {
@@ -123,31 +123,31 @@ const groups = computed(() => {
 }
 .rf-piece img {
   border-radius: var(--radius-4);
-  background: var(--white-a15);
+  background: color-mix(in srgb, currentColor 15%, transparent);
   cursor: grab;
   border: 3px solid transparent;
   box-sizing: border-box;
 }
 .rf-piece img.rf-selected {
-  border-color: var(--color-orange);
+  border-color: var(--c-orange);
 }
 .rf-piece img.rf-unavailable {
   opacity: 0.4;
   cursor: not-allowed;
 }
 .rf-hex.rf-unlimited {
-  font-size: var(--font-size-095);
+  font-size: var(--fs-md);
   font-weight: 700;
   opacity: 1;
 }
 .rf-hex {
-  font-size: var(--font-size-068);
+  font-size: var(--fs-xs);
   line-height: 1.2;
   word-break: break-word;
   opacity: 0.75;
 }
 .rf-hint {
-  font-size: var(--font-size-072);
+  font-size: var(--fs-xs);
   opacity: 0.75;
   line-height: 1.4;
   margin: 0;

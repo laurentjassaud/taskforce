@@ -7,7 +7,10 @@
 import { ref } from 'vue'
 
 const props = defineProps({
-  tabs: { type: Array, required: true }   // [{ key, label, wide? }]
+  // [{ key, label, wide?, tone?, lightTone? }] — `tone` : couleur CSS de
+  // l'onglet (ex. couleur du camp), déclinée en camaïeu ; sans elle, onglet
+  // blanc. `lightTone` : teinte claire, à texte foncé.
+  tabs: { type: Array, required: true }
 })
 
 const openTab = defineModel('openTab', { default: null })
@@ -22,11 +25,22 @@ const hoverKey = ref(null)
 const fadingKeys = ref(new Set())
 let fadeTimer = null
 
-// Palette par onglet (ton clair → sombre), déclarée dans assets/main.css
-// (`--tab-N-…`). Cycle si plus de 4 onglets.
-const TONES = [1, 2, 3, 4].map((n) => Object.fromEntries(
-  ['bg', 'ink', 'soft', 'rule', 'hover', 'label'].map((key) => [key, `var(--tab-${n}-${key})`]),
-))
+// Teintes d'un onglet : fond, encre, texte doux, filets, survol, libellé.
+// Onglet coloré : camaïeu de sa couleur — teinte foncée, encre et filets
+// éclaircis vers le blanc, survol assombri ; teinte claire (`light`), encre
+// et filets assombris vers l'encre, survol éclairci. Sinon, onglet blanc aux
+// neutres du thème.
+const shade = (tone, pct, toward) => `color-mix(in srgb, ${tone} ${pct}%, ${toward})`
+function toneOf(tone, light = false) {
+  if (!tone) {
+    return { bg: 'var(--c-white)', ink: 'var(--c-ink)', soft: 'var(--c-ink-soft)', rule: 'var(--c-line)',
+      hover: 'var(--c-paper)', label: 'var(--c-ink-soft)' }
+  }
+  const [text, back] = light ? ['var(--c-ink)', 'var(--c-white)'] : ['var(--c-white)', 'var(--c-ink)']
+  const ink = shade(tone, light ? 25 : 10, text)
+  return { bg: tone, ink, soft: shade(tone, light ? 50 : 40, text), rule: shade(tone, light ? 70 : 65, text),
+    hover: shade(tone, light ? 70 : 85, back), label: ink }
+}
 
 const TAB_TOPS = [220, 346, 444, 560]
 function tabTop(tabIndex) {
@@ -52,7 +66,7 @@ function close() {
 }
 
 function rowVars(tab, tabIndex) {
-  const tone = TONES[tabIndex % TONES.length]
+  const tone = toneOf(tab.tone, tab.lightTone)
   const isOpen = openTab.value === tab.key
   const isPeeking = !isOpen && hoverKey.value === tab.key
   const isFading = fadingKeys.value.has(tab.key)
@@ -194,7 +208,7 @@ function rowVars(tab, tabIndex) {
 .dc-tab-label {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-size: var(--font-size-px-13);
+  font-size: var(--fs-sm);
   letter-spacing: 0.9px;
   white-space: nowrap;
   color: var(--tone-label);
@@ -221,7 +235,7 @@ function rowVars(tab, tabIndex) {
 
 .dc-title {
   margin: 0;
-  font-size: var(--font-size-px-22);
+  font-size: var(--fs-2xl);
   font-weight: 600;
   letter-spacing: -0.2px;
   color: var(--tone-ink);
@@ -265,7 +279,7 @@ function rowVars(tab, tabIndex) {
   background: transparent;
   border: 1px solid var(--tone-rule);
   border-radius: var(--radius-4);
-  font-size: var(--font-size-px-12);
+  font-size: var(--fs-xs);
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--tone-ink);

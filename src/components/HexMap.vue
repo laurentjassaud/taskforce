@@ -1057,10 +1057,14 @@ const sidePanelTabs = computed(() => {
   const sides = props.module.sides
   const base = !sides
     ? [{ key: 'reinforcements', label: t('tabs.reinforcements') }]
-    : Object.keys(sides).map((side) => ({ key: side, label: sideTabLabel(side) }))
+    // Onglet d'un camp : à sa couleur (cf. `turnTrack.sides`, SidePanel.vue).
+    : Object.keys(sides).map((side) => ({ key: side, label: sideTabLabel(side), tone: props.module.turnTrack?.sides?.[side]?.color ?? null }))
   // Tasse de recherche du module (cf. SearchBagPanel.vue), s'il en a une.
   const searchBag = moduleRules.searchBag ? [{ key: 'searchBag', label: t('tabs.searchBag') }] : []
-  return [...base, ...searchBag, { key: 'eliminated', label: t('tabs.eliminated') }, { key: 'journal', label: t('tabs.journal') }]
+  return [...base, ...searchBag,
+    // Unités éliminées : #e3e0db, tiré du papier et de l'encre du thème.
+    { key: 'eliminated', label: t('tabs.eliminated'), tone: 'color-mix(in srgb, var(--c-paper) 92%, var(--c-ink))', lightTone: true },
+    { key: 'journal', label: t('tabs.journal'), tone: 'var(--c-gold)', lightTone: true }]
 })
 function reinforcementsForTab(key) {
   const sides = props.module.sides
@@ -3178,17 +3182,17 @@ function onMapDragEnd() {
   flex-wrap: wrap;
   gap: 12px;
   padding: 16px 36px 0;
-  background: var(--board-bg);
+  background: var(--c-paper);
   flex: none;
   position: relative;
   z-index: var(--z-raised);
 }
 
 .toolbar h1 {
-  font-size: var(--font-size-320);
+  font-size: var(--fs-3xl);
   font-weight: 700;
   margin: 0;
-  color: var(--panel-text-muted);
+  color: var(--c-brand-ink);
 }
 
 .turn-tracker-block {
@@ -3208,9 +3212,9 @@ function onMapDragEnd() {
 .game-over-tag {
   padding: 3px 10px;
   border-radius: var(--radius-6);
-  background: var(--color-alert);
-  color: var(--panel-bg);
-  font-size: var(--font-size-080);
+  background: var(--c-brand);
+  color: var(--c-panel);
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -3219,7 +3223,7 @@ function onMapDragEnd() {
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
 }
 
 .controls label {
@@ -3227,21 +3231,21 @@ function onMapDragEnd() {
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  color: var(--color-text);
+  color: var(--c-ink);
 }
 
 .toggle-btn {
   padding: 5px 10px;
-  font-size: var(--font-size-085);
-  border: 1px solid var(--black-a25);
+  font-size: var(--fs-sm);
+  border: 1px solid color-mix(in srgb, var(--c-ink) 25%, transparent);
   border-radius: var(--radius-4);
   background: transparent;
-  color: var(--color-text);
+  color: var(--c-ink);
   cursor: pointer;
 }
 
 .toggle-btn.active {
-  background: var(--black-a25);
+  background: color-mix(in srgb, var(--c-ink) 25%, transparent);
 }
 
 .toggle-btn:disabled {
@@ -3257,12 +3261,12 @@ function onMapDragEnd() {
 
 .replay-pos {
   font-variant-numeric: tabular-nums;
-  font-size: var(--font-size-080);
+  font-size: var(--fs-sm);
   opacity: 0.85;
 }
 
 .replay-btn {
-  font-size: var(--font-size-090);
+  font-size: var(--fs-md);
   line-height: 1;
   padding: 5px 9px;
 }
@@ -3283,7 +3287,7 @@ function onMapDragEnd() {
   overflow: hidden;
   flex: 1;
   min-height: 0;
-  background: var(--board-bg);
+  background: var(--c-paper);
 }
 
 .map-wrap.dragging {
@@ -3300,30 +3304,30 @@ function onMapDragEnd() {
 }
 
 polygon.hex {
-  fill: var(--white-a00);
+  fill: transparent;
   transition: fill 0.05s;
 }
 
 polygon.hex.adjacent {
-  fill: var(--reach-a35);
+  fill: color-mix(in srgb, color-mix(in srgb, var(--c-green) 60%, var(--c-ink)) 35%, transparent);
 }
 
 polygon.hex.adjacent:hover {
-  fill: var(--reach-a55);
+  fill: color-mix(in srgb, color-mix(in srgb, var(--c-green) 60%, var(--c-ink)) 55%, transparent);
 }
 
 polygon.hex.entry {
-  fill: var(--orange-a40);
+  fill: color-mix(in srgb, var(--c-orange) 40%, transparent);
 }
 
 polygon.hex.entry:hover {
-  fill: var(--orange-a60);
+  fill: color-mix(in srgb, var(--c-orange) 60%, transparent);
 }
 
 .coordtxt {
   font-family: var(--font-mono);
   font-weight: 700;
-  fill: var(--color-ink);
+  fill: var(--c-ink);
   pointer-events: none;
 }
 
@@ -3342,7 +3346,7 @@ polygon.hex.entry:hover {
 
 .debug-trail-dot {
   fill: currentColor;
-  stroke: var(--color-white);
+  stroke: var(--c-white);
   stroke-width: 1.5px;
   pointer-events: none;
 }
@@ -3350,8 +3354,8 @@ polygon.hex.entry:hover {
 .debug-cot {
   font-family: var(--font-mono);
   font-weight: 700;
-  fill: var(--color-zoc);
-  stroke: var(--color-white);
+  fill: var(--c-red);
+  stroke: var(--c-white);
   stroke-width: 3px;
   paint-order: stroke fill;
   pointer-events: none;
@@ -3364,8 +3368,8 @@ polygon.hex.entry:hover {
 .debug-entry-surcharge {
   font-family: var(--font-mono);
   font-weight: 700;
-  fill: var(--color-debug-surcharge);
-  stroke: var(--color-white);
+  fill: color-mix(in srgb, var(--c-green) 45%, var(--c-ink));
+  stroke: var(--c-white);
   stroke-width: 3px;
   paint-order: stroke fill;
   pointer-events: none;
@@ -3377,8 +3381,8 @@ polygon.hex.entry:hover {
    être À LA FOIS accessible ET sous ZOC, cf. règle "doit s'y arrêter") pour
    rester lisible quel que soit ce qu'il y a dessous. */
 .hex-zoc {
-  fill: var(--zoc-a22);
-  stroke: var(--color-zoc);
+  fill: color-mix(in srgb, var(--c-red) 22%, transparent);
+  stroke: var(--c-red);
   stroke-width: 2.5;
   stroke-dasharray: 5 3;
   pointer-events: none;
@@ -3390,27 +3394,27 @@ polygon.hex.entry:hover {
   pointer-events: none;
 }
 .hex-recon-target {
-  fill: rgba(255, 196, 0, 0.28);
-  stroke: #ffc400;
+  fill: color-mix(in srgb, var(--c-gold) 28%, transparent);
+  stroke: var(--c-gold);
   stroke-width: 3;
   pointer-events: none;
   animation: recon-pulse 1.2s ease-in-out infinite alternate;
 }
 .hex-recon-source {
   fill: none;
-  stroke: #4fc3f7;
+  stroke: color-mix(in srgb, var(--c-usn) 55%, var(--c-white));
   stroke-width: 3;
   pointer-events: none;
 }
 .hex-recon-source-chosen {
-  fill: rgba(79, 195, 247, 0.3);
-  stroke: #4fc3f7;
+  fill: color-mix(in srgb, color-mix(in srgb, var(--c-usn) 55%, var(--c-white)) 30%, transparent);
+  stroke: color-mix(in srgb, var(--c-usn) 55%, var(--c-white));
   stroke-width: 4;
   pointer-events: none;
 }
 .hex-fleet-display {
-  fill: rgba(255, 140, 0, 0.18);
-  stroke: var(--color-orange);
+  fill: color-mix(in srgb, var(--c-orange) 18%, transparent);
+  stroke: var(--c-orange);
   stroke-width: 3;
   pointer-events: none;
 }

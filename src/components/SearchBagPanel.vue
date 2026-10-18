@@ -44,7 +44,7 @@ const total = computed(() => rows.value.reduce((sum, row) => sum + row.total, 0)
   display: flex;
   flex-direction: column;
   gap: 14px;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
 }
 .sb-total {
   margin: 0;
@@ -66,7 +66,7 @@ const total = computed(() => rows.value.reduce((sum, row) => sum + row.total, 0)
 }
 .sb-row img {
   border-radius: var(--radius-4);
-  background: var(--white-a15);
+  background: color-mix(in srgb, currentColor 15%, transparent);
 }
 .sb-empty {
   opacity: 0.45;
@@ -75,7 +75,7 @@ const total = computed(() => rows.value.reduce((sum, row) => sum + row.total, 0)
   font-variant-numeric: tabular-nums;
 }
 .sb-hint {
-  font-size: var(--font-size-072);
+  font-size: var(--fs-xs);
   opacity: 0.75;
   line-height: 1.4;
   margin: 0;

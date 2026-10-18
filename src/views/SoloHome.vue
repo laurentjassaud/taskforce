@@ -157,8 +157,8 @@ function start() {
   min-height: 100vh;
   min-height: 100svh;
   overflow: hidden;
-  background: var(--color-white);
-  color: var(--color-ink);
+  background: var(--c-white);
+  color: var(--c-ink);
   font-family: Inter, system-ui, sans-serif;
 }
 
@@ -238,25 +238,25 @@ function start() {
   line-height: normal;
 }
 .kicker {
-  font-size: clamp(16px, 1.1vw, 20px);
+  font-size: var(--fs-xl);
   font-weight: 500;
-  color: var(--brand-ink);
+  color: var(--c-brand-ink);
 }
 .title {
   margin: -0.15em 0;
-  font-size: clamp(40px, 6.25vw, 120px);
+  font-size: var(--fs-hero);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
   text-transform: uppercase;
-  color: var(--brand-blue);
+  color: var(--c-brand-blue);
 }
 .subtitle {
-  font-size: clamp(14px, 1.1vw, 20px);
+  font-size: var(--fs-xl);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--brand-ink);
+  color: var(--c-brand-ink);
 }
 
 .stage {
@@ -272,10 +272,10 @@ function start() {
   grid-template-columns: repeat(2, minmax(0, 400px));
   gap: 40px;
   padding-block: 20px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   line-height: 1.5;
-  color: var(--color-ink);
+  color: var(--c-ink);
 }
 @media (max-width: 880px) {
   .credits {
@@ -284,7 +284,7 @@ function start() {
   }
 }
 .credits a {
-  color: var(--brand-orange);
+  color: var(--c-brand);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -299,10 +299,10 @@ function start() {
   padding: 20px 40px;
   border: none;
   border-radius: 8px;
-  background: var(--brand-orange);
-  color: var(--color-white);
+  background: var(--c-brand);
+  color: var(--c-white);
   font: inherit;
-  font-size: clamp(18px, 1.25vw, 24px);
+  font-size: var(--fs-2xl);
   font-weight: 300;
   line-height: normal;
   text-transform: uppercase;
@@ -312,14 +312,14 @@ function start() {
 .cta.small {
   margin-top: 0;
   padding: 14px 32px;
-  font-size: 18px;
+  font-size: var(--fs-lg);
 }
 @media (hover: hover) and (pointer: fine) {
   .cta:not(:disabled):hover {
-    background: var(--brand-orange-strong);
+    background: color-mix(in srgb, var(--c-brand) 88%, var(--c-ink));
   }
   .ghost:hover {
-    border-color: var(--brand-ink);
+    border-color: var(--c-brand-ink);
   }
 }
 .cta:not(:disabled):active,
@@ -332,18 +332,18 @@ function start() {
 }
 .cta:focus-visible,
 .ghost:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--c-brand-blue);
   outline-offset: 3px;
 }
 
 .ghost {
   padding: 14px 28px;
-  border: 1px solid var(--brand-line-strong);
+  border: 1px solid color-mix(in srgb, var(--c-steel) 55%, var(--c-white));
   border-radius: 8px;
-  background: var(--color-white);
-  color: var(--brand-ink);
+  background: var(--c-white);
+  color: var(--c-brand-ink);
   font: inherit;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 300;
   line-height: normal;
   text-transform: uppercase;
@@ -372,7 +372,7 @@ function start() {
 }
 .error {
   margin-top: 16px;
-  color: var(--light-danger);
+  color: var(--c-red);
 }
 
 .stage-enter-active {
@@ -395,7 +395,9 @@ function start() {
 .band {
   position: relative;
   flex: none;
-  height: clamp(220px, 38vh, 412px);
+  /* Proportions de la maquette (1920 × 412) : le cadrage du visuel ne
+     dépend pas de la hauteur de l'écran. */
+  height: clamp(220px, 21.46vw, 412px);
 }
 /* Au moins 1280 px de large : sur un écran étroit, on garde le cadrage du
    porte-avions au lieu de laisser remonter le titre de la boîte. */
@@ -421,9 +423,20 @@ function start() {
   transform-origin: 50% 0;
   pointer-events: none;
 }
+/* Les pions rétrécissent avec le bandeau (sa hauteur suit la largeur). */
+@media (max-width: 1700px) {
+  .counters {
+    transform: scale(0.85);
+  }
+}
+@media (max-width: 1400px) {
+  .counters {
+    transform: scale(0.72);
+  }
+}
 @media (max-width: 1100px) {
   .counters {
-    transform: scale(0.75);
+    transform: scale(0.6);
   }
 }
 @media (max-width: 720px) {
@@ -437,7 +450,7 @@ function start() {
 .counter {
   position: absolute;
   transform: translate(-50%, -50%) rotate(var(--r));
-  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--c-ink) 35%, transparent));
   user-select: none;
   animation: counter-drop 420ms var(--ease-out) both;
   animation-delay: calc(120ms + var(--i) * 50ms);

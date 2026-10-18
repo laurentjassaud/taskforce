@@ -147,7 +147,7 @@ export function markGuideSeen() {
   position: fixed;
   inset: 0;
   z-index: var(--z-guide);
-  background: var(--black-a50);
+  background: color-mix(in srgb, var(--c-ink) 50%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,10 +159,10 @@ export function markGuideSeen() {
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   border-radius: var(--radius-12);
-  border-top: 4px solid var(--color-gold);
+  border-top: 4px solid var(--c-gold);
   box-shadow: var(--shadow-modal);
   padding: 14px 18px 16px;
 }
@@ -174,17 +174,17 @@ export function markGuideSeen() {
 }
 
 .ig-step {
-  font-size: var(--font-size-080);
-  color: var(--panel-text-faint);
+  font-size: var(--fs-sm);
+  color: var(--c-steel);
   font-variant-numeric: tabular-nums;
 }
 
 .ig-head h3 {
   margin: 2px 0 0;
-  font-size: var(--font-size-110);
+  font-size: var(--fs-lg);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-gold);
+  color: var(--c-gold);
 }
 
 .ig-close {
@@ -195,9 +195,9 @@ export function markGuideSeen() {
   height: 26px;
   border: none;
   border-radius: var(--radius-round);
-  background: var(--white-a06);
-  color: var(--panel-text);
-  font-size: var(--font-size-110);
+  background: color-mix(in srgb, var(--c-white) 6%, transparent);
+  color: var(--c-panel-text);
+  font-size: var(--fs-lg);
   line-height: 26px;
   padding: 0;
   cursor: pointer;
@@ -210,13 +210,13 @@ export function markGuideSeen() {
 .ig-intro,
 .ig-lead {
   margin: 0 0 10px;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
   line-height: 1.45;
 }
 
 .ig-intro {
   padding: 8px 10px;
-  background: var(--white-a06);
+  background: color-mix(in srgb, var(--c-white) 6%, transparent);
   border-radius: var(--radius-8);
 }
 
@@ -233,17 +233,17 @@ export function markGuideSeen() {
   flex-direction: column;
   gap: 2px;
   padding: 7px 0;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 
 .ig-list li + li {
-  border-top: 1px solid var(--white-a06);
+  border-top: 1px solid color-mix(in srgb, var(--c-white) 6%, transparent);
 }
 
 .ig-term {
   font-weight: 700;
-  color: var(--color-gold);
+  color: var(--c-gold);
 }
 
 .ig-foot {
@@ -265,24 +265,24 @@ export function markGuideSeen() {
   padding: 0;
   border: none;
   border-radius: var(--radius-round);
-  background: var(--panel-text-faint);
+  background: var(--c-steel);
   opacity: 0.5;
   cursor: pointer;
 }
 
 .ig-dot.active {
-  background: var(--color-gold);
+  background: var(--c-gold);
   opacity: 1;
 }
 
 .ig-btn {
   border: none;
-  background: var(--color-gold);
-  color: var(--panel-bg);
+  background: var(--c-gold);
+  color: var(--c-panel);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  font-size: var(--font-size-082);
+  font-size: var(--fs-sm);
   padding: 8px 18px;
   border-radius: var(--radius-8);
   cursor: pointer;
@@ -293,8 +293,8 @@ export function markGuideSeen() {
 }
 
 .ig-secondary {
-  background: var(--white-a06);
-  color: var(--panel-text);
+  background: color-mix(in srgb, var(--c-white) 6%, transparent);
+  color: var(--c-panel-text);
 }
 
 .ig-btn:disabled {

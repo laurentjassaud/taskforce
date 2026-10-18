@@ -3,144 +3,45 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Thème de l'application — toutes les valeurs partagées des styles des
    composants : couleurs, polices, tailles de texte, arrondis, ombres et
-   couches (z-index). Les composants n'écrivent plus ces valeurs en dur, ils
+   couches (z-index). Les composants n'écrivent pas ces valeurs en dur, ils
    les lisent ici (`var(--…)`) : c'est le seul endroit à modifier pour
    changer l'apparence du jeu.
    Restent dans les composants : les dimensions propres à chacun (largeurs,
-   marges, espacements), et les palettes Vue de base.css (`--color-text`...).
+   marges, espacements) et les tailles de texte du plateau SVG, qui suivent
+   le zoom de la carte.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* --- Neutres ------------------------------------------------------------- */
-  --color-white: #fff;
-  --color-ink: #111;             /* numéros d'hex (coordonnées) */
+  /* --- Couleurs : 17, et rien d'autre ---------------------------------------
+     Toutes les nuances (voiles translucides, survols, camaïeux des onglets,
+     ombres) s'en déduisent avec color-mix(), dans les composants :
+       color-mix(in srgb, var(--c-ink) 50%, transparent)   voile à 50 %
+       color-mix(in srgb, var(--c-ijn) 80%, var(--c-ink))   teinte assombrie
+     Ne pas ajouter de couleur : composer à partir de celles-ci. */
+  /* Neutres */
+  --c-white: #ffffff;
+  --c-ink: #1d1b18;              /* texte, ombres, voiles sombres */
+  --c-ink-soft: #5c574f;         /* texte secondaire */
+  --c-line: #d7d7d7;             /* bordures, filets */
+  --c-paper: #f4f1ec;            /* fond de la carte, fonds clairs */
+  /* Panneaux sombres (modales, menus, piste de tour) */
+  --c-panel: #2a2620;
+  --c-panel-text: #ece4d0;
+  --c-steel: #748ea5;            /* texte discret et contrôles sur fond sombre */
+  /* Jeu */
+  --c-gold: #e8c468;             /* titres, piste de tour, cibles de reconnaissance */
+  --c-orange: #ff8c00;           /* hex d'entrée, liseré de mouvement */
+  --c-green: #2ecc71;            /* sélection, hex accessibles */
+  --c-red: #c0392b;              /* ZOC, erreurs, unités éliminées */
+  /* Camps (onglets du panneau latéral, piste de tour — cf. coral-sea.json) */
+  --c-ijn: #b75f4a;
+  --c-usn: #6f94b2;
+  /* Marque Task Force (accueil, maquette Figma) */
+  --c-brand: #f6512b;            /* bouton principal, liens, alertes */
+  --c-brand-blue: #6d9fb6;       /* titre "Task Force" */
+  --c-brand-ink: #375e6e;        /* sur-titres, intitulés, titre du plateau */
 
-  /* Voiles noirs et blancs translucides (ombres, fonds, survols). */
-  --black-a08: rgba(0, 0, 0, 0.08);
-  --black-a25: rgba(0, 0, 0, 0.25);
-  --black-a40: rgba(0, 0, 0, 0.4);
-  --black-a50: rgba(0, 0, 0, 0.5);
-  --black-a60: rgba(0, 0, 0, 0.6);
-  --white-a00: rgba(255, 255, 255, 0);
-  --white-a06: rgba(255, 255, 255, 0.06);
-  --white-a10: rgba(255, 255, 255, 0.1);
-  --white-a12: rgba(255, 255, 255, 0.12);
-  --white-a15: rgba(255, 255, 255, 0.15);
-  --white-a20: rgba(255, 255, 255, 0.2);
-  --white-a25: rgba(255, 255, 255, 0.25);
-  --white-a35: rgba(255, 255, 255, 0.35);
-  --white-a70: rgba(255, 255, 255, 0.7);
-
-  /* --- Pages claires : liste des parties, création, lobby, réglages,
-         calibration, bandeau de la partie locale ---------------------------- */
-  --light-bg-soft: #fafafa;
-  --light-bg-muted: #f3f4f6;
-  --light-border: #ccc;
-  --light-border-soft: #ddd;
-  --light-text-strong: #222;
-  --light-text: #333;
-  --light-text-soft: #444;
-  --light-text-medium: #555;
-  --light-text-muted: #666;
-  --light-text-faint: #999;
-  --light-accent: #2563eb;       /* boutons, choix sélectionné */
-  --light-accent-bg: #eff6ff;
-
-  /* --- Marque Task Force : page d'accueil et création de partie (maquette
-         Figma) ------------------------------------------------------------- */
-  --brand-orange: #f6512b;       /* bouton principal, liens, choix retenu */
-  --brand-orange-strong: #e1401b;
-  --brand-blue: #6d9fb6;         /* titre "Task Force" */
-  --brand-ink: #375e6e;          /* sur-titre, sous-titre, intitulés */
-  --brand-line: #d7d7d7;         /* bordures, langue inactive */
-  --brand-line-strong: #b5c3c9;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --light-danger: #b91c1c;       /* messages d'erreur */
-  --light-success: #10b981;      /* joueur en ligne, partie lancée */
-  --light-success-strong: #047857;
-  --light-success-bg: #ecfdf5;
-  --light-warning: #f59e0b;      /* partie en attente de joueurs */
-  --light-warning-bg: #fffbeb;
-  --light-offline: #6b7280;      /* joueur hors ligne */
-  --light-offline-dot: #d1d5db;
-
-  /* --- Plateau et panneaux sombres du jeu (modales, menus, suivi de tour) -- */
-  --board-bg: #f4f1ec;           /* fond de la carte et de la barre d'outils */
-  --panel-bg: #2a2620;
-  --panel-text: #ece4d0;
-  --panel-text-muted: #2c5f72;
-  --panel-text-faint: #748ea5;
-
-  /* --- Couleurs du jeu ----------------------------------------------------- */
-  /* Or : titres, piste de tour. */
-  --color-gold: #e8c468;
-  --gold-a12: rgba(232, 196, 104, 0.12);
-  --gold-a22: rgba(232, 196, 104, 0.22);
-  --gold-a45: rgba(232, 196, 104, 0.45);
-  --gold-a50: rgba(232, 196, 104, 0.5);
-  /* Orange : hex d'entrée, liseré de mouvement, bouton principal. */
-  --color-orange: #ff8c00;
-  --orange-a40: rgba(255, 140, 0, 0.4);
-  --orange-a60: rgba(255, 140, 0, 0.6);
-  /* Sélection d'un pion, hex accessibles. */
-  --color-selection: #2ecc71;
-  --selection-a14: rgba(46, 204, 113, 0.14);
-  --reach-a35: rgba(46, 139, 87, 0.35);
-  --reach-a55: rgba(46, 139, 87, 0.55);
-  /* Zone de contrôle ennemie. */
-  --color-zoc: #c0392b;
-  --zoc-a22: rgba(192, 57, 43, 0.22);
-  /* Alertes : fin de partie, temps presque écoulé. */
-  --color-alert: #ff5a3c;
-  /* Erreurs du journal, unités éliminées. */
-  --color-danger: #d11a1a;
-  --danger-a20: rgba(209, 26, 26, 0.2);
-  --color-debug-surcharge: #1f6f43;
-
-  /* --- Rapport de bug (BugReportModal.vue) --------------------------------- */
-  --report-bg: #3a3f4d;
-  --report-head-top: #2c3a36;
-  --report-head-bottom: #2e3440;
-  --report-divider: #5a606c;
-  --report-border: #8a8f9c;
-  --report-text: #eceae4;
-  --report-close: #5b6475;
-  --report-close-hover: #717b8f;
-  --report-banner-info: #a95f00;
-  --report-banner-danger: #a2252f;
-  --report-warn: #f0b35a;
-  --report-field-bg: #3b3b3b;
-  --report-placeholder: #8d8d8d;
-  --report-focus: #6f95c9;
-  --report-btn: #6b6b6b;
-  --report-btn-hover: #7d7d7d;
-
-  /* --- Onglets du panneau latéral (SidePanel.vue) : une teinte par onglet,
-         dans l'ordre — fond, encre, texte doux, filets, survol, libellé. ---- */
-  --tab-1-bg: #a7a089;
-  --tab-1-ink: #24271f;
-  --tab-1-soft: #6f7360;
-  --tab-1-rule: #9a9d84;
-  --tab-1-hover: #b0b298;
-  --tab-1-label: #55584a;
-  --tab-2-bg: #e8c468;
-  --tab-2-ink: #1f2219;
-  --tab-2-soft: #585c49;
-  --tab-2-rule: #878b71;
-  --tab-2-hover: #989b81;
-  --tab-2-label: #3f4235;
-  --tab-3-bg: #716661;
-  --tab-3-ink: #f0f1e8;
-  --tab-3-soft: #cbcdba;
-  --tab-3-rule: #9ea28a;
-  --tab-3-hover: #8b8f77;
-  --tab-3-label: #e2e3d6;
-  --tab-4-bg: #453e3b;
-  --tab-4-ink: #eceedf;
-  --tab-4-soft: #b9bba6;
-  --tab-4-rule: #5c604f;
-  --tab-4-hover: #474b3e;
-  --tab-4-label: #b9bba6;
 
   /* --- Polices ------------------------------------------------------------- */
   --font-mono: monospace;
@@ -148,31 +49,17 @@
   --font-sans: sans-serif;
   --font-ui: system-ui, sans-serif;
 
-  /* --- Tailles de texte : échelle numérotée (085 = 0.85rem) ----------------- */
-  --font-size-068: 0.68rem;
-  --font-size-070: 0.7rem;
-  --font-size-072: 0.72rem;
-  --font-size-075: 0.75rem;
-  --font-size-080: 0.8rem;
-  --font-size-082: 0.82rem;
-  --font-size-085: 0.85rem;
-  --font-size-090: 0.9rem;
-  --font-size-095: 0.95rem;
-  --font-size-100: 1rem;
-  --font-size-110: 1.1rem;
-  --font-size-125: 1.25rem;
-  --font-size-170: 1.7rem;
-  --font-size-320: 3.2rem;       /* titre du plateau */
-  --font-size-400: 4rem;         /* face du dé */
-  /* Relatives au texte parent (pages claires). */
-  --font-size-em-075: 0.75em;
-  --font-size-em-085: 0.85em;
-  --font-size-em-090: 0.9em;
-  --font-size-em-100: 1em;
-  /* En pixels (onglets du panneau latéral). */
-  --font-size-px-12: 12px;
-  --font-size-px-13: 13px;
-  --font-size-px-22: 22px;
+  /* --- Tailles de texte : 10, les tailles trop proches regroupées ---------- */
+  --fs-2xs: 0.6rem;              /* heures de la piste de tour */
+  --fs-xs: 0.75rem;              /* légendes, mentions */
+  --fs-sm: 0.85rem;              /* texte courant des panneaux */
+  --fs-md: 0.95rem;              /* texte de base, titres de modale */
+  --fs-base: 1rem;
+  --fs-lg: 1.125rem;             /* boutons, intitulés de choix */
+  --fs-xl: 1.25rem;              /* sur-titres de l'accueil */
+  --fs-2xl: 1.5rem;              /* titres de section, bouton principal */
+  --fs-3xl: 3.5rem;              /* titre du plateau, face du dé */
+  --fs-hero: clamp(2.5rem, 6.25vw, 7.5rem); /* titre "Task Force" */
 
   /* --- Arrondis ------------------------------------------------------------ */
   --radius-2: 2px;
@@ -184,11 +71,11 @@
   --radius-round: 50%;
 
   /* --- Ombres -------------------------------------------------------------- */
-  --shadow-modal: 0 18px 40px var(--black-a50);         /* modales */
-  --shadow-widget: 0 18px 40px var(--black-a50);        /* tables, dé */
-  --shadow-widget-drag: 0 22px 46px var(--black-a50);   /* … en cours de déplacement */
-  --shadow-menu: 0 10px 28px var(--black-a50);          /* menu contextuel */
-  --shadow-side-tab: -6px 0 14px var(--black-a40);      /* onglets du panneau latéral */
+  --shadow-modal: 0 18px 40px color-mix(in srgb, var(--c-ink) 50%, transparent);       /* modales */
+  --shadow-widget: 0 18px 40px color-mix(in srgb, var(--c-ink) 50%, transparent);      /* tables, dé */
+  --shadow-widget-drag: 0 22px 46px color-mix(in srgb, var(--c-ink) 50%, transparent); /* … en cours de déplacement */
+  --shadow-menu: 0 10px 28px color-mix(in srgb, var(--c-ink) 50%, transparent);        /* menu contextuel */
+  --shadow-side-tab: -6px 0 14px color-mix(in srgb, var(--c-ink) 40%, transparent);    /* onglets du panneau latéral */
 
   /* --- Couches (z-index), du plus bas au plus haut ------------------------- */
   --z-raised: 1;                 /* au-dessus de son voisin immédiat */

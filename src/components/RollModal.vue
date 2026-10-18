@@ -98,8 +98,8 @@ onUnmounted(() => {
 .dice-widget {
   position: fixed;
   z-index: var(--z-floating);
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   border-radius: var(--radius-12);
   box-shadow: var(--shadow-widget);
   padding: 20px 26px;
@@ -118,7 +118,7 @@ onUnmounted(() => {
 }
 
 .dice-face {
-  font-size: var(--font-size-400);
+  font-size: var(--fs-3xl);
   line-height: 1;
   pointer-events: none;
 }
@@ -128,7 +128,7 @@ onUnmounted(() => {
 }
 
 .dice-face.final {
-  color: var(--color-orange);
+  color: var(--c-orange);
 }
 
 @keyframes dice-spin {
@@ -137,19 +137,19 @@ onUnmounted(() => {
 }
 
 .dice-result {
-  font-size: var(--font-size-090);
+  font-size: var(--fs-md);
   min-height: 1.2em;
   pointer-events: none;
 }
 
 .dice-roll-btn {
   border: none;
-  background: var(--color-orange);
-  color: var(--panel-bg);
+  background: var(--c-orange);
+  color: var(--c-panel);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
   padding: 8px 18px;
   border-radius: var(--radius-8);
   cursor: pointer;

@@ -48,14 +48,14 @@ onUnmounted(() => clearTimeout(timer))
   pointer-events: auto;
   display: block;
   padding: 10px 16px;
-  border: 1px solid var(--gold-a45);
+  border: 1px solid color-mix(in srgb, var(--c-gold) 45%, transparent);
   border-radius: var(--radius-8);
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   font: inherit;
-  font-size: var(--font-size-095);
+  font-size: var(--fs-md);
   text-align: left;
-  box-shadow: 0 6px 20px var(--black-a40);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--c-ink) 40%, transparent);
   cursor: pointer;
 }
 

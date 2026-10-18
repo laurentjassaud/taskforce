@@ -21,7 +21,7 @@ const { locale, t } = useI18n()
 <style scoped>
 .lang-switcher {
   display: inline-flex;
-  border: 1px solid var(--black-a25);
+  border: 1px solid color-mix(in srgb, var(--c-ink) 25%, transparent);
   border-radius: var(--radius-4);
   overflow: hidden;
   flex: none;
@@ -29,7 +29,7 @@ const { locale, t } = useI18n()
 
 .lang-switcher button {
   padding: 4px 8px;
-  font-size: var(--font-size-080);
+  font-size: var(--fs-sm);
   font-weight: 700;
   border: none;
   background: transparent;
@@ -38,11 +38,11 @@ const { locale, t } = useI18n()
 }
 
 .lang-switcher button + button {
-  border-left: 1px solid var(--black-a25);
+  border-left: 1px solid color-mix(in srgb, var(--c-ink) 25%, transparent);
 }
 
 .lang-switcher button.active {
-  background: var(--black-a25);
+  background: color-mix(in srgb, var(--c-ink) 25%, transparent);
 }
 
 .lang-switcher.brand {
@@ -58,22 +58,22 @@ const { locale, t } = useI18n()
   padding: 0;
   border: none;
   border-radius: 2px;
-  background: var(--brand-line);
-  color: var(--color-white);
+  background: var(--c-line);
+  color: var(--c-white);
   font: inherit;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   font-weight: 600;
   line-height: 1;
   transition: background-color 150ms ease, transform 160ms var(--ease-out);
 }
 
 .lang-switcher.brand button.active {
-  background: var(--brand-orange);
+  background: var(--c-brand);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .lang-switcher.brand button:not(.active):hover {
-    background: var(--brand-line-strong);
+    background: color-mix(in srgb, var(--c-steel) 55%, var(--c-white));
   }
 }
 
@@ -82,7 +82,7 @@ const { locale, t } = useI18n()
 }
 
 .lang-switcher.brand button:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--c-brand-blue);
   outline-offset: 2px;
 }
 </style>

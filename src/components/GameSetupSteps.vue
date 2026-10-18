@@ -85,17 +85,17 @@ watch([scenario, party], () => {
   width: 100%;
 }
 .step-index {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--brand-blue);
+  color: var(--c-brand-blue);
 }
 h2 {
   margin-top: 4px;
-  font-size: clamp(22px, 2.2vw, 28px);
+  font-size: var(--fs-2xl);
   font-weight: 600;
-  color: var(--brand-ink);
+  color: var(--c-brand-ink);
   text-align: center;
 }
 .choices {
@@ -119,8 +119,8 @@ h2 {
   align-items: flex-start;
   gap: 14px;
   padding: 20px 22px;
-  background: var(--color-white);
-  border: 1px solid var(--brand-line);
+  background: var(--c-white);
+  border: 1px solid var(--c-line);
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
@@ -128,15 +128,15 @@ h2 {
 }
 @media (hover: hover) and (pointer: fine) {
   .choice:not(.disabled):not(.selected):hover {
-    border-color: var(--brand-blue);
+    border-color: var(--c-brand-blue);
   }
 }
 .choice:not(.disabled):active {
   transform: scale(0.98);
 }
 .choice.selected {
-  border-color: var(--brand-orange);
-  box-shadow: inset 0 0 0 1px var(--brand-orange), 0 8px 24px -12px rgba(246, 81, 43, 0.45);
+  border-color: var(--c-brand);
+  box-shadow: inset 0 0 0 1px var(--c-brand), 0 8px 24px -12px color-mix(in srgb, var(--c-brand) 45%, transparent);
 }
 .choice.disabled {
   cursor: not-allowed;
@@ -148,7 +148,7 @@ h2 {
   pointer-events: none;
 }
 .choice:has(input:focus-visible) {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--c-brand-blue);
   outline-offset: 3px;
 }
 .choice-mark {
@@ -156,7 +156,7 @@ h2 {
   width: 18px;
   height: 18px;
   margin-top: 2px;
-  border: 1.5px solid var(--brand-line-strong);
+  border: 1.5px solid color-mix(in srgb, var(--c-steel) 55%, var(--c-white));
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -167,13 +167,13 @@ h2 {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--brand-orange);
+  background: var(--c-brand);
   transform: scale(0.5);
   opacity: 0;
   transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
 }
 .choice.selected .choice-mark {
-  border-color: var(--brand-orange);
+  border-color: var(--c-brand);
 }
 .choice.selected .choice-mark::after {
   transform: scale(1);
@@ -186,26 +186,26 @@ h2 {
   min-width: 0;
 }
 .choice-title {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   line-height: 1.3;
-  color: var(--brand-ink);
+  color: var(--c-brand-ink);
 }
 .choice-text {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   line-height: 1.5;
-  color: var(--light-text-medium);
+  color: var(--c-ink-soft);
 }
 .badge {
   align-self: flex-start;
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--light-text-muted);
-  background: var(--light-bg-muted);
+  color: var(--c-ink-soft);
+  background: var(--c-paper);
   border-radius: 999px;
 }
 

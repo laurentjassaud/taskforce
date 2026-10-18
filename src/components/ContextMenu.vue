@@ -46,13 +46,13 @@ onUnmounted(() => {
 .ctx-menu {
   position: fixed;
   z-index: var(--z-overlay);
-  background: var(--panel-bg);
-  color: var(--panel-text);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
   border-radius: var(--radius-6);
   box-shadow: var(--shadow-menu);
   padding: 6px;
   min-width: 180px;
-  font-size: var(--font-size-085);
+  font-size: var(--fs-sm);
 }
 .ctx-item {
   display: block;
@@ -67,8 +67,8 @@ onUnmounted(() => {
   font: inherit;
 }
 .ctx-item:hover:not(:disabled) {
-  background: var(--color-orange);
-  color: var(--panel-bg);
+  background: var(--c-orange);
+  color: var(--c-panel);
 }
 
 .ctx-item:disabled {

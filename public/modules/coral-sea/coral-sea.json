@@ -318,12 +318,12 @@
       "ijn": {
         "label": "Japonais",
         "marker": "/modules/coral-sea/images/Marker_Game Turn-IJN.png",
-        "color": "#c8553d"
+        "color": "var(--c-ijn)"
       },
       "usn": {
         "label": "Américains",
         "marker": "/modules/coral-sea/images/Marker_Game Turn-USN.png",
-        "color": "#6f9ccf"
+        "color": "var(--c-usn)"
       }
     },
     "periods": [

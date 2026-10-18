@@ -290,7 +290,7 @@ const conditionRows = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: var(--black-a08);
+  background: color-mix(in srgb, var(--c-ink) 8%, transparent);
   border-radius: var(--radius-8);
   padding: 6px 10px;
 }
@@ -316,15 +316,15 @@ const conditionRows = computed(() => {
   width: 22px;
   height: 22px;
   border-radius: var(--radius-4);
-  background: var(--white-a12);
-  color: var(--panel-text-muted);
-  font-size: var(--font-size-072);
+  background: color-mix(in srgb, var(--c-white) 12%, transparent);
+  color: var(--c-brand-ink);
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
 .tt-cell.active {
-  background: var(--color-gold);
-  color: var(--panel-bg);
+  background: var(--c-gold);
+  color: var(--c-panel);
 }
 
 /* --- Piste détaillée ------------------------------------------------------ */
@@ -339,21 +339,21 @@ const conditionRows = computed(() => {
   gap: 2px;
   padding: 2px 3px 3px;
   border-radius: var(--radius-4);
-  background: var(--white-a12);
+  background: color-mix(in srgb, var(--c-white) 12%, transparent);
 }
 
 /* Bandeaux : nuit en bleu, jour en sable, comme sur la piste imprimée. */
 .tt-period.night {
-  background: rgba(70, 110, 160, 0.35);
+  background: color-mix(in srgb, var(--c-usn) 35%, transparent);
 }
 
 .tt-period.day {
-  background: rgba(225, 190, 120, 0.22);
+  background: color-mix(in srgb, var(--c-gold) 22%, transparent);
 }
 
 .tt-period-label {
-  color: var(--panel-text-muted);
-  font-size: 0.6rem;
+  color: var(--c-brand-ink);
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-align: center;
@@ -371,7 +371,7 @@ const conditionRows = computed(() => {
   width: 30px;
   height: 32px;
   gap: 1px;
-  background: var(--black-a25);
+  background: color-mix(in srgb, var(--c-ink) 25%, transparent);
   /* Liseré du camp qui a l'initiative ce tour-ci. */
   box-shadow: inset 0 -3px 0 var(--initiative);
 }
@@ -389,7 +389,7 @@ const conditionRows = computed(() => {
 }
 
 .tt-cell-time {
-  font-size: 0.55rem;
+  font-size: var(--fs-2xs);
   font-weight: 500;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -408,9 +408,9 @@ const conditionRows = computed(() => {
   gap: 5px;
   padding: 2px 7px;
   border-radius: var(--radius-4);
-  background: var(--white-a12);
-  color: var(--panel-text-muted);
-  font-size: var(--font-size-072);
+  background: color-mix(in srgb, var(--c-white) 12%, transparent);
+  color: var(--c-brand-ink);
+  font-size: var(--fs-xs);
   white-space: nowrap;
 }
 
@@ -423,12 +423,12 @@ const conditionRows = computed(() => {
 }
 
 .tt-condition.allowed .tt-condition-value {
-  color: #7fc98a;
+  color: color-mix(in srgb, var(--c-green) 60%, var(--c-white));
   font-weight: 700;
 }
 
 .tt-condition.forbidden .tt-condition-value {
-  color: #e07a6a;
+  color: color-mix(in srgb, var(--c-red) 65%, var(--c-white));
   font-weight: 700;
 }
 
@@ -439,8 +439,8 @@ const conditionRows = computed(() => {
 }
 
 .tt-side-label {
-  color: var(--panel-text-muted);
-  font-size: var(--font-size-085);
+  color: var(--c-brand-ink);
+  font-size: var(--fs-sm);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -450,16 +450,16 @@ const conditionRows = computed(() => {
   height: 28px;
   border-radius: var(--radius-4);
   border: none;
-  background: var(--color-gold);
-  color: var(--panel-bg);
-  font-size: var(--font-size-100);
+  background: var(--c-gold);
+  color: var(--c-panel);
+  font-size: var(--fs-base);
   font-weight: 700;
   cursor: pointer;
 }
 
 .tt-next:disabled {
-  background: var(--white-a20);
-  color: var(--black-a40);
+  background: color-mix(in srgb, var(--c-white) 20%, transparent);
+  color: color-mix(in srgb, var(--c-ink) 40%, transparent);
   cursor: default;
 }
 
@@ -481,16 +481,16 @@ const conditionRows = computed(() => {
   justify-content: center;
   padding: 3px 8px;
   border-radius: var(--radius-4);
-  background: var(--white-a12);
-  color: var(--panel-text-muted);
-  font-size: var(--font-size-072);
+  background: color-mix(in srgb, var(--c-white) 12%, transparent);
+  color: var(--c-brand-ink);
+  font-size: var(--fs-xs);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .tt-phase.active {
-  background: var(--color-gold);
-  color: var(--panel-bg);
+  background: var(--c-gold);
+  color: var(--c-panel);
 }
 
 /* En ligne "phases", le bouton porte un libellé en plus de la flèche :
@@ -505,6 +505,6 @@ const conditionRows = computed(() => {
 }
 
 .tt-next-label {
-  font-size: var(--font-size-072);
+  font-size: var(--fs-xs);
 }
 </style>
