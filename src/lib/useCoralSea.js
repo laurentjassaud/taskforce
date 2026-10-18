@@ -157,6 +157,7 @@
 import { computed, ref, unref } from 'vue'
 import { INERT_RULES } from './moduleRules.js'
 import { hexDistance } from './hex.js'
+import { resolveAirStrikeTable, strikeOdds } from './airStrike.js'
 import { decide } from './ai/decisionTree.js'
 import { perceiveTaskForce, perceiveReconTarget } from './ai/coralSeaPerception.js'
 import { movementTree, movementTests, movementActions, reconTree, reconTests } from './ai/coralSeaTrees.js'
@@ -460,6 +461,29 @@ function groupCarrierObjectives(objectives, roles, arrivalHexes) {
   return objectives
 }
 
+/** Navires qui défendent le navire `targetKey` contre une frappe
+ *  aéronavale, sur le support de sa task force (`layout`, cf.
+ *  `fleetDisplay`) : lui d'abord, puis ses voisins — sur "Carrier TF", le
+ *  porte-avions est défendu par ses (jusqu'à 4) escortes, une escorte par le
+ *  porte-avions seul (les escortes ne se touchent pas) ; sur "Fleet TF", les
+ *  navires des cases à sa gauche et à sa droite. Un navire hors du support
+ *  (`extra`) se défend seul. `[]` s'il n'est pas dans la task force. */
+export function strikeDefenders(layout, targetKey) {
+  if (layout.kind === 'carrier') {
+    if (layout.carrier.key === targetKey) return [layout.carrier, ...layout.escorts.map((escort) => escort.ship)]
+    const escort = layout.escorts.find((entry) => entry.ship.key === targetKey)
+    if (escort) return [escort.ship, layout.carrier]
+  } else {
+    const placed = layout.slots.find((entry) => entry.ship.key === targetKey)
+    if (placed) {
+      const neighbors = layout.slots.filter((entry) => Math.abs(entry.slot - placed.slot) === 1).map((entry) => entry.ship)
+      return [placed.ship, ...neighbors]
+    }
+  }
+  const alone = (layout.extra ?? []).find((ship) => ship.key === targetKey)
+  return alone ? [alone] : []
+}
+
 export function useCoralSea(moduleId, ctx = {}) {
   const active = computed(() => unref(moduleId) === CORAL_SEA_MODULE_ID)
 
@@ -612,6 +636,22 @@ export function useCoralSea(moduleId, ctx = {}) {
       free = free.filter((raider) => !best.inRange.includes(raider))
       open = open.filter((target) => target !== best.target)
     }
+  }
+
+  // Tableaux de la frappe aéronavale (cf. lib/airStrike.js, coral-sea.json),
+  // ou `null`.
+  const airStrikeTable = active.value ? resolveAirStrikeTable(ctx.airStrike) : null
+
+  /** Probabilités exactes d'une frappe aéronavale (cf. lib/airStrike.js::
+   *  strikeOdds) : `strike` `{ antiAir, antiShip, situation }` — défense AA
+   *  de la cible (cf. `strikeTarget`), puissance anti-ship du raid (cf.
+   *  lib/airStrike.js::antiShipPower), situation de la cible ('dock',
+   *  'landBase', rien en mer) — et, avec la durabilité `{ intact, reduced }`
+   *  du navire visé, de chaque résultat (rien, mineur, significatif,
+   *  critique, coulé) : de quoi peser les attaques de l'IA. `null` sans
+   *  tableaux. */
+  function airStrikeOdds(strike, durability = null) {
+    return airStrikeTable ? strikeOdds(airStrikeTable, strike, durability) : null
   }
 
   /** Hex-objectif de ce pion (`{ col, row }`, col 0-based), ou `null`. */
@@ -958,6 +998,28 @@ export function useCoralSea(moduleId, ctx = {}) {
     return layout
   }
 
+  /** Cible `shipKey` (clé d'un navire du support, cf. `fleetDisplay`) de la
+   *  task force que ce pion EST : `{ ship, defenders, antiAir, durability }`
+   *  — `defenders`, les navires qui la défendent (cf. `strikeDefenders`) ;
+   *  `antiAir`, la somme de leur défense AA ; `durability`, `{ intact,
+   *  reduced }` du navire visé (cf. lib/airStrike.js::damageOutcome). Faces
+   *  intactes : les dégâts des navires ne sont pas encore suivis. `null` :
+   *  pas de support, ou navire absent du catalogue de son camp. */
+  function strikeTarget(counter, shipKey) {
+    const layout = fleetDisplay(counter)
+    if (!layout) return null
+    const catalog = new Map((ctx.fleets?.[counter.faction]?.ships ?? []).map((ship) => [ship.id, ship]))
+    const defenders = strikeDefenders(layout, shipKey)
+    const target = catalog.get(defenders[0]?.id)
+    if (!target) return null
+    return {
+      ship: defenders[0],
+      defenders,
+      antiAir: defenders.reduce((sum, ship) => sum + (catalog.get(ship.id)?.intact?.antiAir ?? 0), 0),
+      durability: { intact: target.intact.durability, reduced: target.damaged?.durability ?? 0 },
+    }
+  }
+
   /** Tirage secret à inscrire au journal avec le déploiement. */
   function setupSecrets() {
     return active.value
@@ -987,7 +1049,7 @@ export function useCoralSea(moduleId, ctx = {}) {
     reconPhase: RECON_PHASE, reconChecks, reconChoice, noteSighting, reconTargetOf, manualReconSide: 'usn', searchBag, searchBagFull: SEARCH_CHITS, drawSearch, refillSearchBag, restoreSearchBag, searchChitsReturn,
     searchResults: SEARCH_RESULTS, searchOutcome, sightings: SIGHTINGS,
     isReusableDummy: isDummy, dummyReinforcementTurn, planDummyReinforcement, applyDummyReinforcement, playerDummyReinforcement,
-    followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan,
+    followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, airStrikeOdds, strikeTarget,
     fleetDisplay, fleetDisplays: FLEET_DISPLAYS, fleetDisplayPhase: FLEET_DISPLAY_PHASE, fleetDisplaySide: 'usn',
   }
 }

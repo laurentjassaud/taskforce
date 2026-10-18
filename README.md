@@ -131,6 +131,7 @@ Champs du JSON (cf. `coral-sea.json`) :
 | `scenarios` | Scénarios proposés : `id`, `label`, `deployment` (`setup` — seul mode appliqué par le moteur ; `free` : bientôt), `weather` (`required` / `optional`) — cf. `src/lib/gameSettings.js` |
 | `turnStructure` | `phases: [{ id, label, kind?, order? }]` : les phases du tour (`kind: "movement"` pour celle où l'on déplace des pions, sinon simple jalon ; `order: "roll"` pour un ordre des camps tiré au dé). Sans liste, une seule phase de Mouvement — cf. `src/lib/rules.js` |
 | `rules` | Paramètres des règles génériques : `stackingLimit` (nombre, ou `"none"` si le jeu n'a pas de règle d'empilement ; ou par camp : `{ "ijn": 1, "usn": "none" }`), `zoc` (`lockIfStarting`, `stopOnEntry`), `entryCongestion` (`multiply` / `none`), et les valeurs des règles particulières du module — cf. `src/lib/rules.js` |
+| `airStrike` | Frappe aéronavale : `die`, `antiAir` (Anti-Air Chart : `[bonus, malus]` par dé et colonne de défense AA — celle de la cible et de ses voisins sur le support de sa task force) et `airToSurface` (Air-to-Surface Chart : dégâts par ligne d6 + bonus + modificateur et colonne de puissance anti-ship diminuée du malus — à gauche de la 1re colonne, pas d'attaque), chacun avec `min` et `columns` (`{ max, label }`) ; `airToSurface.rowModifiers` (`dock`, `landBase` : -2) — cf. `src/lib/airStrike.js` (résolution, probabilités exactes, résultat selon la durabilité du navire) |
 | `sides` | Camps jouables → factions (`{"ijn": ["ijn", "markers"], "usn": ["usn", "markers"]}`) |
 | `turnTrack` | `turns`, `order` des camps, libellé, marqueur (et `color`) de chaque camp ; facultatifs : `interleaved` (phases entremêlées : chaque phase est jouée par tous les camps avant la suivante), `turnInfo` (par tour : `time`, `initiative`, `movement`, `skipPhases`, `conditions`), `periods` (bandeaux Nuit/Jour...), `conditions` (lignes affichées) et `setup` (`{ side, label, short }` : étape de mise en place du camp `side` avant le tour 1) — cf. `src/lib/turnTrack.js` |
 | `terrain` | Les couches d'arêtes (`seaBarriers`… : listes `"AAAA-BBBB"`) et `edges`, qui déclare ce que vaut chaque couche (infranchissable, coupe la ZOC) et l'ordre de priorité quand plusieurs se superposent — cf. `src/lib/edges.js` ; `edges.passages` nomme en plus la couche des hex coupés par une île (`{ "CCRR": { "couleur": [côtés] } }` : on ne ressort que par un côté de la couleur du côté d'entrée) — cf. `src/lib/passages.js` |
@@ -161,6 +162,7 @@ src/
 └── lib/
     ├── useAssisted.js   mode Assisté : phases, MP, arêtes, ZOC, empilement, congestion
     ├── autoMove.js      plus court chemin d'un pion qui marche seul vers son hex-objectif
+    ├── airStrike.js     frappe aéronavale (module.airStrike) : résolution et probabilités exactes
     ├── moduleRules.js   registre des règles particulières par module
     ├── useCoralSea.js   règles particulières du module Coral Sea (patron pour d'autres modules)
     ├── ai/              IA symbolique du camp japonais : moteur d'arbre de décision (decisionTree.js),

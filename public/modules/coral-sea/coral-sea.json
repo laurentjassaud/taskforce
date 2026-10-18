@@ -906,6 +906,71 @@
   "rules": {
     "stackingLimit": "none"
   },
+  "airStrike": {
+    "_comment": [
+      "Frappe aéronavale (cf. src/lib/airStrike.js) : un d6 sur l'Anti-Air Chart (colonne = défense AA de la cible et de ses voisins sur le support de sa task force) donne un bonus au 2e jet et un malus ; le malus est soustrait à la puissance anti-ship (somme des attack des avions) — à gauche de la 1re colonne, pas d'attaque ; un d6 + le bonus + le modificateur de la cible sur l'Air-to-Surface Chart donne les dégâts.",
+      "antiAir.results[dé - 1][colonne] : [bonus, malus], null = case vide (aucun effet). airToSurface.results[ligne][colonne] : dégâts, 0 = case vide ; ligne bornée au tableau.",
+      "Colonnes : une colonne couvre toute valeur <= max que la précédente ne couvre pas ; la dernière (sans max) absorbe le reste ; une valeur < min n'a pas de colonne.",
+      "airToSurface.rowModifiers : modificateur de ligne selon la situation de la cible — navire au mouillage (dock) ou base terrestre (landBase).",
+      "Résultat sur un navire de durabilité intacte I et réduite R : rien < I, mineur = I, significatif de I+1 à I+R, critique = I+R+1, coulé >= I+R+2."
+    ],
+    "die": 6,
+    "antiAir": {
+      "min": 1,
+      "columns": [
+        { "max": 1, "label": "1" },
+        { "max": 2, "label": "2" },
+        { "max": 3, "label": "3" },
+        { "max": 4, "label": "4" },
+        { "max": 6, "label": "5-6" },
+        { "max": 8, "label": "7-8" },
+        { "max": 10, "label": "9-10" },
+        { "max": 12, "label": "11-12" },
+        { "max": 15, "label": "13-15" },
+        { "max": 19, "label": "16-19" },
+        { "label": "20+" }
+      ],
+      "results": [
+        [[1, 0], [2, 0], [2, 0], [3, 0], [3, 0], [4, 0], [4, 0], [5, 0], [5, 1], [6, 1], [6, 2]],
+        [[1, 0], [1, 0], [2, 0], [2, 0], [2, 0], [3, 0], [3, 1], [4, 1], [4, 1], [5, 2], [6, 2]],
+        [null, [1, 0], [1, 0], [1, 0], [2, 0], [3, 0], [3, 1], [3, 1], [4, 1], [4, 2], [5, 2]],
+        [null, null, [1, 0], [1, 0], [2, 0], [2, 1], [3, 1], [3, 2], [3, 2], [4, 2], [5, 3]],
+        [null, null, null, [1, 0], [1, 1], [1, 1], [2, 1], [2, 2], [3, 2], [3, 3], [4, 3]],
+        [null, null, null, [0, 1], [0, 1], [1, 1], [1, 2], [2, 2], [2, 3], [3, 3], [3, 4]]
+      ]
+    },
+    "airToSurface": {
+      "min": 1,
+      "columns": [
+        { "max": 1, "label": "1" },
+        { "max": 2, "label": "2" },
+        { "max": 3, "label": "3" },
+        { "max": 4, "label": "4" },
+        { "max": 5, "label": "5" },
+        { "max": 7, "label": "6-7" },
+        { "max": 9, "label": "8-9" },
+        { "max": 11, "label": "10-11" },
+        { "max": 13, "label": "12-13" },
+        { "label": "14+" }
+      ],
+      "rowModifiers": { "dock": -2, "landBase": -2 },
+      "results": [
+        [5, 6, 8, 10, 13, 17, 19, 21, 24, 24],
+        [2, 3, 4, 7, 9, 11, 13, 15, 17, 20],
+        [1, 2, 3, 6, 8, 10, 12, 14, 16, 18],
+        [0, 1, 3, 5, 7, 9, 11, 13, 15, 17],
+        [0, 0, 2, 4, 6, 8, 10, 12, 14, 16],
+        [0, 0, 1, 3, 5, 7, 9, 11, 13, 14],
+        [0, 0, 0, 2, 4, 6, 8, 10, 11, 12],
+        [0, 0, 0, 1, 3, 5, 7, 8, 10, 10],
+        [0, 0, 0, 0, 2, 4, 6, 7, 8, 9],
+        [0, 0, 0, 0, 1, 3, 5, 6, 7, 8],
+        [0, 0, 0, 0, 0, 2, 4, 5, 6, 7],
+        [0, 0, 0, 0, 0, 1, 3, 4, 4, 6],
+        [0, 0, 0, 0, 0, 0, 1, 2, 2, 5]
+      ]
+    }
+  },
   "counters": {
     "ijn": [
       {

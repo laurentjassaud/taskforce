@@ -96,6 +96,10 @@ export const INERT_RULES = Object.freeze({
   raidSide: null,
   /** Raids à lancer : `[{ targetId, raiders: [{ tf, name, src }] }]`. */
   raidPlan: () => [],
+  /** Probabilités d'une frappe aéronavale (cf. lib/airStrike.js::strikeOdds), ou `null`. */
+  airStrikeOdds: () => null,
+  /** Navire visé par une frappe : `{ ship, defenders, antiAir, durability }`, ou `null`. */
+  strikeTarget: () => null,
   /** Navires de cette task force posés sur son support (cf.
    *  FleetDisplayModal.vue), ou `null`. */
   fleetDisplay: () => null,

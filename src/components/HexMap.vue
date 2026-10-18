@@ -597,6 +597,8 @@ const moduleRules = useModuleRules(toRef(props, 'moduleId'), {
   scenario: (props.module.scenarios ?? []).find((scenario) => scenario.id === props.settings?.scenario)
     ?? props.module.scenarios?.[0] ?? null,
   fleets: props.module.fleetCatalog ?? {},
+  // Tableaux de la frappe aéronavale (cf. lib/airStrike.js).
+  airStrike: props.module.airStrike ?? null,
 })
 
 // Étiquette secrète d'un pion (cf. `moduleRules.privateLabel` — ex. vraie
