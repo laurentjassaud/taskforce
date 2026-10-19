@@ -147,6 +147,14 @@
 // "Fleet TF". La disposition, tirée à la première ouverture, ne change plus
 // de la partie.
 //
+// DÉFENSE AA D'UNE TF ALLIÉE REPÉRÉE (cf. `sightedDefense`,
+// `sightedStrikeOdds`) : le joueur compose lui-même ses task forces avec
+// l'ordre de bataille allié du scénario ; le Japonais ne sait donc pas de
+// quoi est faite celle qu'il a repérée, et l'estime par des moyennes sur cet
+// ordre de bataille (cf. lib/ai/coralSeaPerception.js::
+// sightedDefenseEstimate) — de quoi régler l'arbre de décision des attaques
+// aériennes.
+//
 // Un porte-avions repéré COMME porte-avions ("Sighted Carrier" sur un vrai
 // porte-avions) n'a plus rien à cacher : il cherche sans règle de
 // couverture.
@@ -159,7 +167,7 @@ import { INERT_RULES } from './moduleRules.js'
 import { hexDistance } from './hex.js'
 import { resolveAirStrikeTable, strikeOdds } from './airStrike.js'
 import { decide } from './ai/decisionTree.js'
-import { perceiveTaskForce, perceiveReconTarget } from './ai/coralSeaPerception.js'
+import { perceiveTaskForce, perceiveReconTarget, sightedDefenseEstimate } from './ai/coralSeaPerception.js'
 import { movementTree, movementTests, movementActions, reconTree, reconTests } from './ai/coralSeaTrees.js'
 
 export const CORAL_SEA_MODULE_ID = 'coral-sea'
@@ -654,6 +662,46 @@ export function useCoralSea(moduleId, ctx = {}) {
     return airStrikeTable ? strikeOdds(airStrikeTable, strike, durability) : null
   }
 
+  // Défense AA estimée des task forces repérées de chaque camp (cf.
+  // `sightedDefense`) : camp -> estimation, calculée une fois.
+  const defenseEstimates = new Map()
+
+  /** Navires de l'ordre de bataille du camp `side` dans le scénario joué,
+   *  pris dans le catalogue de ce camp — un par pion. Un id absent du
+   *  catalogue est signalé en console et ignoré. */
+  function orderOfBattleShips(side) {
+    const catalog = new Map((ctx.fleets?.[side]?.ships ?? []).map((ship) => [ship.id, ship]))
+    const ids = (ctx.scenario?.orderOfBattle?.[side] ?? []).flatMap((group) => expandShips(group.ships))
+    const missing = [...new Set(ids.filter((id) => !catalog.has(id)))]
+    if (missing.length) console.warn(`orderOfBattle.${side} : navires absents du catalogue — ${missing.join(', ')}`)
+    return ids.filter((id) => catalog.has(id)).map((id) => catalog.get(id))
+  }
+
+  /** Défense estimée (AA, durabilité du navire visé) d'une task force
+   *  repérée du camp `side`, dont on ne sait pas de quoi elle est faite : des
+   *  moyennes sur l'ordre de bataille du scénario (cf.
+   *  lib/ai/coralSeaPerception.js::sightedDefenseEstimate). `{ carrierTF,
+   *  fleetTF }`, ou `null` hors mer de Corail. */
+  function sightedDefense(side) {
+    if (!active.value) return null
+    if (!defenseEstimates.has(side)) defenseEstimates.set(side, sightedDefenseEstimate(orderOfBattleShips(side)))
+    return defenseEstimates.get(side)
+  }
+
+  /** Probabilités d'une frappe de puissance anti-ship `antiShip` sur une task
+   *  force du camp `side` repérée comme `sighting` ('carrierTF' : "Sighted
+   *  Carrier", 'fleetTF' : "Sighted Fleet") : dégâts, et résultat sur le
+   *  navire visé (rien, mineur, significatif, critique, coulé), d'après sa
+   *  défense AA et sa durabilité estimées (cf. `sightedDefense`), arrondies à
+   *  l'entier le plus proche pour lire les tableaux (cf. `airStrikeOdds`).
+   *  `null` sans estimation ou sans tableaux. */
+  function sightedStrikeOdds(side, sighting, antiShip) {
+    const estimate = sightedDefense(side)?.[sighting]
+    if (!estimate) return null
+    const durability = { intact: Math.round(estimate.durability.intact), reduced: Math.round(estimate.durability.reduced) }
+    return airStrikeOdds({ antiAir: Math.round(estimate.antiAir), antiShip }, durability)
+  }
+
   /** Hex-objectif de ce pion (`{ col, row }`, col 0-based), ou `null`. */
   function autoMoveTarget(counter) {
     if (!active.value) return null
@@ -1049,7 +1097,7 @@ export function useCoralSea(moduleId, ctx = {}) {
     reconPhase: RECON_PHASE, reconChecks, reconChoice, noteSighting, reconTargetOf, manualReconSide: 'usn', searchBag, searchBagFull: SEARCH_CHITS, drawSearch, refillSearchBag, restoreSearchBag, searchChitsReturn,
     searchResults: SEARCH_RESULTS, searchOutcome, sightings: SIGHTINGS,
     isReusableDummy: isDummy, dummyReinforcementTurn, planDummyReinforcement, applyDummyReinforcement, playerDummyReinforcement,
-    followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, airStrikeOdds, strikeTarget,
+    followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, airStrikeOdds, strikeTarget, sightedDefense, sightedStrikeOdds,
     fleetDisplay, fleetDisplays: FLEET_DISPLAYS, fleetDisplayPhase: FLEET_DISPLAY_PHASE, fleetDisplaySide: 'usn',
   }
 }

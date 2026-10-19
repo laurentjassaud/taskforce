@@ -100,6 +100,10 @@ export const INERT_RULES = Object.freeze({
   airStrikeOdds: () => null,
   /** Navire visé par une frappe : `{ ship, defenders, antiAir, durability }`, ou `null`. */
   strikeTarget: () => null,
+  /** Défense estimée (AA, durabilité) d'une task force repérée d'un camp : `{ carrierTF, fleetTF }`, ou `null`. */
+  sightedDefense: () => null,
+  /** Probabilités d'une frappe sur une task force repérée, d'après sa défense estimée, ou `null`. */
+  sightedStrikeOdds: () => null,
   /** Navires de cette task force posés sur son support (cf.
    *  FleetDisplayModal.vue), ou `null`. */
   fleetDisplay: () => null,

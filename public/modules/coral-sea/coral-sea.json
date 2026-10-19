@@ -782,7 +782,8 @@
     ]
   },
   "fleets": {
-    "ijn": "/modules/coral-sea/fleet-ijn.json"
+    "ijn": "/modules/coral-sea/fleet-ijn.json",
+    "usn": "/modules/coral-sea/fleet-usn.json"
   },
   "scenarios": [
     {
@@ -829,6 +830,28 @@
               "ijn-yubari",
               { "ship": "ijn-dd", "count": 3 },
               { "ship": "ijn-ak", "count": 6 }
+            ]
+          }
+        ],
+        "usn": [
+          {
+            "id": "allied-fleet",
+            "name": "Flotte alliée (le joueur compose ses task forces)",
+            "ships": [
+              "usn-lexington",
+              "usn-yorktown",
+              "usn-minneapolis",
+              "usn-new-orleans",
+              "usn-astoria",
+              "usn-chester",
+              "usn-portland",
+              "ran-australia",
+              "ran-hobart",
+              "usn-chicago",
+              "usn-neosho",
+              "usn-tippecanoe",
+              { "ship": "usn-dd", "count": 6 },
+              "usn-dd-single"
             ]
           }
         ]

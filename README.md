@@ -117,6 +117,7 @@ mémorisé. Les textes vivent dans `src/i18n/fr.js` et `src/i18n/en.js`
 ```
 public/modules/<id>/
 ├── <id>.json          # tout ce qui suit
+├── fleet-<camp>.json  # catalogues de navires (cf. `fleets`)
 ├── favicon.ico
 └── images/            # carte, marqueurs, tables, counters/<faction>/*.png
 ```
@@ -128,7 +129,8 @@ Champs du JSON (cf. `coral-sea.json`) :
 | `boardGame`, `name`, `favicon` | Identité (titre de page, icône d'onglet) |
 | `i18n` | Traductions des libellés du module, par langue et indexées par le texte français : `{"en": {"Américains": "Americans"}}` — un libellé absent reste en français (cf. `src/i18n/index.js::mt`) |
 | `map` | `url`, `imageWidth/Height`, `cols`, `rows`, `evenColMinus` (colonnes décalées amputées d'une ligne), `removedHexes`, `calibration` (x0/y0/colStep/a/rowStep, en pixels de l'image) |
-| `scenarios` | Scénarios proposés : `id`, `label`, `deployment` (`setup` — seul mode appliqué par le moteur ; `free` : bientôt), `weather` (`required` / `optional`) — cf. `src/lib/gameSettings.js` |
+| `fleets` | Catalogues de navires, un fichier par camp (`{ "ijn": ".../fleet-ijn.json", "usn": ".../fleet-usn.json" }`), chargés avec le module (cf. `src/lib/moduleLoader.js`) : chaque navire avec ses faces intacte et endommagée (défense AA, durabilité, puissance de feu, image) ; les ordres de bataille des scénarios y piochent par id. `fleet-usn.json` réunit les marines alliées (`navy` : `usn`, `rn`, `ran`, `rnln`) |
+| `scenarios` | Scénarios proposés : `id`, `label`, `deployment` (`setup` — seul mode appliqué par le moteur ; `free` : bientôt), `weather` (`required` / `optional`) — cf. `src/lib/gameSettings.js` ; `orderOfBattle` (par camp, groupes `{ id, name, ships }` pris dans `fleets` — `{ ship, count }` pour plusieurs pions ; les task forces alliées sont composées par le joueur, le Japonais en estime la défense AA par des moyennes) et `formations` (task forces japonaises tirées au coup d'envoi) |
 | `turnStructure` | `phases: [{ id, label, kind?, order? }]` : les phases du tour (`kind: "movement"` pour celle où l'on déplace des pions, sinon simple jalon ; `order: "roll"` pour un ordre des camps tiré au dé). Sans liste, une seule phase de Mouvement — cf. `src/lib/rules.js` |
 | `rules` | Paramètres des règles génériques : `stackingLimit` (nombre, ou `"none"` si le jeu n'a pas de règle d'empilement ; ou par camp : `{ "ijn": 1, "usn": "none" }`), `zoc` (`lockIfStarting`, `stopOnEntry`), `entryCongestion` (`multiply` / `none`), et les valeurs des règles particulières du module — cf. `src/lib/rules.js` |
 | `airStrike` | Frappe aéronavale : `die`, `antiAir` (Anti-Air Chart : `[bonus, malus]` par dé et colonne de défense AA — celle de la cible et de ses voisins sur le support de sa task force) et `airToSurface` (Air-to-Surface Chart : dégâts par ligne d6 + bonus + modificateur et colonne de puissance anti-ship diminuée du malus — à gauche de la 1re colonne, pas d'attaque), chacun avec `min` et `columns` (`{ max, label }`) ; `airToSurface.rowModifiers` (`dock`, `landBase` : -2) — cf. `src/lib/airStrike.js` (résolution, probabilités exactes, résultat selon la durabilité du navire) |

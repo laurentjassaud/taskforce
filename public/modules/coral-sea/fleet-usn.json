@@ -1,0 +1,1559 @@
+{
+  "_comment": [
+    "Catalogue des navires alliés de la mer de Corail — US Navy, Royal Navy, Royal Australian Navy et marine néerlandaise —, relevé sur les pions.",
+    "Les ordres de bataille des scénarios (coral-sea.json, scenarios[]) y piochent les navires par leur id.",
+    "Chaque navire a deux faces : 'intact' et 'damaged' = dommages significatifs (face retournée, navire fumant) ; 'damaged' vaut null quand la face manque.",
+    "Face : antiAir (en haut à droite), durability (en bas à gauche), firepower (en bas à droite), src (image).",
+    "navy : marine du navire, d'après la couleur des coins du pion — usn (acier), rn (kaki), ran (vert d'eau), rnln (cuivre) ; l'id la reprend en préfixe (ENTERPRISE : usn-enterprise, porte-avions, et rn-enterprise, croiseur).",
+    "nameJa : nom en katakana imprimé sur le pion, relevé tel quel. hullNumber : numéro de coque imprimé devant le nom (CV-2...). carrierCode : code Carrier/Base des porte-avions. symbol : le '⊗' imprimé après 'BB' et 'AO' — sens à préciser d'après la règle (cf. fleet-ijn.json).",
+    "usn-dd, rn-dd, ran-dd et rnln-dd : pions génériques de destroyers (deux navires sur la face intacte, un seul sur la face endommagée), sans nom de navire.",
+    "*-dd-single n'a pas de pion propre : un destroyer isolé est le pion DD de sa marine posé sur sa face réduite (comme ijn-dd-single)."
+  ],
+  "faction": "usn",
+  "types": {
+    "CV": "Porte-avions",
+    "CVL": "Porte-avions léger",
+    "BB": "Cuirassé",
+    "CA": "Croiseur lourd",
+    "CL": "Croiseur léger",
+    "DD": "Destroyers",
+    "AO": "Pétrolier"
+  },
+  "navies": {
+    "usn": "US Navy",
+    "rn": "Royal Navy",
+    "ran": "Royal Australian Navy",
+    "rnln": "Koninklijke Marine (Pays-Bas)"
+  },
+  "ships": [
+    {
+      "id": "usn-enterprise",
+      "name": "ENTERPRISE",
+      "type": "CV",
+      "navy": "usn",
+      "nameJa": "エンタープライズ",
+      "hullNumber": "CV-6",
+      "carrierCode": "ENT",
+      "intact": {
+        "antiAir": 6,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-enterprise-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-enterprise-damaged.png"
+      }
+    },
+    {
+      "id": "usn-hornet",
+      "name": "HORNET",
+      "type": "CV",
+      "navy": "usn",
+      "nameJa": "ホーネット",
+      "hullNumber": "CV-8",
+      "carrierCode": "HOR",
+      "intact": {
+        "antiAir": 6,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-hornet-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-hornet-damaged.png"
+      }
+    },
+    {
+      "id": "usn-lexington",
+      "name": "LEXINGTON",
+      "type": "CV",
+      "navy": "usn",
+      "nameJa": "レキシントン",
+      "hullNumber": "CV-2",
+      "carrierCode": "LEX",
+      "intact": {
+        "antiAir": 6,
+        "durability": 5,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-lexington-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 4,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-lexington-damaged.png"
+      }
+    },
+    {
+      "id": "usn-saratoga",
+      "name": "SARATOGA",
+      "type": "CV",
+      "navy": "usn",
+      "nameJa": "サラトガ",
+      "hullNumber": "CV-3",
+      "carrierCode": "SAR",
+      "intact": {
+        "antiAir": 6,
+        "durability": 5,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-saratoga-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 4,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-saratoga-damaged.png"
+      }
+    },
+    {
+      "id": "usn-wasp",
+      "name": "WASP",
+      "type": "CV",
+      "navy": "usn",
+      "nameJa": "ワスプ",
+      "hullNumber": "CV-7",
+      "carrierCode": "WAS",
+      "intact": {
+        "antiAir": 6,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-wasp-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-wasp-damaged.png"
+      }
+    },
+    {
+      "id": "usn-yorktown",
+      "name": "YORKTOWN",
+      "type": "CV",
+      "navy": "usn",
+      "nameJa": "ヨークタウン",
+      "hullNumber": "CV-5",
+      "carrierCode": "YOR",
+      "intact": {
+        "antiAir": 6,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-yorktown-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-yorktown-damaged.png"
+      }
+    },
+    {
+      "id": "usn-nassau",
+      "name": "NASSAU",
+      "type": "CVL",
+      "navy": "usn",
+      "nameJa": "ナッソー",
+      "intact": {
+        "antiAir": 4,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-nassau-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-nassau-damaged.png"
+      }
+    },
+    {
+      "id": "usn-arizona",
+      "name": "ARIZONA",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "アリゾナ",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 8,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-arizona-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-arizona-damaged.png"
+      }
+    },
+    {
+      "id": "usn-california",
+      "name": "CALIFORNIA",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "カリフォルニア",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 8,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-california-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-california-damaged.png"
+      }
+    },
+    {
+      "id": "usn-maryland",
+      "name": "MARYLAND",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "メリーランド",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 9,
+        "firepower": 10,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-maryland-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-maryland-damaged.png"
+      }
+    },
+    {
+      "id": "usn-nevada",
+      "name": "NEVADA",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "ネバダ",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-nevada-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-nevada-damaged.png"
+      }
+    },
+    {
+      "id": "usn-north-carolina",
+      "name": "NORTH CAROLINA",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "ノースカロライナ",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 8,
+        "durability": 9,
+        "firepower": 10,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-north-carolina-intact.png"
+      },
+      "damaged": {
+        "antiAir": 6,
+        "durability": 8,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-north-carolina-damaged.png"
+      }
+    },
+    {
+      "id": "usn-oklahoma",
+      "name": "OKLAHOMA",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "オクラホマ",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-oklahoma-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-oklahoma-damaged.png"
+      }
+    },
+    {
+      "id": "usn-pennsylvania",
+      "name": "PENNSYLVANIA",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "ペンシルバニア",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 8,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-pennsylvania-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-pennsylvania-damaged.png"
+      }
+    },
+    {
+      "id": "usn-south-dakota",
+      "name": "SOUTH DAKOTA",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "サウスダコタ",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 8,
+        "durability": 9,
+        "firepower": 10,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-south-dakota-intact.png"
+      },
+      "damaged": {
+        "antiAir": 6,
+        "durability": 8,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-south-dakota-damaged.png"
+      }
+    },
+    {
+      "id": "usn-tennessee",
+      "name": "TENNESSEE",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "テネシー",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 8,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-tennessee-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-tennessee-damaged.png"
+      }
+    },
+    {
+      "id": "usn-washington",
+      "name": "WASHINGTON",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "ワシントン",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 8,
+        "durability": 9,
+        "firepower": 10,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-washington-intact.png"
+      },
+      "damaged": {
+        "antiAir": 6,
+        "durability": 8,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-washington-damaged.png"
+      }
+    },
+    {
+      "id": "usn-west-virginia",
+      "name": "WEST VIRGINIA",
+      "type": "BB",
+      "navy": "usn",
+      "nameJa": "W.バージニア",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 9,
+        "firepower": 10,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-west-virginia-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-west-virginia-damaged.png"
+      }
+    },
+    {
+      "id": "usn-astoria",
+      "name": "ASTORIA",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "アストリア",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-astoria-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-astoria-damaged.png"
+      }
+    },
+    {
+      "id": "usn-chester",
+      "name": "CHESTER",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "チェスター",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-chester-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-chester-damaged.png"
+      }
+    },
+    {
+      "id": "usn-chicago",
+      "name": "CHICAGO",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "シカゴ",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-chicago-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-chicago-damaged.png"
+      }
+    },
+    {
+      "id": "usn-houston",
+      "name": "HOUSTON",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "ヒューストン",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-houston-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-houston-damaged.png"
+      }
+    },
+    {
+      "id": "usn-indianapolis",
+      "name": "INDIANAPOLIS",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "インディアナポリス",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-indianapolis-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-indianapolis-damaged.png"
+      }
+    },
+    {
+      "id": "usn-louisville",
+      "name": "LOUISVILLE",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "ルイヴィル",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-louisville-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-louisville-damaged.png"
+      }
+    },
+    {
+      "id": "usn-minneapolis",
+      "name": "MINNEAPOLIS",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "ミネアポリス",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-minneapolis-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-minneapolis-damaged.png"
+      }
+    },
+    {
+      "id": "usn-new-orleans",
+      "name": "NEW ORLEANS",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "ニューオリランズ",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-new-orleans-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-new-orleans-damaged.png"
+      }
+    },
+    {
+      "id": "usn-northampton",
+      "name": "NORTHAMPTON",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "ノーザンプトン",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-northampton-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-northampton-damaged.png"
+      }
+    },
+    {
+      "id": "usn-pensacola",
+      "name": "PENSACOLA",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "ペンサコラ",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-pensacola-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-pensacola-damaged.png"
+      }
+    },
+    {
+      "id": "usn-portland",
+      "name": "PORTLAND",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "ポートランド",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-portland-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-portland-damaged.png"
+      }
+    },
+    {
+      "id": "usn-quincy",
+      "name": "QUINCY",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "クインシイ",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-quincy-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-quincy-damaged.png"
+      }
+    },
+    {
+      "id": "usn-salt-lake-city",
+      "name": "SALT LAKE CITY",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "サルトレイクシティ",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-salt-lake-city-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-salt-lake-city-damaged.png"
+      }
+    },
+    {
+      "id": "usn-san-francisco",
+      "name": "SAN FRANCISCO",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "サンフランシスコ",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-san-francisco-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-san-francisco-damaged.png"
+      }
+    },
+    {
+      "id": "usn-vincennes",
+      "name": "VINCENNES",
+      "type": "CA",
+      "navy": "usn",
+      "nameJa": "ヴィンセンス",
+      "intact": {
+        "antiAir": 2,
+        "durability": 5,
+        "firepower": 6,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-vincennes-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-vincennes-damaged.png"
+      }
+    },
+    {
+      "id": "usn-atlanta",
+      "name": "ATLANTA",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "アトランタ",
+      "intact": {
+        "antiAir": 6,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-atlanta-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 3,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-atlanta-damaged.png"
+      }
+    },
+    {
+      "id": "usn-detroit",
+      "name": "DETROIT",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "デトロイト",
+      "intact": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-detroit-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-detroit-damaged.png"
+      }
+    },
+    {
+      "id": "usn-helena",
+      "name": "HELENA",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "ヘレナ",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-helena-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-helena-damaged.png"
+      }
+    },
+    {
+      "id": "usn-honolulu",
+      "name": "HONOLULU",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "ホノルル",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-honolulu-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-honolulu-damaged.png"
+      }
+    },
+    {
+      "id": "usn-juneau",
+      "name": "JUNEAU",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "ジュノー",
+      "intact": {
+        "antiAir": 6,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-juneau-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 3,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-juneau-damaged.png"
+      }
+    },
+    {
+      "id": "usn-marblehead",
+      "name": "MARBLEHEAD",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "マーブルッド",
+      "intact": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-marblehead-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-marblehead-damaged.png"
+      }
+    },
+    {
+      "id": "usn-raleigh",
+      "name": "RALEIGH",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "ローリー",
+      "intact": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-raleigh-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-raleigh-damaged.png"
+      }
+    },
+    {
+      "id": "usn-san-diego",
+      "name": "SAN DIEGO",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "サンディエゴ",
+      "intact": {
+        "antiAir": 6,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-san-diego-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 3,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-san-diego-damaged.png"
+      }
+    },
+    {
+      "id": "usn-san-juan",
+      "name": "SAN JUAN",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "サンファン",
+      "intact": {
+        "antiAir": 6,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-san-juan-intact.png"
+      },
+      "damaged": {
+        "antiAir": 4,
+        "durability": 3,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-san-juan-damaged.png"
+      }
+    },
+    {
+      "id": "usn-st-louis",
+      "name": "ST. LOUIS",
+      "type": "CL",
+      "navy": "usn",
+      "nameJa": "サントルイス",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-st-louis-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-st-louis-damaged.png"
+      }
+    },
+    {
+      "id": "usn-dd",
+      "name": "DD",
+      "type": "DD",
+      "navy": "usn",
+      "intact": {
+        "antiAir": 1,
+        "durability": 1,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-dd-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-dd-damaged.png"
+      }
+    },
+    {
+      "id": "usn-dd-single",
+      "name": "DD",
+      "type": "DD",
+      "navy": "usn",
+      "intact": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-dd-damaged.png"
+      },
+      "damaged": null
+    },
+    {
+      "id": "usn-neosho",
+      "name": "NEOSHO",
+      "type": "AO",
+      "navy": "usn",
+      "nameJa": "ネオショー",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-neosho-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-neosho-damaged.png"
+      }
+    },
+    {
+      "id": "usn-tippecanoe",
+      "name": "TIPPECANOE",
+      "type": "AO",
+      "navy": "usn",
+      "nameJa": "ティッペカヌー",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-tippecanoe-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/usn-tippecanoe-damaged.png"
+      }
+    },
+    {
+      "id": "rn-formidable",
+      "name": "FORMIDABLE",
+      "type": "CV",
+      "navy": "rn",
+      "nameJa": "フォーミダブル",
+      "carrierCode": "FOR",
+      "intact": {
+        "antiAir": 4,
+        "durability": 5,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-formidable-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-formidable-damaged.png"
+      }
+    },
+    {
+      "id": "rn-illustrious",
+      "name": "ILLUSTRIOUS",
+      "type": "CV",
+      "navy": "rn",
+      "nameJa": "イラストリアス",
+      "carrierCode": "ILL",
+      "intact": {
+        "antiAir": 4,
+        "durability": 5,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-illustrious-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-illustrious-damaged.png"
+      }
+    },
+    {
+      "id": "rn-indomitable",
+      "name": "INDOMITABLE",
+      "type": "CV",
+      "navy": "rn",
+      "nameJa": "インドミタブル",
+      "carrierCode": "IND",
+      "intact": {
+        "antiAir": 4,
+        "durability": 5,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-indomitable-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-indomitable-damaged.png"
+      }
+    },
+    {
+      "id": "rn-victorious",
+      "name": "VICTORIOUS",
+      "type": "CV",
+      "navy": "rn",
+      "nameJa": "ヴィクトリアス",
+      "carrierCode": "VIC",
+      "intact": {
+        "antiAir": 4,
+        "durability": 5,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-victorious-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 4,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-victorious-damaged.png"
+      }
+    },
+    {
+      "id": "rn-hermes",
+      "name": "HERMES",
+      "type": "CVL",
+      "navy": "rn",
+      "nameJa": "ハーミーズ",
+      "carrierCode": "HER",
+      "intact": {
+        "antiAir": 3,
+        "durability": 3,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-hermes-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 2,
+        "firepower": 0,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-hermes-damaged.png"
+      }
+    },
+    {
+      "id": "rn-prince-of-wales",
+      "name": "P. OF WALES",
+      "type": "BB",
+      "navy": "rn",
+      "nameJa": "P.O.ウェールズ",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 4,
+        "durability": 9,
+        "firepower": 10,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-prince-of-wales-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-prince-of-wales-damaged.png"
+      }
+    },
+    {
+      "id": "rn-ramillies",
+      "name": "RAMILLIES",
+      "type": "BB",
+      "navy": "rn",
+      "nameJa": "ラミリーズ",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-ramillies-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-ramillies-damaged.png"
+      }
+    },
+    {
+      "id": "rn-repulse",
+      "name": "REPULSE",
+      "type": "BB",
+      "navy": "rn",
+      "nameJa": "レパルス",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-repulse-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-repulse-damaged.png"
+      }
+    },
+    {
+      "id": "rn-resolution",
+      "name": "RESOLUTION",
+      "type": "BB",
+      "navy": "rn",
+      "nameJa": "レゾリューション",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-resolution-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-resolution-damaged.png"
+      }
+    },
+    {
+      "id": "rn-revenge",
+      "name": "REVENGE",
+      "type": "BB",
+      "navy": "rn",
+      "nameJa": "リヴェンジ",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-revenge-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-revenge-damaged.png"
+      }
+    },
+    {
+      "id": "rn-royal-sovereign",
+      "name": "R. SOVEREIGN",
+      "type": "BB",
+      "navy": "rn",
+      "nameJa": "R.サブリン",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-royal-sovereign-intact.png"
+      },
+      "damaged": {
+        "antiAir": 2,
+        "durability": 7,
+        "firepower": 7,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-royal-sovereign-damaged.png"
+      }
+    },
+    {
+      "id": "rn-warspite",
+      "name": "WARSPITE",
+      "type": "BB",
+      "navy": "rn",
+      "nameJa": "ウオースパイト",
+      "symbol": "⊗",
+      "intact": {
+        "antiAir": 3,
+        "durability": 8,
+        "firepower": 9,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-warspite-intact.png"
+      },
+      "damaged": {
+        "antiAir": 3,
+        "durability": 7,
+        "firepower": 8,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-warspite-damaged.png"
+      }
+    },
+    {
+      "id": "rn-cornwall",
+      "name": "CORNWALL",
+      "type": "CA",
+      "navy": "rn",
+      "nameJa": "コーンウォール",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-cornwall-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-cornwall-damaged.png"
+      }
+    },
+    {
+      "id": "rn-dorsetshire",
+      "name": "DORSETSHIRE",
+      "type": "CA",
+      "navy": "rn",
+      "nameJa": "ドーセットシャー",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-dorsetshire-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-dorsetshire-damaged.png"
+      }
+    },
+    {
+      "id": "rn-exeter",
+      "name": "EXETER",
+      "type": "CA",
+      "navy": "rn",
+      "nameJa": "エクセター",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-exeter-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-exeter-damaged.png"
+      }
+    },
+    {
+      "id": "rn-caledon",
+      "name": "CALEDON",
+      "type": "CL",
+      "navy": "rn",
+      "nameJa": "カレドン",
+      "intact": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-caledon-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 2,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-caledon-damaged.png"
+      }
+    },
+    {
+      "id": "rn-dragon",
+      "name": "DRAGON",
+      "type": "CL",
+      "navy": "rn",
+      "nameJa": "ドラゴン",
+      "intact": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-dragon-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 2,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-dragon-damaged.png"
+      }
+    },
+    {
+      "id": "rn-emerald",
+      "name": "EMERALD",
+      "type": "CL",
+      "navy": "rn",
+      "nameJa": "エメラルド",
+      "intact": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-emerald-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-emerald-damaged.png"
+      }
+    },
+    {
+      "id": "rn-enterprise",
+      "name": "ENTERPRISE",
+      "type": "CL",
+      "navy": "rn",
+      "nameJa": "エンタープライズ",
+      "intact": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-enterprise-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-enterprise-damaged.png"
+      }
+    },
+    {
+      "id": "rn-gambia",
+      "name": "GAMBIA",
+      "type": "CL",
+      "navy": "rn",
+      "nameJa": "ガンビア",
+      "intact": {
+        "antiAir": 2,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-gambia-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-gambia-damaged.png"
+      }
+    },
+    {
+      "id": "rn-dd",
+      "name": "DD",
+      "type": "DD",
+      "navy": "rn",
+      "intact": {
+        "antiAir": 1,
+        "durability": 1,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-dd-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-dd-damaged.png"
+      }
+    },
+    {
+      "id": "rn-dd-single",
+      "name": "DD",
+      "type": "DD",
+      "navy": "rn",
+      "intact": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rn-dd-damaged.png"
+      },
+      "damaged": null
+    },
+    {
+      "id": "ran-australia",
+      "name": "AUSTRALIA",
+      "type": "CA",
+      "navy": "ran",
+      "nameJa": "オーストラリア",
+      "intact": {
+        "antiAir": 2,
+        "durability": 4,
+        "firepower": 5,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-australia-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 4,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-australia-damaged.png"
+      }
+    },
+    {
+      "id": "ran-hobart",
+      "name": "HOBART",
+      "type": "CL",
+      "navy": "ran",
+      "nameJa": "ホバート",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-hobart-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-hobart-damaged.png"
+      }
+    },
+    {
+      "id": "ran-perth",
+      "name": "PERTH",
+      "type": "CL",
+      "navy": "ran",
+      "nameJa": "パース",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-perth-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-perth-damaged.png"
+      }
+    },
+    {
+      "id": "ran-dd",
+      "name": "DD",
+      "type": "DD",
+      "navy": "ran",
+      "intact": {
+        "antiAir": 1,
+        "durability": 1,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-dd-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-dd-damaged.png"
+      }
+    },
+    {
+      "id": "ran-dd-single",
+      "name": "DD",
+      "type": "DD",
+      "navy": "ran",
+      "intact": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/ran-dd-damaged.png"
+      },
+      "damaged": null
+    },
+    {
+      "id": "rnln-de-ruyter",
+      "name": "DE RUYTER",
+      "type": "CL",
+      "navy": "rnln",
+      "nameJa": "デロイター",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-de-ruyter-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-de-ruyter-damaged.png"
+      }
+    },
+    {
+      "id": "rnln-java",
+      "name": "JAVA",
+      "type": "CL",
+      "navy": "rnln",
+      "nameJa": "ジャーバ",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-java-intact.png"
+      },
+      "damaged": {
+        "antiAir": 1,
+        "durability": 2,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-java-damaged.png"
+      }
+    },
+    {
+      "id": "rnln-sumatra",
+      "name": "SUMATRA",
+      "type": "CL",
+      "navy": "rnln",
+      "nameJa": "スマトラ",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-sumatra-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 2,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-sumatra-damaged.png"
+      }
+    },
+    {
+      "id": "rnln-van-heemskerck",
+      "name": "J. VAN HEEMSKERCK",
+      "type": "CL",
+      "navy": "rnln",
+      "nameJa": "J.V.ヘームスケルク",
+      "intact": {
+        "antiAir": 1,
+        "durability": 3,
+        "firepower": 3,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-van-heemskerck-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 2,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-van-heemskerck-damaged.png"
+      }
+    },
+    {
+      "id": "rnln-dd",
+      "name": "DD",
+      "type": "DD",
+      "navy": "rnln",
+      "intact": {
+        "antiAir": 1,
+        "durability": 1,
+        "firepower": 2,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-dd-intact.png"
+      },
+      "damaged": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-dd-damaged.png"
+      }
+    },
+    {
+      "id": "rnln-dd-single",
+      "name": "DD",
+      "type": "DD",
+      "navy": "rnln",
+      "intact": {
+        "antiAir": 0,
+        "durability": 1,
+        "firepower": 1,
+        "src": "/modules/coral-sea/images/counters/usn/fleet/rnln-dd-damaged.png"
+      },
+      "damaged": null
+    }
+  ]
+}

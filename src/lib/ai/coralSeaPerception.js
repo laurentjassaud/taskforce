@@ -3,12 +3,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // Faits que lisent les questions des arbres de décision (cf.
-// lib/ai/coralSeaTrees.js, lib/ai/decisionTree.js). Deux sources, et rien
+// lib/ai/coralSeaTrees.js, lib/ai/decisionTree.js). Trois sources, et rien
 // d'autre :
 //   - la CARTE, telle que la voit le joueur japonais : positions des task
 //     forces alliées (leurres compris, indiscernables) et pions de repérage
 //     ("Sighted Carrier", "Sighted Fleet") posés sur elles ou sur les
 //     siennes ;
+//   - l'ORDRE DE BATAILLE allié du scénario, public : de quoi les task forces
+//     alliées PEUVENT être faites — d'où des moyennes (cf.
+//     `sightedDefenseEstimate`), le joueur composant ses task forces ;
 //   - le SECRET japonais, que fournit lib/useCoralSea.js : comportement de
 //     la task force, porte-avions partenaires, mémoire d'attente, et mémoire
 //     des repérages (ce qu'on a vu d'une unité alliée, même une fois son
@@ -86,5 +89,59 @@ export function perceiveReconTarget(hex, counters, own) {
     rememberedAsCarrier: unsightedHere.some((unit) => own.lastSeen(String(unit.id)) === 'carrierTF'),
     distanceToOwnCarrier: nearest(own.ownCarriers),
     distanceToOwnTransport: nearest(own.ownTransports),
+  }
+}
+
+/** Défenseurs d'une cible sur le support de sa task force (cf.
+ *  useCoralSea.js::strikeDefenders) : les escortes autour du porte-avions
+ *  d'une "Carrier TF", et les navires qui défendent une cible de "Fleet TF"
+ *  (elle et ses deux voisins). */
+export const CARRIER_TF_ESCORTS = 4
+export const FLEET_TF_DEFENDERS = 3
+const CARRIERS = new Set(['CV', 'CVL'])
+/** Hors de la moyenne des escortes d'une Carrier TF : les autres
+ *  porte-avions, les pétroliers et les transports. */
+const NOT_ESCORTS = new Set(['CV', 'CVL', 'AO', 'AK'])
+
+/** Défense ESTIMÉE d'une task force repérée, dont on ne sait pas de quoi elle
+ *  est faite : des moyennes sur les navires `ships` de l'ordre de bataille de
+ *  son camp (catalogue, faces intactes — un pion compte pour un navire, un
+ *  pion DD aussi) —
+ *   - "Carrier TF", visée au porte-avions : le porte-avions (CV ou CVL) à la
+ *     meilleure défense AA — à égalité, le plus solide —, plus 4 escortes
+ *     moyennes (moyenne hors CV, CVL, AO et AK) ; durabilité : celle de ce
+ *     porte-avions ;
+ *   - "Fleet TF", visée à un navire moyen : 3 navires moyens, la cible et ses
+ *     deux voisins (moyenne hors CV et CVL, pétroliers et transports
+ *     compris) ; durabilité : la moyenne de ces navires (0 en face réduite
+ *     pour qui n'a pas de face endommagée).
+ *  `{ carrierTF: { antiAir, durability, carrier, escortAntiAir }, fleetTF: {
+ *  antiAir, durability, shipAntiAir } }` — valeurs non arrondies ;
+ *  `durability` : `{ intact, reduced }` (cf. lib/airStrike.js::
+ *  damageOutcome) ; `null` pour une sorte de TF que l'ordre de bataille ne
+ *  permet pas (pas de porte-avions, ou rien d'autre). */
+export function sightedDefenseEstimate(ships) {
+  const average = (list, valueOf) => (list.length ? list.reduce((sum, ship) => sum + valueOf(ship), 0) / list.length : null)
+  const durabilityOf = (ship) => ({ intact: ship.intact.durability, reduced: ship.damaged?.durability ?? 0 })
+  // Meilleur porte-avions : défense AA, puis durabilité intacte, puis réduite.
+  const stronger = (a, b) => a.intact.antiAir - b.intact.antiAir || a.intact.durability - b.intact.durability
+    || durabilityOf(a).reduced - durabilityOf(b).reduced
+  const carrier = ships.filter((ship) => CARRIERS.has(ship.type))
+    .reduce((best, ship) => (!best || stronger(ship, best) > 0 ? ship : best), null)
+  const escorts = ships.filter((ship) => !NOT_ESCORTS.has(ship.type))
+  const fleet = ships.filter((ship) => !CARRIERS.has(ship.type))
+  const escortAntiAir = average(escorts, (ship) => ship.intact.antiAir)
+  const shipAntiAir = average(fleet, (ship) => ship.intact.antiAir)
+  return {
+    carrierTF: carrier && escortAntiAir != null
+      ? { antiAir: carrier.intact.antiAir + CARRIER_TF_ESCORTS * escortAntiAir, durability: durabilityOf(carrier), carrier, escortAntiAir }
+      : null,
+    fleetTF: shipAntiAir != null
+      ? {
+          antiAir: FLEET_TF_DEFENDERS * shipAntiAir,
+          durability: { intact: average(fleet, (ship) => durabilityOf(ship).intact), reduced: average(fleet, (ship) => durabilityOf(ship).reduced) },
+          shipAntiAir,
+        }
+      : null,
   }
 }
