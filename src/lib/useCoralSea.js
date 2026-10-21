@@ -155,6 +155,17 @@
 // sightedDefenseEstimate) — de quoi régler l'arbre de décision des attaques
 // aériennes.
 //
+// COMPOSITION DES TASK FORCES ALLIÉES (cf. `alliedFleet`,
+// TaskForceComposer.vue) : le joueur US pose les pions navires de l'ordre
+// de bataille (par groupe : Carrier Air Group, Attack Group...) sur le
+// support de chacune de ses task forces — "Carrier TF" pour TF1 à TF6
+// (`role` "carrier"), porte-avions dans la case centrale et elle seule ;
+// "Fleet TF" pour les autres, sans porte-avions. Il le fait à sa mise en
+// place et à sa phase Administrative (en partie Libre, quand il veut).
+// Inscrite au journal (entrée `alliedFleet`), la composition sert aux
+// frappes sur ses navires (cf. `strikeTarget`) ; l'IA japonaise, elle, ne
+// la lit pas et s'en tient à son estimation.
+//
 // Un porte-avions repéré COMME porte-avions ("Sighted Carrier" sur un vrai
 // porte-avions) n'a plus rien à cacher : il cherche sans règle de
 // couverture.
@@ -216,6 +227,18 @@ export const FLEET_DISPLAYS = {
   },
 }
 const FLEET_DISPLAY_PHASE = 'airOperations'
+/** Phase (id de la piste) où le joueur US compose ses task forces, en plus
+ *  de sa mise en place (cf. `alliedFleet`). */
+const ALLIED_FLEET_PHASE = 'administrative'
+
+/** Cases d'un support, sous la clé où la composition alliée range un navire
+ *  (cf. `alliedFleets`) : 'carrier' et 'escort0' à 'escort3' sur "Carrier
+ *  TF", 'slot0' à 'slot8' sur "Fleet TF". */
+export function displayCells(kind) {
+  return kind === 'carrier'
+    ? ['carrier', ...FLEET_DISPLAYS.carrier.escorts.map((_, index) => `escort${index}`)]
+    : FLEET_DISPLAYS.fleet.slots.map((_, index) => `slot${index}`)
+}
 
 const hexOfId = (id) => ({ col: Number(id.slice(0, 2)) - 1, row: Number(id.slice(2)) })
 
@@ -475,12 +498,13 @@ function groupCarrierObjectives(objectives, roles, arrivalHexes) {
  *  porte-avions est défendu par ses (jusqu'à 4) escortes, une escorte par le
  *  porte-avions seul (les escortes ne se touchent pas) ; sur "Fleet TF", les
  *  navires des cases à sa gauche et à sa droite. Un navire hors du support
- *  (`extra`) se défend seul. `[]` s'il n'est pas dans la task force. */
+ *  (`extra`) se défend seul. `[]` s'il n'est pas dans la task force. Une
+ *  task force alliée peut n'avoir que des escortes (`carrier` nul). */
 export function strikeDefenders(layout, targetKey) {
   if (layout.kind === 'carrier') {
-    if (layout.carrier.key === targetKey) return [layout.carrier, ...layout.escorts.map((escort) => escort.ship)]
+    if (layout.carrier && layout.carrier.key === targetKey) return [layout.carrier, ...layout.escorts.map((escort) => escort.ship)]
     const escort = layout.escorts.find((entry) => entry.ship.key === targetKey)
-    if (escort) return [escort.ship, layout.carrier]
+    if (escort) return [escort.ship, ...(layout.carrier ? [layout.carrier] : [])]
   } else {
     const placed = layout.slots.find((entry) => entry.ship.key === targetKey)
     if (placed) {
@@ -1046,15 +1070,16 @@ export function useCoralSea(moduleId, ctx = {}) {
     return layout
   }
 
-  /** Cible `shipKey` (clé d'un navire du support, cf. `fleetDisplay`) de la
-   *  task force que ce pion EST : `{ ship, defenders, antiAir, durability }`
+  /** Cible `shipKey` (clé d'un navire du support, cf. `fleetDisplay` et,
+   *  pour une task force alliée, `alliedFleet`) de la task force que ce pion
+   *  EST : `{ ship, defenders, antiAir, durability }`
    *  — `defenders`, les navires qui la défendent (cf. `strikeDefenders`) ;
    *  `antiAir`, la somme de leur défense AA ; `durability`, `{ intact,
    *  reduced }` du navire visé (cf. lib/airStrike.js::damageOutcome). Faces
    *  intactes : les dégâts des navires ne sont pas encore suivis. `null` :
    *  pas de support, ou navire absent du catalogue de son camp. */
   function strikeTarget(counter, shipKey) {
-    const layout = fleetDisplay(counter)
+    const layout = isIjnTaskForce(counter) ? fleetDisplay(counter) : alliedFleet(counter)?.layout
     if (!layout) return null
     const catalog = new Map((ctx.fleets?.[counter.faction]?.ships ?? []).map((ship) => [ship.id, ship]))
     const defenders = strikeDefenders(layout, shipKey)
@@ -1066,6 +1091,95 @@ export function useCoralSea(moduleId, ctx = {}) {
       antiAir: defenders.reduce((sum, ship) => sum + (catalog.get(ship.id)?.intact?.antiAir ?? 0), 0),
       durability: { intact: target.intact.durability, reduced: target.damaged?.durability ?? 0 },
     }
+  }
+
+  // --- Composition des task forces alliées (cf. en-tête) : task force ->
+  // `{ case -> clé de pion navire }` (cases : cf. `displayCells`).
+  const alliedFleets = ref({})
+
+  /** Pions navires de l'ordre de bataille allié, par groupe : `[{ id, name,
+   *  ships: [{ key, id, name, type, src }] }]` — `key` distingue les pions
+   *  d'un même navire ('usn-dd#1', 'usn-dd#2'...). Un navire absent du
+   *  catalogue (ou sans image) est laissé de côté. */
+  const alliedGroups = (() => {
+    if (!active.value) return []
+    const catalog = new Map((ctx.fleets?.usn?.ships ?? []).map((ship) => [ship.id, ship]))
+    const seen = new Map()
+    return (ctx.scenario?.orderOfBattle?.usn ?? []).map((group) => ({
+      id: group.id,
+      name: group.name,
+      ships: expandShips(group.ships).filter((id) => catalog.get(id)?.intact?.src).map((id) => {
+        const n = (seen.get(id) ?? 0) + 1
+        seen.set(id, n)
+        const ship = catalog.get(id)
+        return { key: `${id}#${n}`, id, name: ship.name, type: ship.type, src: ship.intact.src }
+      }),
+    }))
+  })()
+  const alliedShips = new Map(alliedGroups.flatMap((group) => group.ships).map((ship) => [ship.key, ship]))
+
+  /** Une vraie task force alliée (pas un leurre). */
+  function isAlliedTaskForce(counter) {
+    return counter?.faction === 'usn' && counter.type === 'task force' && counter.code !== 'Dummy'
+  }
+
+  /** Le navire `type` (CV, CA...) peut-il aller dans la case `cell` (cf.
+   *  `displayCells`) ? Un porte-avions dans la case centrale de "Carrier
+   *  TF", et elle ne prend que lui. */
+  function alliedShipFits(type, cell) {
+    return CARRIER_TYPES.has(type) === (cell === 'carrier')
+  }
+
+  /** Task force alliée de ce pion, telle que le joueur l'a composée : `{
+   *  tf, kind, cellIds, cells, layout }` — `kind`, son support ('carrier'
+   *  pour une task force de porte-avions, sinon 'fleet') ; `cellIds`, ses
+   *  cases (cf. `displayCells`) ; `cells`, case -> clé de
+   *  pion navire ; `layout`, la même chose sous la forme de `fleetDisplay`
+   *  (`carrier` nul sans porte-avions). `null` : pas une task force alliée,
+   *  ou pas d'ordre de bataille allié. */
+  function alliedFleet(counter) {
+    if (!active.value || !alliedShips.size || !isAlliedTaskForce(counter)) return null
+    const tf = String(counter.id)
+    const kind = roleOf(counter) === 'carrier' ? 'carrier' : 'fleet'
+    const cellIds = displayCells(kind)
+    const cells = Object.fromEntries(Object.entries(alliedFleets.value[tf] ?? {})
+      .filter(([cell, key]) => cellIds.includes(cell) && alliedShips.has(key)))
+    const ship = (cell) => alliedShips.get(cells[cell]) ?? null
+    const layout = kind === 'carrier'
+      ? { kind, carrier: ship('carrier'), escorts: FLEET_DISPLAYS.carrier.escorts.map((_, cell) => ({ ship: ship(`escort${cell}`), cell })).filter((entry) => entry.ship), extra: [] }
+      : { kind, slots: FLEET_DISPLAYS.fleet.slots.map((_, slot) => ({ ship: ship(`slot${slot}`), slot })).filter((entry) => entry.ship), extra: [] }
+    return { tf, kind, cellIds, cells, layout }
+  }
+
+  /** Task force alliée de chaque pion navire posé : clé -> task force. */
+  function alliedAssignments() {
+    const out = new Map()
+    for (const [tf, cells] of Object.entries(alliedFleets.value)) {
+      for (const key of Object.values(cells)) out.set(key, tf)
+    }
+    return out
+  }
+
+  /** Nouvelle composition `cells` de la task force `tf` : ses navires
+   *  quittent les autres task forces où ils étaient. Rend toutes les
+   *  compositions, à inscrire au journal (cf. `restoreAlliedFleets`). */
+  function setAlliedFleet(tf, cells) {
+    const taken = new Set(Object.values(cells))
+    const next = {}
+    for (const [other, otherCells] of Object.entries(alliedFleets.value)) {
+      if (other === tf) continue
+      const kept = Object.fromEntries(Object.entries(otherCells).filter(([, key]) => !taken.has(key)))
+      if (Object.keys(kept).length) next[other] = kept
+    }
+    if (taken.size) next[tf] = { ...cells }
+    alliedFleets.value = next
+    return next
+  }
+
+  /** Compositions lues dans le journal (rejeu, partie en ligne) ; `null`
+   *  les vide (nouveau rejeu). */
+  function restoreAlliedFleets(fleets) {
+    if (active.value) alliedFleets.value = fleets ? { ...fleets } : {}
   }
 
   /** Tirage secret à inscrire au journal avec le déploiement. */
@@ -1099,5 +1213,7 @@ export function useCoralSea(moduleId, ctx = {}) {
     isReusableDummy: isDummy, dummyReinforcementTurn, planDummyReinforcement, applyDummyReinforcement, playerDummyReinforcement,
     followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, airStrikeOdds, strikeTarget, sightedDefense, sightedStrikeOdds,
     fleetDisplay, fleetDisplays: FLEET_DISPLAYS, fleetDisplayPhase: FLEET_DISPLAY_PHASE, fleetDisplaySide: 'usn',
+    alliedFleet, alliedGroups, alliedAssignments, alliedShipFits, setAlliedFleet, restoreAlliedFleets,
+    alliedFleetSide: 'usn', alliedFleetPhase: ALLIED_FLEET_PHASE,
   }
 }

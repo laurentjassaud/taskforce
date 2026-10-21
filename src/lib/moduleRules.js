@@ -112,6 +112,21 @@ export const INERT_RULES = Object.freeze({
   /** Phase (id de la piste) où `fleetDisplaySide` peut voir les supports des task forces ennemies repérées, ou `null`. */
   fleetDisplayPhase: null,
   fleetDisplaySide: null,
+  /** Task force que le joueur compose lui-même : `{ tf, kind, cellIds, cells, layout }` (cf. TaskForceComposer.vue), ou `null`. */
+  alliedFleet: () => null,
+  /** Pions navires à poser, par groupe de l'ordre de bataille : `[{ id, name, ships: [{ key, id, name, type, src }] }]`. */
+  alliedGroups: [],
+  /** Task force où est posé chaque pion navire : `Map` clé -> task force. */
+  alliedAssignments: () => new Map(),
+  /** Un navire de ce type peut-il aller dans cette case du support ? */
+  alliedShipFits: () => true,
+  /** Nouvelle composition d'une task force ; rend toutes les compositions, à inscrire au journal. */
+  setAlliedFleet: () => ({}),
+  /** Rétablit les compositions lues dans le journal (`null` : les vide). */
+  restoreAlliedFleets: () => {},
+  /** Camp qui compose ses task forces, et phase (id de la piste) où il le fait en plus de sa mise en place, ou `null`. */
+  alliedFleetSide: null,
+  alliedFleetPhase: null,
 })
 
 const REGISTRY = {

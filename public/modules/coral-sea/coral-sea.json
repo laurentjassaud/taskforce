@@ -835,23 +835,44 @@
         ],
         "usn": [
           {
-            "id": "allied-fleet",
-            "name": "Flotte alliée (le joueur compose ses task forces)",
+            "id": "carrier-air-group",
+            "name": "Carrier Air Group",
             "ships": [
               "usn-lexington",
               "usn-yorktown",
+              { "ship": "usn-dd", "count": 2 }
+            ]
+          },
+          {
+            "id": "attack-group",
+            "name": "Attack Group",
+            "ships": [
               "usn-minneapolis",
               "usn-new-orleans",
               "usn-astoria",
               "usn-chester",
               "usn-portland",
+              { "ship": "usn-dd", "count": 2 },
+              "usn-dd-single"
+            ]
+          },
+          {
+            "id": "support-group",
+            "name": "Support Group",
+            "ships": [
               "ran-australia",
               "ran-hobart",
               "usn-chicago",
+              "usn-dd"
+            ]
+          },
+          {
+            "id": "fueling-group",
+            "name": "Fueling Group: Tankers",
+            "ships": [
               "usn-neosho",
               "usn-tippecanoe",
-              { "ship": "usn-dd", "count": 6 },
-              "usn-dd-single"
+              "usn-dd"
             ]
           }
         ]

@@ -189,6 +189,21 @@ export default {
     extra: 'Off the display: {ships}',
   },
 
+  alliedFleet: {
+    title: '{unit} — {display}',
+    reserve: 'Order of battle',
+    hint: 'Click a ship, then a box of the display, or drag it.',
+    readOnly: 'The composition can be changed at setup and during the American Administrative phase.',
+    emptyCell: 'Empty box',
+    groupPlaced: 'All its ships are placed.',
+    inTaskForce: '{ship} — already in {unit}',
+    centerCell: 'The central box is reserved for the carrier.',
+    carrierCell: 'A carrier only goes in the central box of a Carrier TF display.',
+    count: 'No ship | {n} ship | {n} ships',
+    remove: 'Remove from the display',
+    save: 'Confirm',
+  },
+
   recon: {
     toast: 'Reconnaissance in {hex}: {sighting}',
     toastRemoved: 'Reconnaissance in {hex}: {sighting} — dummy detected, removed from play',
@@ -215,6 +230,8 @@ export default {
     eliminate: 'Eliminated',
     cancelMove: 'Cancel the move',
     restack: 'Change the stacking order',
+    alliedFleetEdit: 'Compose the task force',
+    alliedFleetView: 'Task force ships',
   },
 
   stack: {
@@ -255,6 +272,7 @@ export default {
     turnPhaseRoll: 'Turn {turn} — {phase}',
     dummyUnmasked: 'dummy unmasked by reconnaissance',
     raid: 'Japanese air raid on {unit} in {hex}: {raiders}',
+    alliedFleet: '{unit} composition: no ship | {unit} composition: {n} ship | {unit} composition: {n} ships',
     dummyReinforce: 'Night: {n} Japanese TF undetected joins the map in {hexes} | Night: {n} Japanese TF undetected join the map in {hexes}',
     searchRefill: 'Night: {total} search chit goes back in the cup ({detected} Detected!, {misdirect} Misdirect, {contactLost} Contact Lost) | Night: {total} search chits go back in the cup ({detected} Detected!, {misdirect} Misdirect, {contactLost} Contact Lost)',
     searchHidden: '{side} reconnaissance from {from} in {hex} ({unit}): {sighting}',

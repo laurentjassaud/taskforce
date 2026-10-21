@@ -44,6 +44,7 @@ import ContextMenu from './ContextMenu.vue'
 import Toast from './Toast.vue'
 import StackPopup from './StackPopup.vue'
 import FleetDisplayModal from './FleetDisplayModal.vue'
+import TaskForceComposer from './TaskForceComposer.vue'
 import RollModal from './RollModal.vue'
 import GameEndModal from './GameEndModal.vue'
 import PhaseBlockedModal from './PhaseBlockedModal.vue'
@@ -1138,6 +1139,11 @@ function onCounterContextMenu(id, ev) {
   if (clicked && stackUnitsAt(clicked).length > 1) {
     items.push({ label: t('menu.restack'), action: () => cycleStack(clicked) })
   }
+  // Task force du joueur : sa composition, modifiable ou non selon le moment.
+  if (clicked && canSeeAlliedFleet(clicked)) {
+    const editable = alliedFleetEditable.value
+    items.push({ label: t(editable ? 'menu.alliedFleetEdit' : 'menu.alliedFleetView'), action: () => openAlliedFleet(clicked, editable) })
+  }
   openContextMenu(ev, items)
 }
 /** Unités (pas les marqueurs, cf. `isUnit`) de l'hex de `counter`, dans
@@ -1411,6 +1417,11 @@ function onCounterSelect(id) {
   // Opérations aériennes du joueur : une task force ennemie repérée montre
   // son support (cf. `openFleetDisplay`).
   if (openFleetDisplay(counter)) return
+  // Mise en place et phase de composition (partie Assistée) : une task force
+  // du joueur ouvre sa composition, sauf renfort à empiler dessus (cf.
+  // `openAlliedFleet`).
+  if (props.assisted && phase.value !== 0 && selectedReinforcementId.value == null && alliedFleetEditable.value
+    && openAlliedFleet(counter, true)) return
   // Mise en place : rien ne bouge. Un clic sur un pion déjà posé vaut clic
   // sur son hex, pour y empiler le renfort choisi.
   if (phase.value === PHASE_SETUP) {
@@ -2060,6 +2071,47 @@ function openFleetDisplay(counter) {
   return true
 }
 
+// --- Composition des task forces du joueur (cf. `moduleRules.alliedFleet`,
+// TaskForceComposer.vue) : il pose ses pions navires sur le support de
+// chacune — à sa mise en place et à sa phase `alliedFleetPhase` en partie
+// Assistée, quand il veut en partie Libre. Hors de ces moments, il peut la
+// consulter (menu du pion). En ligne, seul ce camp-là la voit. Inscrite au
+// journal (entrée `alliedFleet`, toutes les compositions).
+const alliedComposer = ref(null) // { counter, fleet, elsewhere, editable, title } | null
+watch(() => turnInfo.value.step, () => { alliedComposer.value = null })
+
+const alliedFleetEditable = computed(() => {
+  const side = moduleRules.alliedFleetSide
+  if (!side || replayLocked.value || (props.online && props.localSide !== side)) return false
+  if (!props.assisted) return true
+  return turnInfo.value.activeSideKey === side
+    && (phase.value === PHASE_SETUP || turnTrackerRef.value?.currentSlot?.phase === moduleRules.alliedFleetPhase)
+})
+/** Ce joueur peut-il voir la composition de `counter` ? */
+function canSeeAlliedFleet(counter) {
+  const side = moduleRules.alliedFleetSide
+  return !!side && (!props.online || props.localSide === side) && !!moduleRules.alliedFleet(counter)
+}
+
+/** Ouvre la composition de `counter`. Vrai si le clic a été consommé. */
+function openAlliedFleet(counter, editable) {
+  if (!canSeeAlliedFleet(counter)) return false
+  const fleet = moduleRules.alliedFleet(counter)
+  const elsewhere = new Map([...moduleRules.alliedAssignments()].filter(([, tf]) => tf !== fleet.tf)
+    .map(([key, tf]) => [key, counterDefinition(tf)?.name ?? tf]))
+  const display = t(`sighting.${fleet.kind}TF`)
+  alliedComposer.value = { counter, fleet, elsewhere, editable, title: t('alliedFleet.title', { unit: counter.name, display }) }
+  return true
+}
+
+function saveAlliedFleet(cells) {
+  const { counter, fleet } = alliedComposer.value
+  alliedComposer.value = null
+  const fleets = moduleRules.setAlliedFleet(fleet.tf, cells)
+  const n = Object.keys(cells).length
+  log('alliedFleet', t('log.alliedFleet', { unit: counter.name, n }, n), { fleets })
+}
+
 /** Pion de résultat de recherche (cf. `moduleRules.searchResults`), posé
  *  sur l'unité `unit`, qu'il suivra (`attachedTo`, cf. `syncSearchMarkers`).
  *  `hidden` : pion "Search" générique, le vrai chit restant caché. `step` :
@@ -2547,6 +2599,7 @@ function resetBoardForReplay() {
   // Tasse de recherche pleine, aucun repérage : rétablis par les entrées
   // `search` rejouées.
   moduleRules.refillSearchBag()
+  moduleRules.restoreAlliedFleets(null)
   sightings.value = new Map()
   reconUses.value = new Map()
   autoMoveTrails.value = new Map()
@@ -2648,6 +2701,9 @@ function applyReplayEntry(entry) {
   } else if (entry.kind === 'raid') {
     // Raid aérien du moteur (cf. `runEngineRaid`).
     placeRaidMarkers(entryData.markers)
+  } else if (entry.kind === 'alliedFleet') {
+    // Compositions des task forces du joueur (cf. `saveAlliedFleet`).
+    moduleRules.restoreAlliedFleets(entryData.fleets)
   } else if (entry.kind === 'dummyReinforce') {
     // Renfort de leurres (cf. `reinforceDummies`) : le journal fait foi.
     applyDummyReinforcement(entryData)
@@ -3115,6 +3171,10 @@ function onMapDragEnd() {
       @choose="chooseContextMenuItem" @close="closeContextMenu" />
     <FleetDisplayModal v-if="fleetDisplay" :layout="fleetDisplay.layout" :displays="moduleRules.fleetDisplays"
       :title="fleetDisplay.title" @close="fleetDisplay = null" />
+    <TaskForceComposer v-if="alliedComposer" :title="alliedComposer.title" :kind="alliedComposer.fleet.kind"
+      :displays="moduleRules.fleetDisplays" :cell-ids="alliedComposer.fleet.cellIds" :cells="alliedComposer.fleet.cells"
+      :groups="moduleRules.alliedGroups" :elsewhere="alliedComposer.elsewhere" :fits="moduleRules.alliedShipFits"
+      :editable="alliedComposer.editable" @save="saveAlliedFleet" @close="alliedComposer = null" />
     <StackPopup v-if="hoveredStackCounters.length" :counters="hoveredStackCounters" :anchor="hoveredCounter.anchor"
       :title="$t('stack.title', { hex: hexId(hoveredCounter.col + 1, hoveredCounter.row), n: hoveredStackCounters.length })" />
 

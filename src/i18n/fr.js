@@ -191,6 +191,21 @@ export default {
     extra: 'Hors du support : {ships}',
   },
 
+  alliedFleet: {
+    title: '{unit} — {display}',
+    reserve: 'Ordre de bataille',
+    hint: 'Cliquez un navire puis une case du support, ou glissez-le.',
+    readOnly: 'Composition modifiable à la mise en place et pendant la phase Administrative américaine.',
+    emptyCell: 'Case vide',
+    groupPlaced: 'Tous ses navires sont posés.',
+    inTaskForce: '{ship} — déjà dans {unit}',
+    centerCell: 'La case centrale est réservée au porte-avions.',
+    carrierCell: "Un porte-avions ne va que dans la case centrale d'un support Carrier TF.",
+    count: 'Aucun navire | {n} navire | {n} navires',
+    remove: 'Retirer du support',
+    save: 'Valider',
+  },
+
   recon: {
     toast: 'Reconnaissance en {hex} : {sighting}',
     toastRemoved: 'Reconnaissance en {hex} : {sighting} — leurre détecté, retiré du jeu',
@@ -217,6 +232,8 @@ export default {
     eliminate: 'Éliminé',
     cancelMove: 'Annuler le mouvement',
     restack: "Changer l'ordre de l'empilement",
+    alliedFleetEdit: 'Composer la task force',
+    alliedFleetView: 'Navires de la task force',
   },
 
   stack: {
@@ -257,6 +274,7 @@ export default {
     turnPhaseRoll: 'Tour {turn} — {phase}',
     dummyUnmasked: 'leurre démasqué par la reconnaissance',
     raid: 'Raid aérien japonais sur {unit} en {hex} : {raiders}',
+    alliedFleet: 'Composition de {unit} : aucun navire | Composition de {unit} : {n} navire | Composition de {unit} : {n} navires',
     dummyReinforce: 'Nuit : {n} TF undetected japonaise rejoint la carte en {hexes} | Nuit : {n} TF undetected japonaises rejoignent la carte en {hexes}',
     searchRefill: 'Nuit : {total} chit de recherche retourne dans la tasse ({detected} Detected!, {misdirect} Misdirect, {contactLost} Contact Lost) | Nuit : {total} chits de recherche retournent dans la tasse ({detected} Detected!, {misdirect} Misdirect, {contactLost} Contact Lost)',
     searchHidden: 'Reconnaissance {side} depuis {from} en {hex} ({unit}) : {sighting}',
