@@ -785,6 +785,10 @@
     "ijn": "/modules/coral-sea/fleet-ijn.json",
     "usn": "/modules/coral-sea/fleet-usn.json"
   },
+  "air": {
+    "ijn": "/modules/coral-sea/air-ijn.json",
+    "usn": "/modules/coral-sea/air-usn.json"
+  },
   "scenarios": [
     {
       "id": "scenario-5",
@@ -876,6 +880,38 @@
             ]
           }
         ]
+      },
+      "airGroups": {
+        "_comment": "Avions embarqués, par camp puis par porte-avions (id du catalogue de flotte) : avion du catalogue aérien du camp (air-ijn.json, air-usn.json), nombre de pions, code imprimé, face de départ (full par défaut). Mise en place sur le support (cf. src/lib/airGroups.js) : cases Ready d'abord, le reste en Reserve — le joueur US déplace ensuite les siens à son gré (cf. src/components/TaskForceComposer.vue).",
+        "ijn": {
+          "ijn-zuikaku": [
+            { "aircraft": "ijn-zero", "count": 2, "code": "ZUI" },
+            { "aircraft": "ijn-kate-torpedo", "count": 2, "code": "ZUI" },
+            { "aircraft": "ijn-val", "count": 2, "code": "ZUI" }
+          ],
+          "ijn-shokaku": [
+            { "aircraft": "ijn-zero", "count": 2, "code": "SHO" },
+            { "aircraft": "ijn-kate-torpedo", "count": 2, "code": "SHO" },
+            { "aircraft": "ijn-val", "count": 2, "code": "SHO" }
+          ],
+          "ijn-shoho": [
+            { "aircraft": "ijn-zero", "count": 1, "code": "HIR", "face": "reduced" },
+            { "aircraft": "ijn-claude", "count": 1 },
+            { "aircraft": "ijn-kate-torpedo", "count": 1, "code": "HIR" }
+          ]
+        },
+        "usn": {
+          "usn-lexington": [
+            { "aircraft": "usn-f4f", "count": 3, "code": "LEX" },
+            { "aircraft": "usn-sbd", "count": 4, "code": "LEX" },
+            { "aircraft": "usn-tbd", "count": 1, "code": "LEX" }
+          ],
+          "usn-yorktown": [
+            { "aircraft": "usn-f4f", "count": 3, "code": "YOR" },
+            { "aircraft": "usn-sbd", "count": 4, "code": "YOR" },
+            { "aircraft": "usn-tbd", "count": 1, "code": "YOR" }
+          ]
+        }
       },
       "formations": {
         "ijn": [
@@ -1013,6 +1049,18 @@
         [0, 0, 0, 0, 0, 1, 3, 4, 4, 6],
         [0, 0, 0, 0, 0, 0, 1, 2, 2, 5]
       ]
+    },
+    "victoryPoints": {
+      "_comment": "Points de victoire tactiques d'un navire touché par une frappe, par camp du navire puis par type : [rien, mineur, significatif, critique, coulé] — colonne USN POINTS pour les navires alliés touchés par les avions japonais. Sert à l'IA japonaise pour choisir ses frappes (cf. src/lib/strikePlanner.js).",
+      "usn": {
+        "CV": [0, 0, 7, 10, 13],
+        "CVL": [0, 0, 4, 4, 6],
+        "BB": [0, 0, 4, 5, 6],
+        "CA": [0, 0, 2, 2, 3],
+        "CL": [0, 0, 1, 1, 2],
+        "DD": [0, 0, 0.5, 0, 1],
+        "AO": [0, 0, 0, 0, 0]
+      }
     }
   },
   "counters": {

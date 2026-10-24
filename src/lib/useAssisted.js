@@ -428,6 +428,22 @@ export function useAssisted(assisted, turnTrackerRef, terrain, counters, sides, 
     else turnTrackerRef.value?.nextTurn()
   }
 
+  /** Où mène le prochain `advance()` : `{ phaseStep, nextStep }` — pas de
+   *  la phase où l'on arrive (cf. `phaseNameOf`), et `nextStep` vrai si la
+   *  piste de tour avance aussi (autre camp ou nouveau tour). Après un
+   *  changement de tour, la première phase est lue sur le tour courant (le
+   *  Mouvement, jamais retiré). */
+  function nextPhaseOf() {
+    const tracker = turnTrackerRef.value
+    if (phaseStep.value !== PHASE_SETUP && !tracker?.currentSlot) {
+      const active = activePhases()
+      const index = active.findIndex((entry) => entry.step === phaseStep.value)
+      if (index >= 0 && index < active.length - 1) return { phaseStep: active[index + 1].step, nextStep: false }
+    }
+    const slot = tracker?.nextSlot
+    return { phaseStep: (slot && phases.find((entry) => entry.id === slot.phase)?.step) ?? firstStep(), nextStep: true }
+  }
+
   // --- Points de mouvement (MP) et coût d'entrée -----------------------------
   // En mode Assisté, un pion ne peut entrer dans un hex QUE s'il lui reste
   // assez de MP pour en payer le coût (1 MP, cf. `HEX_COST`) — sinon le clic
@@ -1002,6 +1018,6 @@ export function useAssisted(assisted, turnTrackerRef, terrain, counters, sides, 
     entryCounts.value = new Map(entryCounts.value).set(key, count)
   }
 
-  return { showGrid, selectable, draggable, canControl, phase, phaseLabels, phaseIndex, phaseNameOf, nextLabel, advance, movementAllowance,
+  return { showGrid, selectable, draggable, canControl, phase, phaseLabels, phaseIndex, phaseNameOf, nextLabel, advance, nextPhaseOf, movementAllowance,
     PHASE_SETUP, initPhase: startSidePhase, canPlaceReinforcementNow, canEnterHex, canEnterTerrain, spendMp, refundMp, resetMp, terrainCost, remainingMp, enemyZocSet, isEnemyOf, entrySurcharge, spendEntryCost, unspendEntryCost, wouldOverstack, canLeaveAfterEntering, canLeaveAfterReinforcementEntry, isOverstacked, stackedHexes, noteEntered, isZocFrozen, setPhase, setSpentMp, resetTurnState }
 }

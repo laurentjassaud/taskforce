@@ -94,8 +94,11 @@ export const INERT_RULES = Object.freeze({
   raidPhase: null,
   /** Camp qui lance ces raids, ou `null`. */
   raidSide: null,
-  /** Raids à lancer : `[{ targetId, raiders: [{ tf, name, src }] }]`. */
+  /** Raids à lancer : `[{ targetId, marker: { name, src }, raiders: [{ tf, name }] }]`, et, pour une frappe planifiée (cf.
+   *  lib/useCoralSea.js::raidPlan), ses avions (`planes`), ses attaques (`attacks`) et ses points espérés. */
   raidPlan: () => [],
+  /** L'unité `unitId` vient de subir un raid (en jeu comme au rejeu) : le camp qui l'a frappée la connaît. */
+  noteRaided: () => {},
   /** Probabilités d'une frappe aéronavale (cf. lib/airStrike.js::strikeOdds), ou `null`. */
   airStrikeOdds: () => null,
   /** Navire visé par une frappe : `{ ship, defenders, antiAir, durability }`, ou `null`. */
@@ -112,8 +115,39 @@ export const INERT_RULES = Object.freeze({
   /** Phase (id de la piste) où `fleetDisplaySide` peut voir les supports des task forces ennemies repérées, ou `null`. */
   fleetDisplayPhase: null,
   fleetDisplaySide: null,
-  /** Task force que le joueur compose lui-même : `{ tf, kind, cellIds, cells, layout }` (cf. TaskForceComposer.vue), ou `null`. */
+  /** `fleetDisplaySide` peut-il frapper cette task force ennemie (`(cible, pions)`) — à portée de ses porte-avions ? */
+  airStrikeReach: () => true,
+  /** Portée de ces frappes, en hex (pour le message hors de portée), ou `null`. */
+  airStrikeRadius: null,
+  /** Dommages possibles d'un navire : état -> `{ reduced, marker }` (face réduite, pion posé dessus), ou `null`. */
+  shipDamages: null,
+  /** Dommages du navire de cette clé de pion ('none' : intact). */
+  damageOf: () => 'none',
+  /** Pose des dommages sur un navire (`(clé, état)`). */
+  setShipDamage: () => {},
+  /** Dommages lus dans le journal (`null` : aucun). */
+  restoreShipDamage: () => {},
+  /** Pertes possibles d'un pion avion (`['none', 'reduced', 'eliminated']`), ou `null`. */
+  planeStates: null,
+  /** Pertes de l'avion de cette clé de pion ('none' : intact). */
+  planeStateOf: () => 'none',
+  /** Pose des pertes sur un avion (`(clé, état)`). */
+  setPlaneState: () => {},
+  /** Pertes lues dans le journal (`null` : aucune). */
+  restorePlaneDamage: () => {},
+  /** Avions (clés de pion) qui partent en raid du moteur, et qui en rentrent (case "Landing from Map" de leur support). */
+  launchRaid: () => {},
+  landFromRaid: () => {},
+  /** Cycle des avions sur leur support, à chaque pas de la piste (`(pas, phase, camp)`). */
+  airCycle: () => {},
+  /** Nouveau rejeu : chaque avion dans sa zone de départ. */
+  restoreAirZones: () => {},
+  /** Task force que le joueur compose lui-même : `{ tf, kind, cellIds, airCellIds, cells, layout }` (cf. TaskForceComposer.vue), ou `null`. */
   alliedFleet: () => null,
+  /** Supports des task forces que le joueur compose : `{ carrier, fleet }` (même forme que `fleetDisplays`), ou `null`. */
+  alliedFleetDisplays: null,
+  /** Avions du porte-avions de ce pion navire et leur mise en place par défaut : `{ planes, ready, reserve, lost }` (`lost` : éliminés). */
+  alliedDeck: () => ({ planes: [], ready: [], reserve: [], lost: [] }),
   /** Pions navires à poser, par groupe de l'ordre de bataille : `[{ id, name, ships: [{ key, id, name, type, src }] }]`. */
   alliedGroups: [],
   /** Task force où est posé chaque pion navire : `Map` clé -> task force. */

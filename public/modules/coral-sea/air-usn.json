@@ -1,0 +1,37 @@
+{
+  "_comment": [
+    "Catalogue des avions américains (USN) de la mer de Corail, relevé sur la planche de mise en place du scénario 5. Les groupes aériens des scénarios (coral-sea.json, scenarios[].airGroups) y piochent les avions par leur id.",
+    "Même forme qu'air-ijn.json : 'full' et 'reduced' ; face : mission (F chasse, T torpille, DB bombardement en piqué), attack (absent des chasseurs), airCombat, code, src.",
+    "Faces réduites non relevées (null) : la planche ne montre que les faces pleines. Images découpées dans cette planche, code (LEX, YOR) effacé, en attendant un scan des pions.",
+    "special : le chiffre sur fond jaune imprimé sous le combat aérien du TBD — sens à préciser d'après la règle."
+  ],
+  "faction": "usn",
+  "missions": {
+    "F": "Chasse",
+    "T": "Torpille",
+    "DB": "Bombardement en piqué"
+  },
+  "aircraft": [
+    {
+      "id": "usn-f4f",
+      "name": "F4F",
+      "model": "Wildcat",
+      "full": { "mission": "F", "attack": null, "airCombat": 3, "code": null, "src": "/modules/coral-sea/images/counters/usn/air/f4f-full.png" },
+      "reduced": null
+    },
+    {
+      "id": "usn-sbd",
+      "name": "SBD",
+      "model": "Dauntless",
+      "full": { "mission": "DB", "attack": 4, "airCombat": 2, "code": null, "src": "/modules/coral-sea/images/counters/usn/air/sbd-full.png" },
+      "reduced": null
+    },
+    {
+      "id": "usn-tbd",
+      "name": "TBD",
+      "model": "Devastator",
+      "full": { "mission": "T", "attack": 2, "airCombat": 0, "special": 4, "code": null, "src": "/modules/coral-sea/images/counters/usn/air/tbd-full.png" },
+      "reduced": null
+    }
+  ]
+}

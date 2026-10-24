@@ -70,8 +70,9 @@ const groups = computed(() => {
   <div class="rf-list">
     <p v-if="!reinforcements.length" class="rf-empty">{{ t('reinforcements.empty') }}</p>
     <section v-for="group in groups" :key="group.turn" class="rf-turn">
-      <!-- Tour 0 : pions de la mise en place (cf. lib/turnTrack.js, `setup`). -->
-      <h3 class="rf-turn-title">{{ group.turn === 0 ? t('reinforcements.setup') : t('reinforcements.turn', { turn: group.turn }) }}</h3>
+      <!-- Tour 0 : pions de la mise en place (cf. lib/turnTrack.js, `setup`).
+           Un seul groupe : pas de titre, il n'y a pas de tours à distinguer. -->
+      <h3 v-if="groups.length > 1" class="rf-turn-title">{{ group.turn === 0 ? t('reinforcements.setup') : t('reinforcements.turn', { turn: group.turn }) }}</h3>
       <div class="rf-grid">
         <figure v-for="counter in group.items" :key="counter.id" class="rf-piece">
           <img :src="counter.src" :alt="counter.name" width="48" height="48" :draggable="draggable && isAvailable(counter)"

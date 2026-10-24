@@ -145,3 +145,41 @@ export function sightedDefenseEstimate(ships) {
       : null,
   }
 }
+
+/** Navires ESTIMÉS d'une task force repérée, cibles d'une frappe
+ *  aéronavale (cf. lib/strikePlanner.js), sur les mêmes moyennes que
+ *  `sightedDefenseEstimate` —
+ *   - "Carrier TF" : le porte-avions (défendu par lui-même et ses 4
+ *     escortes) et 4 escorteurs moyens (chacun défendu par lui-même et le
+ *     porte-avions) ;
+ *   - "Fleet TF" : 3 navires moyens, chacun défendu par lui-même et deux
+ *     voisins moyens.
+ *  Chaque navire : `{ role: 'carrier' | 'escort' | 'ship', antiAir,
+ *  durability, points }` — défense AA et durabilité arrondies à l'entier le
+ *  plus proche pour lire les tableaux ; `points`, les points de victoire de
+ *  chaque résultat (rien, mineur, significatif, critique, coulé) :
+ *  `pointsOf(type)` du navire, en moyenne pour un navire moyen. `{
+ *  carrierTF, fleetTF }`, chacun `null` comme dans `sightedDefenseEstimate`. */
+export function sightedTargetsEstimate(ships, pointsOf) {
+  const { carrierTF, fleetTF } = sightedDefenseEstimate(ships)
+  const meanOf = (list, valueOf) => list.reduce((sum, ship) => sum + valueOf(ship), 0) / list.length
+  // Durabilité et barème moyens des navires `list`.
+  const averageShip = (list) => ({
+    durability: { intact: Math.round(meanOf(list, (ship) => ship.intact.durability)), reduced: Math.round(meanOf(list, (ship) => ship.damaged?.durability ?? 0)) },
+    points: pointsOf(list[0].type).map((_, index) => meanOf(list, (ship) => pointsOf(ship.type)[index] ?? 0)),
+  })
+  const repeat = (count, make) => Array.from({ length: count }, make)
+  let carrierTargets = null
+  if (carrierTF) {
+    const escort = averageShip(ships.filter((ship) => !NOT_ESCORTS.has(ship.type)))
+    carrierTargets = [
+      { role: 'carrier', antiAir: Math.round(carrierTF.antiAir),
+        durability: { intact: carrierTF.durability.intact, reduced: carrierTF.durability.reduced }, points: pointsOf(carrierTF.carrier.type) },
+      ...repeat(CARRIER_TF_ESCORTS, () => ({ role: 'escort', antiAir: Math.round(carrierTF.escortAntiAir + carrierTF.carrier.intact.antiAir), ...escort })),
+    ]
+  }
+  const fleetTargets = fleetTF
+    ? repeat(FLEET_TF_DEFENDERS, () => ({ role: 'ship', antiAir: Math.round(fleetTF.antiAir), ...averageShip(ships.filter((ship) => !CARRIERS.has(ship.type))) }))
+    : null
+  return { carrierTF: carrierTargets, fleetTF: fleetTargets }
+}

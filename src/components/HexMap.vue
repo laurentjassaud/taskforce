@@ -20,7 +20,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { reactive, ref, computed, toRef, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { t, mt } from '../i18n/index.js'
+import { t, mt, currentLocale } from '../i18n/index.js'
 import { hexId, DEFAULT_CALIBRATION } from '../lib/calibration.js'
 import { neighborsOf, hexDistance } from '../lib/hex.js'
 import { pathToward } from '../lib/autoMove.js'
@@ -31,7 +31,7 @@ import { useModuleRules } from '../lib/moduleRules.js'
 import { isUnit } from '../lib/units.js'
 import { parseSetup, rangeCells } from '../lib/setup.js'
 import { resolveRules, resolveTurnStructure, stackingLimitOf } from '../lib/rules.js'
-import { sideOfStep, resolveTrack, sidesOfTurn } from '../lib/turnTrack.js'
+import { sideOfStep, resolveTrack, sidesOfTurn, turnOfStep } from '../lib/turnTrack.js'
 import CalibrationPanel from './CalibrationPanel.vue'
 import Counter from './Counter.vue'
 import TurnTracker from './TurnTracker.vue'
@@ -598,6 +598,8 @@ const moduleRules = useModuleRules(toRef(props, 'moduleId'), {
   scenario: (props.module.scenarios ?? []).find((scenario) => scenario.id === props.settings?.scenario)
     ?? props.module.scenarios?.[0] ?? null,
   fleets: props.module.fleetCatalog ?? {},
+  // Catalogues d'avions : groupes aériens des porte-avions (cf. lib/airGroups.js).
+  air: props.module.airCatalog ?? {},
   // Tableaux de la frappe aéronavale (cf. lib/airStrike.js).
   airStrike: props.module.airStrike ?? null,
 })
@@ -704,7 +706,7 @@ function deploymentData() {
 // empilement) y vit. Appelé ICI (et pas plus haut dans le fichier) parce
 // qu'il a besoin de `counters` (cf. `enemyZocSet`, qui doit savoir où sont
 // les pions ennemis) — lequel doit donc déjà être déclaré.
-const { showGrid, selectable, draggable, canControl, phase, phaseLabels, phaseIndex, phaseNameOf, nextLabel, advance, movementAllowance,
+const { showGrid, selectable, draggable, canControl, phase, phaseLabels, phaseIndex, phaseNameOf, nextLabel, advance, nextPhaseOf, movementAllowance,
   PHASE_SETUP, initPhase, canPlaceReinforcementNow, canEnterHex, canEnterTerrain, spendMp, refundMp, resetMp, terrainCost, remainingMp, enemyZocSet, isEnemyOf, entrySurcharge, spendEntryCost, unspendEntryCost, wouldOverstack, canLeaveAfterEntering, canLeaveAfterReinforcementEntry, isOverstacked, stackedHexes, noteEntered, isZocFrozen, setPhase, setSpentMp, resetTurnState } = useAssisted(toRef(props, 'assisted'), turnTrackerRef, props.module.terrain, counters, props.module.sides, hexOnMap, rules, turnStructure, moduleRules)
 
 /** Camp (clé de `module.sides`) de l'unité `counter` — sa faction à défaut
@@ -797,11 +799,24 @@ function closeGuide() {
 // ouvert par onPhaseNext ci-dessous, qui refuse de quitter la phase
 // Mouvement avec des unités empilées.
 const showPhaseBlocked = ref(false)
-// Confirmation demandée avant de quitter la phase de reconnaissance du moteur
-// alors qu'il lui reste des hex à explorer (cf. onPhaseNext) : nombre de
-// reconnaissances restantes, ou `null` (modale fermée).
-const reconSkipPending = ref(null)
-let reconSkipConfirmed = false
+// Fin de la mise en place (cf. `moduleRules.setupCount`, onPhaseNext) :
+// trop de pions posés, la partie ne peut pas commencer — `{ count, total }`,
+// ou `null` (modale fermée).
+const setupExcess = ref(null)
+
+// Confirmation demandée à CHAQUE changement de phase ou de tour (bouton
+// "suivant", cf. onPhaseNext), contre un clic trop rapide : `{ title,
+// message, warnings }` — `warnings`, ce que le joueur laisse derrière lui
+// (mise en place incomplète, aucun mouvement, reconnaissances japonaises
+// restantes) —, ou `null` (modale fermée).
+const phaseConfirm = ref(null)
+let phaseConfirmed = false
+/** "Confirmer" : la phase (ou le tour) change. */
+function confirmPhaseNext() {
+  phaseConfirm.value = null
+  phaseConfirmed = true
+  onPhaseNext()
+}
 
 /** Reconnaissances que le moteur peut encore faire dans sa phase en cours
  *  (cf. `continueEngineRecon`) — 0 hors de cette phase. */
@@ -809,45 +824,44 @@ function pendingEngineRecons() {
   if (!reconPhaseOf(moduleRules.autoMoveSide) || !searchBagLeft()) return 0
   return openReconChecks(moduleRules.autoMoveSide).length
 }
-/** "Passer quand même" : la phase est quittée malgré tout. */
-function confirmReconSkip() {
-  reconSkipPending.value = null
-  reconSkipConfirmed = true
-  onPhaseNext()
-}
 
-// Fin de la mise en place (cf. `moduleRules.setupCount`, onPhaseNext) :
-// `{ count, total }` des pions posés — trop peu, une confirmation est
-// demandée (`setupShortPending`) ; trop, la partie ne peut pas commencer
-// (`setupExcess`). `null` : modale fermée.
-const setupShortPending = ref(null)
-const setupExcess = ref(null)
-let setupShortConfirmed = false
-
-/** "Commencer quand même" : la mise en place est close malgré tout. */
-function confirmSetupShort() {
-  setupShortPending.value = null
-  setupShortConfirmed = true
-  onPhaseNext()
-}
-
-// Confirmation demandée avant de quitter la phase Mouvement du camp joueur
-// (celui que le moteur ne joue pas, cf. `moduleRules.autoMoveSide`) sans
-// qu'aucune de ses unités ait bougé (cf. onPhaseNext).
-const noMovePending = ref(false)
-let noMoveConfirmed = false
-
-/** Le camp joueur termine-t-il sa phase Mouvement sans avoir rien bougé ? */
+/** Le camp joueur (celui que le moteur ne joue pas, cf.
+ *  `moduleRules.autoMoveSide`) termine-t-il sa phase Mouvement sans avoir
+ *  rien bougé ? */
 function endsMovementUnmoved() {
   const side = turnInfo.value.activeSideKey
   if (phase.value !== 0 || !moduleRules.autoMoveSide || !side || side === moduleRules.autoMoveSide) return false
   return !counters.value.some((counter) => movedThisTurnIds.value.has(String(counter.id)) && sideOfCounter(counter) === side)
 }
-/** "Terminer quand même" : la phase est quittée sans mouvement. */
-function confirmNoMove() {
-  noMovePending.value = false
-  noMoveConfirmed = true
-  onPhaseNext()
+
+/** Confirmation du changement de phase en cours (cf. `phaseConfirm`). */
+function phaseChangeConfirmation() {
+  const warnings = []
+  if (phase.value === PHASE_SETUP) {
+    const setup = moduleRules.setupCount(counters.value)
+    if (setup && setup.count < setup.total) warnings.push(t('phaseConfirm.setupShort', { count: setup.count, total: setup.total }))
+  }
+  if (endsMovementUnmoved()) warnings.push(t('phaseConfirm.noMove'))
+  const recons = pendingEngineRecons()
+  if (recons > 0) warnings.push(t('phaseConfirm.recons', { n: recons }, recons))
+  return { title: nextLabel.value ?? t('turnTracker.nextTurn'), message: nextPhaseMessage(), warnings }
+}
+
+/** Question de la confirmation : la phase où mène le bouton "suivant" (cf.
+ *  `nextPhaseOf`) et le camp qui la jouera — « Passer à la phase X du joueur
+ *  Y ? » —, précédée du nouveau tour s'il change. Camp encore inconnu (ordre
+ *  tiré au dé au début du créneau) : la phase seule. Hors mode Assisté (pas
+ *  de phases) : le camp seul. */
+function nextPhaseMessage() {
+  const step = turnTrackerRef.value?.currentStep ?? 0
+  const next = phase.value != null ? nextPhaseOf() : { phaseStep: null, nextStep: true }
+  const side = next.nextStep ? sideOfStep(trackConfig, step + 1, turnTrackerRef.value?.rollOrders) : turnInfo.value.activeSideKey
+  const turn = next.nextStep ? turnOfStep(trackConfig, step + 1) : null
+  const params = { phase: phaseName(next.phaseStep), side: side ? sideLabel(side) : '' }
+  const question = next.phaseStep == null
+    ? t(side ? 'phaseConfirm.nextSide' : 'phaseConfirm.endTurn', params)
+    : t(side ? 'phaseConfirm.next' : 'phaseConfirm.nextRolled', params)
+  return turn != null && turn !== turnInfo.value.turn ? `${t('phaseConfirm.turn', { turn })} — ${question}` : question
 }
 
 /** Clic sur le bouton "suivant" de la ligne des phases (cf. TurnTracker.vue,
@@ -862,18 +876,14 @@ function onPhaseNext() {
   // NON `inputLocked`, qu'un temps de Mouvement écoulé ferme alors que c'est
   // précisément ce bouton-là qu'il faut pouvoir cliquer).
   if (phaseControlsLocked.value) return
-  // Fin de la mise en place : le nombre de pions exigé par le module (cf.
-  // `moduleRules.setupCount`) — trop, refusé ; trop peu, à confirmer.
+  const confirmed = phaseConfirmed
+  phaseConfirmed = false
+  // Fin de la mise en place : plus de pions que n'en permet le module (cf.
+  // `moduleRules.setupCount`), refusé (trop peu : averti à la confirmation).
   if (phase.value === PHASE_SETUP) {
     const setup = moduleRules.setupCount(counters.value)
-    const short = !setupShortConfirmed && setup && setup.count < setup.total
-    setupShortConfirmed = false
     if (setup && setup.count > setup.total) {
       setupExcess.value = setup
-      return
-    }
-    if (short) {
-      setupShortPending.value = setup
       return
     }
   }
@@ -881,20 +891,9 @@ function onPhaseNext() {
     showPhaseBlocked.value = true
     return
   }
-  // Phase Mouvement du joueur terminée sans aucun mouvement : simple
-  // confirmation, contre un clic trop rapide sur "suivant".
-  const unmoved = !noMoveConfirmed && endsMovementUnmoved()
-  noMoveConfirmed = false
-  if (unmoved) {
-    noMovePending.value = true
-    return
-  }
-  // Reconnaissances du moteur encore à faire : simple confirmation, le
-  // joueur reste libre de les abandonner.
-  const pendingRecons = reconSkipConfirmed ? 0 : pendingEngineRecons()
-  reconSkipConfirmed = false
-  if (pendingRecons > 0) {
-    reconSkipPending.value = pendingRecons
+  // Tout changement de phase ou de tour se confirme (cf. `phaseConfirm`).
+  if (!confirmed) {
+    phaseConfirm.value = phaseChangeConfirmation()
     return
   }
   const before = phase.value
@@ -1056,12 +1055,17 @@ const sideTabLabel = (side) => {
 }
 const sidePanelTabs = computed(() => {
   const sides = props.module.sides
+  // Camp joué par le moteur (partie Assistée, cf. `runAutoMoves`) : personne
+  // ne pose ses pions à la main, pas d'onglet de renforts pour lui.
+  const engineSide = props.assisted ? moduleRules.autoMoveSide : null
   const base = !sides
     ? [{ key: 'reinforcements', label: t('tabs.reinforcements') }]
     // Onglet d'un camp : à sa couleur (cf. `turnTrack.sides`, SidePanel.vue).
-    : Object.keys(sides).map((side) => ({ key: side, label: sideTabLabel(side), tone: props.module.turnTrack?.sides?.[side]?.color ?? null }))
-  // Tasse de recherche du module (cf. SearchBagPanel.vue), s'il en a une.
-  const searchBag = moduleRules.searchBag ? [{ key: 'searchBag', label: t('tabs.searchBag') }] : []
+    : Object.keys(sides).filter((side) => side !== engineSide)
+      .map((side) => ({ key: side, label: sideTabLabel(side), tone: props.module.turnTrack?.sides?.[side]?.color ?? null }))
+  // Tasse de recherche du module (cf. SearchBagPanel.vue), s'il en a une :
+  // son contenu est caché aux joueurs, l'onglet n'apparaît qu'en mode debug.
+  const searchBag = moduleRules.searchBag && debug.value ? [{ key: 'searchBag', label: t('tabs.searchBag') }] : []
   return [...base, ...searchBag,
     // Unités éliminées : #e3e0db, tiré du papier et de l'encre du thème.
     { key: 'eliminated', label: t('tabs.eliminated'), tone: 'color-mix(in srgb, var(--c-paper) 92%, var(--c-ink))', lightTone: true },
@@ -1069,9 +1073,15 @@ const sidePanelTabs = computed(() => {
 })
 function reinforcementsForTab(key) {
   const sides = props.module.sides
-  if (!sides) return reinforcements.value
+  // Partie Assistée d'un module qui pose lui-même ses résultats de recherche
+  // (`moduleRules.searchResults`, cf. `searchMarker`) : les marqueurs du
+  // panneau (Detected!, Contact Lost...) ne servent qu'en partie Libre.
+  const shown = props.assisted && moduleRules.searchResults
+    ? reinforcements.value.filter((counter) => counter.type !== 'marker')
+    : reinforcements.value
+  if (!sides) return shown
   const factions = sides[key] ?? []
-  return reinforcements.value.filter((counter) => factions.includes(counter.faction))
+  return shown.filter((counter) => factions.includes(counter.faction))
 }
 const openTab = ref(null)
 const draggedCounterId = ref(null)
@@ -1079,7 +1089,9 @@ const draggedCounterId = ref(null)
 // --- Menu contextuel (clic droit) : "Replacer le pion" / "Éliminé" sur un
 // pion posé sur la carte ; seulement "Replacer le pion" sur un pion déjà
 // éliminé (panneau "Unités éliminées") ; aucun menu depuis le panneau de
-// renforts (pas encore sur la carte, rien à replacer ou éliminer).
+// renforts (pas encore sur la carte, rien à replacer ou éliminer). Ni l'un
+// ni l'autre, ni "Annuler le mouvement", sur un pion du camp que joue le
+// moteur (cf. `isEngineCounter`).
 const contextMenu = ref(null) // { x, y, items: [{label, action}] } | null
 
 function openContextMenu(ev, items) {
@@ -1117,9 +1129,13 @@ function eliminateCounter(id, reason) {
   const counter = counterDefinition(id)
   log('eliminate', t('log.eliminated', { unit: counter?.name ?? id }) + (reason ? ` (${reason})` : ''), { counterId: id })
 }
+/** Pion du camp que joue le moteur (`moduleRules.autoMoveSide`, le Japonais
+ *  en mer de Corail) : le joueur ne le replace ni ne l'élimine à la main. */
+const isEngineCounter = (id) => !!moduleRules.autoMoveSide && sideOfCounter(counterDefinition(id)) === moduleRules.autoMoveSide
+
 function onCounterContextMenu(id, ev) {
   if (inputLocked.value) return
-  const items = [
+  const items = isEngineCounter(id) ? [] : [
     { label: t('menu.putBack'), action: () => returnCounterToReinforcements(id) },
     { label: t('menu.eliminate'), action: () => eliminateCounter(id) },
   ]
@@ -1129,9 +1145,18 @@ function onCounterContextMenu(id, ev) {
   if (clicked && isReconTargetHex({ c: clicked.col, r: clicked.row })) {
     items.unshift({ label: t('menu.reconReport'), action: () => reportRecon(id) })
   }
+  // Opérations aériennes du joueur (cf. `openFleetDisplay`) : sur une task
+  // force ennemie repérée, en tête du menu — inerte hors de portée de ses
+  // porte-avions, l'infobulle dit pourquoi.
+  if (clicked && isFleetDisplayCandidate(clicked) && moduleRules.fleetDisplay(clicked)) {
+    const inRange = moduleRules.airStrikeReach(clicked, counters.value)
+    items.unshift({ label: t('menu.airStrike'), action: () => openFleetDisplay(clicked), disabled: !inRange,
+      title: inRange ? null : t('fleetDisplay.outOfRange', { radius: moduleRules.airStrikeRadius }) })
+  }
   // Phase Mouvement uniquement (ou partie Libre, sans phases : `phase` vaut
   // `null`) — même raison que "Retour arrière" (cf. `moveHistory`).
-  if (movedThisTurnIds.value.has(String(id)) && (phase.value === null || phase.value === 0)) {
+  // Jamais sur un pion du moteur : c'est lui qui le déplace.
+  if (!isEngineCounter(id) && movedThisTurnIds.value.has(String(id)) && (phase.value === null || phase.value === 0)) {
     items.push({ label: t('menu.cancelMove'), action: () => cancelMovement(id) })
   }
   // Pile d'unités (2 ou plus sur l'hex) : faire passer une autre unité
@@ -1142,8 +1167,17 @@ function onCounterContextMenu(id, ev) {
   // Task force du joueur : sa composition, modifiable ou non selon le moment.
   if (clicked && canSeeAlliedFleet(clicked)) {
     const editable = alliedFleetEditable.value
-    items.push({ label: t(editable ? 'menu.alliedFleetEdit' : 'menu.alliedFleetView'), action: () => openAlliedFleet(clicked, editable) })
+    const label = editable ? 'menu.alliedFleetEdit' : debugCompositionVisible.value ? 'menu.viewComposition' : 'menu.alliedFleetView'
+    items.push({ label: t(label), action: () => openAlliedFleet(clicked, editable) })
+  } else if (clicked?.type === 'task force' && debugCompositionVisible.value) {
+    // Mode debug : la vraie composition d'une task force du moteur (cf.
+    // `openComposition`) — inerte pour un leurre, qui n'en a pas.
+    const layout = moduleRules.fleetDisplay(clicked)
+    items.push({ label: t('menu.viewComposition'), action: () => openComposition(clicked), disabled: !layout,
+      title: layout ? null : t('menu.noComposition') })
   }
+  // Rien à proposer (pion du moteur) : pas de menu, ni celui du navigateur.
+  if (!items.length) { ev.preventDefault(); return }
   openContextMenu(ev, items)
 }
 /** Unités (pas les marqueurs, cf. `isUnit`) de l'hex de `counter`, dans
@@ -1164,6 +1198,7 @@ function cycleStack(counter) {
 }
 function onEliminatedContextMenu(id, ev) {
   if (inputLocked.value) return
+  if (isEngineCounter(id)) { ev.preventDefault(); return }
   openContextMenu(ev, [
     { label: t('menu.putBack'), action: () => returnCounterToReinforcements(id) },
   ])
@@ -1314,6 +1349,10 @@ const { debug, adjacentCotLabels, isInRange, entrySurchargeLabels, autoMoveTrail
   entryHexSet, entrySurcharge, wouldOverstack, isZocFrozen, rules.zoc.stopOnEntry, autoMoveTrails, autoMovers,
 )
 
+// Onglet ouvert qui disparaît (tasse de recherche, mode debug décoché) : le
+// panneau se referme.
+watch(sidePanelTabs, (tabs) => { if (openTab.value && !tabs.some((tab) => tab.key === openTab.value)) openTab.value = null })
+
 // Décalage visuel des pions empilés sur un même hex — même principe
 // qu'ambush-tactique (HexMap.vue, `placedPositions`) : chaque pion suivant
 // sur une case glisse en diagonale de 10% de sa taille par rapport au
@@ -1414,9 +1453,6 @@ function onCounterSelect(id) {
   // Reconnaissance du joueur (cf. `onManualRecon`) : le clic choisit une
   // source ou explore une cible, rien d'autre.
   if (onManualRecon({ c: counter.col, r: counter.row }, counter)) return
-  // Opérations aériennes du joueur : une task force ennemie repérée montre
-  // son support (cf. `openFleetDisplay`).
-  if (openFleetDisplay(counter)) return
   // Mise en place et phase de composition (partie Assistée) : une task force
   // du joueur ouvre sa composition, sauf renfort à empiler dessus (cf.
   // `openAlliedFleet`).
@@ -1685,26 +1721,52 @@ function planAutoMoves() {
     }
   }
   // Puis les suiveurs, chacun une fois son meneur déplacé (chaînes
-  // d'escortes comprises), jusqu'à lui être adjacent. Un suiveur resté sur
-  // l'hex de son meneur (leurre d'un renfort, posé dessus, cf.
-  // `reinforceDummies`) s'en écarte vers un hex voisin libre.
+  // d'escortes comprises) — cf. `moveFollower`.
   const pending = new Set(leaderOf.keys())
   while (pending.size) {
     const ready = [...pending].filter((counter) => !pending.has(leaderOf.get(counter)))
     for (const counter of ready.length ? ready : [...pending]) {
       pending.delete(counter)
-      const leader = leaderOf.get(counter)
-      if (hexDistance(counter, leader) === 1) continue
-      if (hexDistance(counter, leader) === 0) {
-        const occupied = new Set(counters.value.filter(isUnit).map((other) => other.col + ',' + other.row))
-        const free = playAdjacentHexes(counter, counter.col, counter.row).filter((hex) => !occupied.has(hex.col + ',' + hex.row))
-        if (free.length) walkToward(counter, free[Math.floor(Math.random() * free.length)], () => false)
-        continue
-      }
-      walkToward(counter, { col: leader.col, row: leader.row },
-        (next) => next.col === leader.col && next.row === leader.row, (pos) => hexDistance(pos, leader) <= 1)
+      moveFollower(counter, leaderOf.get(counter))
     }
   }
+}
+
+/** Un suiveur bouge TOUJOURS, s'il a des MP : rester immobile à côté d'un
+ *  voisin qui avance trahirait qui mène (souvent un porte-avions). Il finit
+ *  sur un hex voisin de son meneur, autre que le sien et, si possible, pas
+ *  sur celui du meneur — un libre d'abord, au hasard parmi ceux à sa portée.
+ *  Trop loin pour en atteindre un, il se rapproche du meneur. Un suiveur
+ *  posé sur l'hex de son meneur (leurre d'un renfort, cf.
+ *  `reinforceDummies`) s'en écarte de même. */
+function moveFollower(counter, leader) {
+  const mp = remainingMp(counter) ?? Infinity
+  if (mp <= 0) return
+  const hexKey = (hex) => hex.col + ',' + hex.row
+  const occupied = new Set(counters.value.filter((other) => isUnit(other) && other !== counter).map(hexKey))
+  const around = shuffled(playAdjacentHexes(counter, leader.col, leader.row)
+    .filter((hex) => hexKey(hex) !== hexKey(counter) && hexDistance(counter, hex) <= mp))
+  const from = hexKey(counter)
+  // Le chemin contourne l'hex du meneur : à court de MP, le suiveur ne doit
+  // pas s'y arrêter en route.
+  const avoidLeader = (_, to) => hexKey(to) !== hexKey(leader)
+  for (const hex of [...around.filter((hex) => !occupied.has(hexKey(hex))), ...around.filter((hex) => occupied.has(hexKey(hex)))]) {
+    walkToward(counter, hex, () => false, (pos) => hexKey(pos) === hexKey(hex), avoidLeader)
+    if (hexKey(counter) !== from) return
+  }
+  if (hexDistance(counter, leader) > 1) {
+    walkToward(counter, { col: leader.col, row: leader.row },
+      (next) => next.col === leader.col && next.row === leader.row, (pos) => hexDistance(pos, leader) <= 1)
+  }
+}
+/** Copie de `list` dans un ordre tiré au hasard. */
+function shuffled(list) {
+  const copy = [...list]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
 }
 
 // --- Décisions de l'IA (cf. lib/ai/decisionTree.js) : chaque task force que
@@ -1915,10 +1977,11 @@ function playEngineStep() {
 
 // --- Raids aériens du moteur (`moduleRules.raidPhase` — "Opérations
 // aériennes" de la mer de Corail, cf. lib/useCoralSea.js::raidPlan) : à son
-// créneau de cette phase, le moteur frappe une cible et pose sur elle un
-// pion de raid par task force qui l'attaque. Les pions suivent leur cible
-// (`attachedTo`) et quittent la carte au tour suivant. Inscrit au journal
-// (entrée `raid`), d'où le rejeu et les autres joueurs le reprennent.
+// créneau de cette phase, le moteur frappe une cible et pose sur elle le
+// pion du raid ("IJN Raid", un par raid, cf. `raid.marker`). Il suit sa
+// cible (`attachedTo`) et quitte la carte dès la fin du raid (cf.
+// `endRaid`) — au plus tard au tour suivant. Inscrit au journal (entrée
+// `raid`), d'où le rejeu et les autres joueurs le reprennent.
 function runEngineRaid() {
   if (!moduleRules.raidPhase || turnTrackerRef.value?.currentSlot?.phase !== moduleRules.raidPhase) return
   if (turnInfo.value.activeSideKey !== moduleRules.raidSide) return
@@ -1926,16 +1989,102 @@ function runEngineRaid() {
   for (const raid of moduleRules.raidPlan(counters.value)) {
     const target = counters.value.find((counter) => String(counter.id) === raid.targetId)
     if (!target) continue
-    const markers = raid.raiders.map((raider) => ({ id: `raid-${newUid()}`, name: raider.name, code: raider.name, type: 'marker',
-      faction: 'markers', src: raider.src, col: target.col, row: target.row, raid: raider.tf, attachedTo: raid.targetId, ...placedWhen() }))
+    const raiders = raid.raiders.map((raider) => raider.name).join(', ')
+    const markers = [{ id: `raid-${newUid()}`, name: raid.marker.name, code: raid.marker.name, type: 'marker', faction: 'markers',
+      src: raid.marker.src, col: target.col, row: target.row, raid: raid.raiders.map((raider) => raider.tf).join(','), attachedTo: raid.targetId, ...placedWhen() }]
     placeRaidMarkers(markers)
-    log('raid', t('log.raid', { unit: target.name, hex: hexId(target.col + 1, target.row), raiders: markers.map((marker) => marker.name).join(', ') }),
-      { markers })
+    moduleRules.launchRaid((raid.planes ?? []).map((plane) => plane.key))
+    const strike = raid.attacks
+      ? { planes: raid.planes, attacks: raid.attacks, estimatedPoints: raid.estimatedPoints, expectedPoints: raid.expectedPoints }
+      : null
+    log('raid', t('log.raid', { unit: target.name, hex: hexId(target.col + 1, target.row), raiders })
+      + (strike ? ` ${raidStrikeText(strike)}` : ''), { markers, raiders, ...(strike && { strike }) })
+    // Personne ici pour le dérouler (cible dont ce joueur ne voit pas la
+    // composition) : hors ligne, le raid est fini tout de suite ; en ligne,
+    // le joueur visé le termine chez lui.
+    if (!showRaid({ markers, raiders, strike }) && !props.online) {
+      endRaid({ markerIds: markers.map((marker) => marker.id), unit: target.name, planeKeys: (raid.planes ?? []).map((plane) => plane.key) })
+    }
   }
 }
 
-/** Pose les pions d'un raid — en jeu comme au rejeu. */
+// Raids montrés au joueur visé, l'un après l'autre : la composition de sa
+// task force frappée (TaskForceComposer.vue, lecture seule) avec les avions
+// japonais et le navire que vise chaque attaque.
+// Le bouton "Terminer le raid" clôt le raid (cf. `endRaid`).
+const raidViews = ref([]) // [{ id, fleet, raid, title, markerIds, unit, planeKeys }]
+let raidViewCount = 0
+/** Montre le raid `{ markers, raiders, strike }` (données de l'entrée
+ *  `raid`) au joueur qui voit la composition de sa cible — en jeu, ou reçu
+ *  en ligne (cf. `applyRemoteEntry`) ; jamais au rejeu. Vrai s'il est
+ *  montré. */
+function showRaid({ markers, raiders, strike } = {}) {
+  const target = counters.value.find((counter) => String(counter.id) === markers?.[0]?.attachedTo)
+  if (!strike?.attacks || !target || !canSeeAlliedFleet(target)) return false
+  raidViews.value = [...raidViews.value, { id: ++raidViewCount, fleet: moduleRules.alliedFleet(target),
+    // Journal antérieur au pion unique : un pion par task force, à son nom.
+    raid: { ...strike, raiders: raiders ?? markers.map((marker) => marker.name).join(', ') },
+    title: t('raidView.title', { unit: target.name }), markerIds: markers.map((marker) => marker.id), unit: target.name,
+    planeKeys: strike.planes.map((plane) => plane.key) }]
+  return true
+}
+
+/** Fin du raid `{ markerIds, unit, planeKeys }` (bouton "Terminer le
+ *  raid", cf. TaskForceComposer.vue) : son pion quitte la carte, et ses
+ *  avions vont dans la case "Landing from Map" de leur support (cf.
+ *  `moduleRules.landFromRaid`). Inscrit au journal (entrée `raidEnd`),
+ *  d'où le rejeu et les autres joueurs le reprennent. */
+function endRaid({ markerIds, unit, planeKeys }) {
+  removeRaidMarkers(markerIds)
+  moduleRules.landFromRaid(planeKeys)
+  log('raidEnd', t('log.raidEnd', { unit }), { markerIds, planeKeys })
+}
+function closeRaidView() {
+  const [view, ...rest] = raidViews.value
+  raidViews.value = rest
+  if (view) endRaid(view)
+}
+/** Retire de la carte les pions de raid `ids` — en jeu comme au rejeu. */
+function removeRaidMarkers(ids) {
+  const gone = new Set((ids ?? []).map(String))
+  if (counters.value.some((counter) => gone.has(String(counter.id)))) counters.value = counters.value.filter((counter) => !gone.has(String(counter.id)))
+}
+
+/** Plan d'une frappe (cf. `moduleRules.raidPlan`), lisible : navires visés
+ *  (par leur nom une fois la cible dévoilée) et groupes d'avions, chasseurs
+ *  d'escorte, points de victoire espérés. */
+function raidStrikeText({ planes, attacks, expectedPoints }) {
+  const points = (value) => value.toLocaleString(currentLocale(), { maximumFractionDigits: 1 })
+  const plane = (index) => [planes[index].name, planes[index].code].filter(Boolean).join(' ')
+  const attackText = attacks.map((attack) => t('log.raidAttack', {
+    target: attack.target.name
+      ? [...new Set([attack.target.type, attack.target.name])].join(' ')
+      : t(`log.raidTargets.${attack.target.role}`, { n: attack.target.index + 1 }),
+    groups: attack.groups.map((group) => group.map(plane).join(' + ')).join(' | '),
+    points: points(attack.expectedPoints),
+  })).join(' ; ')
+  const used = new Set(attacks.flatMap((attack) => attack.groups.flat()))
+  const escorts = planes.flatMap((_, index) => (used.has(index) ? [] : [plane(index)]))
+  return t('log.raidStrike', { attacks: attackText, points: points(expectedPoints) })
+    + (escorts.length ? ` ${t('log.raidEscort', { planes: escorts.join(', ') })}` : '')
+}
+
+/** Cycle des avions sur leur support (cf. `moduleRules.airCycle`) pour le
+ *  pas courant de la piste et son camp, lus à la source (TurnTracker.vue) :
+ *  au rejeu en avance rapide, les entrées `turn` et `rollOrder` l'appellent
+ *  pas à pas, les watchers ne voyant que le dernier. Sans effet s'il a déjà
+ *  joué pour ce pas. */
+function runAirCycle() {
+  const step = turnTrackerRef.value?.currentStep
+  if (step == null) return
+  moduleRules.airCycle(step, turnTrackerRef.value?.currentSlot?.phase ?? null, sideOfStep(trackConfig, step, turnTrackerRef.value?.rollOrders))
+}
+watch([() => turnInfo.value.step, () => turnInfo.value.activeSideKey], runAirCycle)
+
+/** Pose les pions d'un raid — en jeu comme au rejeu. Sa cible est désormais
+ *  connue du camp qui l'a frappée (cf. `moduleRules.noteRaided`). */
 function placeRaidMarkers(markers) {
+  for (const unitId of new Set((markers ?? []).map((marker) => marker.attachedTo))) moduleRules.noteRaided(unitId)
   const fresh = (markers ?? []).filter((marker) => !counters.value.some((counter) => counter.id === marker.id))
   if (fresh.length) counters.value = [...counters.value, ...fresh.map((marker) => ({ ...marker }))]
 }
@@ -2041,9 +2190,15 @@ function onManualRecon(hex, clicked = null) {
 
 // --- Support de task force (cf. `moduleRules.fleetDisplay`,
 // FleetDisplayModal.vue) : pendant SA phase d'Opérations aériennes (mode
-// Assisté), le joueur clique une task force ennemie repérée ("Sighted
-// Carrier" ou "Sighted Fleet") pour voir ses navires sur leur support.
-const fleetDisplay = ref(null) // { layout, title } | null
+// Assisté), le menu du clic droit d'une task force ennemie repérée
+// ("Sighted Carrier" ou "Sighted Fleet") propose "Attaque aérienne", qui
+// montre ses navires sur leur support — À PORTÉE de ses porte-avions (cf.
+// `moduleRules.airStrikeReach`) ; hors de portée, l'entrée est inerte et
+// son infobulle dit pourquoi.
+const fleetDisplay = ref(null) // { counter, title } | null
+// Support montré, à jour (dommages, pertes des avions — cf.
+// `moduleRules.fleetDisplay`).
+const fleetDisplayLayout = computed(() => fleetDisplay.value && moduleRules.fleetDisplay(fleetDisplay.value.counter))
 watch(() => turnInfo.value.step, () => { fleetDisplay.value = null })
 
 const fleetDisplayActive = computed(() => props.assisted && !!moduleRules.fleetDisplayPhase
@@ -2051,9 +2206,13 @@ const fleetDisplayActive = computed(() => props.assisted && !!moduleRules.fleetD
   && turnTrackerRef.value?.currentSlot?.phase === moduleRules.fleetDisplayPhase)
 const isSightedTaskForce = (counter) => ['carrierTF', 'fleetTF'].includes(sightings.value.get(String(counter.id)))
 
+/** Task force ennemie repérée, pendant la phase : ses navires se montrent
+ *  si elle est à portée. */
+const isFleetDisplayCandidate = (counter) => fleetDisplayActive.value
+  && sideOfCounter(counter) !== moduleRules.fleetDisplaySide && isSightedTaskForce(counter)
 /** Support de `counter` à montrer maintenant, ou `null`. */
 function fleetDisplayOf(counter) {
-  if (!fleetDisplayActive.value || sideOfCounter(counter) === moduleRules.fleetDisplaySide || !isSightedTaskForce(counter)) return null
+  if (!isFleetDisplayCandidate(counter) || !moduleRules.airStrikeReach(counter, counters.value)) return null
   return moduleRules.fleetDisplay(counter)
 }
 /** Hex des task forces dont le support peut s'ouvrir (surlignés). */
@@ -2061,14 +2220,44 @@ const fleetDisplayHexes = computed(() => (fleetDisplayActive.value
   ? new Set(counters.value.filter((counter) => isUnit(counter) && fleetDisplayOf(counter)).map((counter) => counter.col + ',' + counter.row))
   : new Set()))
 
-/** Ouvre le support de `counter` s'il en a un maintenant. Vrai si le clic a
- *  été consommé. */
+/** Mode debug : la composition secrète des task forces du moteur se
+ *  consulte au clic droit (cf. `openComposition`) — en ligne, par le seul
+ *  joueur de ce camp, comme les étiquettes secrètes (cf.
+ *  `privateLabelVisible`). */
+const debugCompositionVisible = computed(() => debug.value
+  && (!props.online || !moduleRules.privateLabelSide || props.localSide === moduleRules.privateLabelSide))
+/** Mode debug : montre le support de la task force `counter` (cf.
+ *  `moduleRules.fleetDisplay`), à tout moment, repérée ou non. */
+function openComposition(counter) {
+  if (!moduleRules.fleetDisplay(counter)) return
+  fleetDisplay.value = { counter, title: t('fleetDisplay.composition', { unit: privateLabelOf(counter) ?? counter.name, hex: hexId(counter.col + 1, counter.row) }) }
+}
+
+/** Ouvre le support de `counter` s'il en a un maintenant (menu "Attaque
+ *  aérienne" du clic droit, cf. `onCounterContextMenu`). Vrai s'il s'est
+ *  ouvert. */
 function openFleetDisplay(counter) {
   const layout = fleetDisplayOf(counter)
   if (!layout) return false
   const sighting = t(`sighting.${sightings.value.get(String(counter.id))}`)
-  fleetDisplay.value = { layout, title: t('fleetDisplay.title', { sighting, hex: hexId(counter.col + 1, counter.row) }) }
+  fleetDisplay.value = { counter, title: t('fleetDisplay.title', { sighting, hex: hexId(counter.col + 1, counter.row) }) }
   return true
+}
+
+// --- Dommages des navires (cf. `moduleRules.damageOf`) : le joueur les
+// pose au clic droit sur un navire d'un support — japonais (cf.
+// FleetDisplayModal.vue) comme le sien (cf. TaskForceComposer.vue), à tout
+// moment sauf pendant un rejeu. Inscrits au journal (entrée `shipDamage`).
+const shipDamageEditable = computed(() => !!moduleRules.shipDamages && !replayLocked.value)
+function setShipDamage({ ship, state }) {
+  moduleRules.setShipDamage(ship.key, state)
+  log('shipDamage', t('log.shipDamage', { ship: `${ship.type} ${ship.name}`, state: t(`damage.${state}`) }), { key: ship.key, state })
+}
+/** Pertes d'un avion (cf. `moduleRules.planeStateOf`), posées comme les
+ *  dommages d'un navire, sur tout avion d'un support. Entrée `planeState`. */
+function setPlaneState({ plane, state }) {
+  moduleRules.setPlaneState(plane.key, state)
+  log('planeState', t('log.planeState', { plane: [plane.name, plane.code].filter(Boolean).join(' '), state: t(`planeState.${state}`) }), { key: plane.key, state })
 }
 
 // --- Composition des task forces du joueur (cf. `moduleRules.alliedFleet`,
@@ -2108,7 +2297,8 @@ function saveAlliedFleet(cells) {
   const { counter, fleet } = alliedComposer.value
   alliedComposer.value = null
   const fleets = moduleRules.setAlliedFleet(fleet.tf, cells)
-  const n = Object.keys(cells).length
+  // Les navires seuls : les cases Ready et Reserve rangent les avions.
+  const n = Object.keys(cells).filter((cell) => !/^(ready|reserve)\d+$/.test(cell)).length
   log('alliedFleet', t('log.alliedFleet', { unit: counter.name, n }, n), { fleets })
 }
 
@@ -2193,35 +2383,50 @@ function unitSrc(counter) {
 // Toast du résultat d'une reconnaissance du joueur (cf. Toast.vue).
 const reconToast = ref(null)
 
-/** Explore l'unité `unit` depuis la source `source` : tire un chit, pose son
- *  pion sur l'unité, en applique le résultat (état de repérage, pion
- *  "Sighted", leurre retiré du jeu) et l'inscrit au journal. `hidden` : le
- *  chit reste caché au joueur (pion "Search", journal sans le chit ni le
- *  contenu de la tasse), qui reçoit à la place un toast du résultat. Faux
- *  si la tasse est vide. */
-function performSearch(unit, source, { hidden = false } = {}) {
+/** Explore l'hex de l'unité `unit` depuis la source `source` : tire UN chit,
+ *  pose son pion sur chaque unité explorable de l'hex pour le camp `side`
+ *  (`unit` d'abord, cf. `moduleRules.reconTargetOf`), applique à chacune le
+ *  résultat (état de repérage, pion "Sighted", leurre retiré du jeu) et
+ *  inscrit le tout au journal — une entrée `search`, une seule utilisation
+ *  de la source. `hidden` : le chit reste caché au joueur (pion "Search",
+ *  journal sans le chit ni le contenu de la tasse), qui reçoit à la place
+ *  un toast du résultat. Faux si la tasse est vide. */
+function performSearch(unit, source, { hidden = false, side = turnInfo.value.activeSideKey } = {}) {
   const draw = moduleRules.drawSearch()
   if (!draw) return false
-  const marker = searchMarker(draw.result, unit, hidden)
-  placeSearchMarker(marker)
   noteReconUse(source.key)
-  const outcome = moduleRules.searchOutcome(draw.result, unit) ?? { sighting: null, removed: false }
-  const sighted = outcome.sighting ? sightedMarker(outcome.sighting, unit) : null
-  if (outcome.sighting) applySighting(unit.id, outcome.sighting, sighted)
-  const sightingLabel = outcome.sighting ? t(`sighting.${outcome.sighting}`) : '—'
+  // Le chit tiré vaut pour TOUTES les unités explorables de l'hex (cf.
+  // `moduleRules.reconTargetOf`), celle désignée d'abord : chacune reçoit
+  // le résultat selon ce qu'elle est (cf. `moduleRules.searchOutcome`).
+  const here = counters.value.filter((counter) => counter !== unit && counter.col === unit.col && counter.row === unit.row
+    && !eliminatedIds.value.has(String(counter.id)) && moduleRules.reconTargetOf(counter, side))
+  const results = [unit, ...here].map((target) => {
+    const marker = searchMarker(draw.result, target, hidden)
+    placeSearchMarker(marker)
+    const outcome = moduleRules.searchOutcome(draw.result, target) ?? { sighting: null, removed: false }
+    const sighted = outcome.sighting ? sightedMarker(outcome.sighting, target) : null
+    if (outcome.sighting) applySighting(target.id, outcome.sighting, sighted)
+    return { target, marker, outcome, sighted }
+  })
+  const sightingLabel = results.map(({ outcome }) => (outcome.sighting ? t(`sighting.${outcome.sighting}`) : '—')).join(', ')
+  const unitNames = results.map(({ target }) => target.name).join(', ')
   // Un porte-avions du moteur reste anonyme : le nommer trahirait quel
   // leurre le porte. Ceux du joueur sont à découvert.
   const from = source.base ?? (hidden ? source.name : t('log.reconCarrier'))
   const hex = hexId(unit.col + 1, unit.row)
-  const side = sideLabel(turnInfo.value.activeSideKey)
+  const sideName = sideLabel(turnInfo.value.activeSideKey)
   const { detected = 0, misdirect = 0, contactLost = 0 } = draw.bag
   const text = hidden
-    ? t('log.searchHidden', { side, from, hex, unit: unit.name, sighting: sightingLabel })
-    : t('log.search', { side, from, hex, unit: unit.name, result: marker.name, sighting: sightingLabel, detected, misdirect, contactLost })
-  log('search', text, { counter: marker, bag: draw.bag, unitId: String(unit.id), sighting: outcome.sighting, sighted, source: source.key })
-  if (outcome.removed) eliminateCounter(unit.id, t('log.dummyUnmasked'))
+    ? t('log.searchHidden', { side: sideName, from, hex, unit: unitNames, sighting: sightingLabel })
+    : t('log.search', { side: sideName, from, hex, unit: unitNames, result: results[0].marker.name, sighting: sightingLabel, detected, misdirect, contactLost })
+  // `counter`, `unitId`, `sighting`, `sighted` : la première unité (forme
+  // des journaux d'avant `units`).
+  const units = results.map(({ target, marker, outcome, sighted }) => ({ counter: marker, unitId: String(target.id), sighting: outcome.sighting, sighted }))
+  log('search', text, { ...units[0], units, bag: draw.bag, source: source.key })
+  const removed = results.filter(({ outcome }) => outcome.removed)
+  for (const { target } of removed) eliminateCounter(target.id, t('log.dummyUnmasked'))
   if (hidden) {
-    reconToast.value = { id: marker.id, text: t(outcome.removed ? 'recon.toastRemoved' : 'recon.toast', { hex, sighting: sightingLabel }) }
+    reconToast.value = { id: results[0].marker.id, text: t(removed.length ? 'recon.toastRemoved' : 'recon.toast', { hex, sighting: sightingLabel }) }
   }
   return true
 }
@@ -2271,7 +2476,7 @@ function returnSearchChits() {
   if (sightings.value.size) sightings.value = new Map()
 }
 watch(() => turnInfo.value.turn, () => {
-  // Pions de raid du tour précédent (cf. `runEngineRaid`) : retirés.
+  // Pions de raid restés du tour précédent (cf. `runEngineRaid`) : retirés.
   if (counters.value.some((counter) => counter.raid)) counters.value = counters.value.filter((counter) => !counter.raid)
   // Avant le retour des chits : le renfort se pose d'après les repérages
   // du jour, qui tombent avec eux.
@@ -2536,6 +2741,7 @@ function applyRemoteGameOver(loser, reason) {
 function applyRemoteEntry(entry) {
   if (!entry || !journalRef.value?.appendRemote(entry)) return
   applyReplayEntry(entry)
+  if (entry.kind === 'raid' && entry.data) showRaid(entry.data)
 }
 
 /** En ligne : entrée retirée par un autre joueur (retour arrière). */
@@ -2600,6 +2806,9 @@ function resetBoardForReplay() {
   // `search` rejouées.
   moduleRules.refillSearchBag()
   moduleRules.restoreAlliedFleets(null)
+  moduleRules.restoreShipDamage(null)
+  moduleRules.restorePlaneDamage(null)
+  moduleRules.restoreAirZones()
   sightings.value = new Map()
   reconUses.value = new Map()
   autoMoveTrails.value = new Map()
@@ -2687,31 +2896,46 @@ function applyReplayEntry(entry) {
   } else if (entry.kind === 'search') {
     // Résultat de recherche (cf. `reportRecon`) : le pion tiré, et ce qui
     // reste dans la tasse — le journal fait foi, jamais un nouveau tirage.
-    if (entryData.counter && !counters.value.some((counter) => String(counter.id) === String(entryData.counter.id))) {
-      placeSearchMarker(entryData.counter)
+    // Une unité par unité explorable de l'hex (`units`) ; un journal
+    // d'avant n'en a qu'une, à plat dans l'entrée.
+    for (const { counter: marker, unitId, sighting, sighted } of entryData.units ?? [entryData]) {
+      if (marker && !counters.value.some((counter) => String(counter.id) === String(marker.id))) placeSearchMarker(marker)
+      // État de repérage et pion "Sighted" (le leurre démasqué, lui, part
+      // avec l'entrée `eliminate` qui suit).
+      if (unitId && sighting) applySighting(unitId, sighting, sighted)
     }
     moduleRules.restoreSearchBag(entryData.bag)
     if (entryData.source) noteReconUse(entryData.source)
-    // État de repérage et pion "Sighted" (le leurre démasqué, lui, part
-    // avec l'entrée `eliminate` qui suit).
-    if (entryData.unitId && entryData.sighting) applySighting(entryData.unitId, entryData.sighting, entryData.sighted)
   } else if (entry.kind === 'searchRefill') {
     // Retour des chits de recherche dans la tasse (cf. `returnSearchChits`).
     returnSearchChits()
   } else if (entry.kind === 'raid') {
     // Raid aérien du moteur (cf. `runEngineRaid`).
     placeRaidMarkers(entryData.markers)
+    moduleRules.launchRaid((entryData.strike?.planes ?? []).map((plane) => plane.key))
+  } else if (entry.kind === 'raidEnd') {
+    // Fin d'un raid (cf. `endRaid`).
+    removeRaidMarkers(entryData.markerIds)
+    moduleRules.landFromRaid(entryData.planeKeys)
   } else if (entry.kind === 'alliedFleet') {
     // Compositions des task forces du joueur (cf. `saveAlliedFleet`).
     moduleRules.restoreAlliedFleets(entryData.fleets)
+  } else if (entry.kind === 'shipDamage') {
+    // Dommages d'un navire (cf. `setShipDamage`).
+    moduleRules.setShipDamage(entryData.key, entryData.state)
+  } else if (entry.kind === 'planeState') {
+    // Pertes d'un avion (cf. `setPlaneState`).
+    moduleRules.setPlaneState(entryData.key, entryData.state)
   } else if (entry.kind === 'dummyReinforce') {
     // Renfort de leurres (cf. `reinforceDummies`) : le journal fait foi.
     applyDummyReinforcement(entryData)
   } else if (entry.kind === 'rollOrder') {
     // Ordre de jeu d'une phase tirée au dé (cf. `rollPhaseOrder`).
     turnTrackerRef.value?.setRollOrder(entryData.turn, entryData.order)
+    runAirCycle()
   } else if (entry.kind === 'turn') {
     turnTrackerRef.value?.applyRemoteTurn(entryData.step)
+    runAirCycle()
     // Nouveau tour/camp : plus aucune unité "a bougé" ni verrouillée — fait
     // ICI, tout de suite, et non dans onTurnChange (différé, cf. son
     // commentaire), pour que les `move` rejoués juste après restent marqués.
@@ -3169,12 +3393,25 @@ function onMapDragEnd() {
     <Toast :message="reconToast" @close="reconToast = null" />
     <ContextMenu v-if="contextMenu" :left-px="contextMenu.x" :top-px="contextMenu.y" :items="contextMenu.items"
       @choose="chooseContextMenuItem" @close="closeContextMenu" />
-    <FleetDisplayModal v-if="fleetDisplay" :layout="fleetDisplay.layout" :displays="moduleRules.fleetDisplays"
-      :title="fleetDisplay.title" @close="fleetDisplay = null" />
+    <FleetDisplayModal v-if="fleetDisplayLayout" :layout="fleetDisplayLayout" :displays="moduleRules.fleetDisplays"
+      :title="fleetDisplay.title" :damages="moduleRules.shipDamages" :damage-of="moduleRules.damageOf"
+      :plane-states="moduleRules.planeStates" :plane-state-of="moduleRules.planeStateOf"
+      :editable="shipDamageEditable" @damage="setShipDamage" @plane-state="setPlaneState" @close="fleetDisplay = null" />
     <TaskForceComposer v-if="alliedComposer" :title="alliedComposer.title" :kind="alliedComposer.fleet.kind"
-      :displays="moduleRules.fleetDisplays" :cell-ids="alliedComposer.fleet.cellIds" :cells="alliedComposer.fleet.cells"
+      :displays="moduleRules.alliedFleetDisplays" :cell-ids="alliedComposer.fleet.cellIds" :cells="alliedComposer.fleet.cells"
       :groups="moduleRules.alliedGroups" :elsewhere="alliedComposer.elsewhere" :fits="moduleRules.alliedShipFits"
+      :air-cell-ids="alliedComposer.fleet.airCellIds ?? []" :deck-of="moduleRules.alliedDeck"
+      :damages="moduleRules.shipDamages" :damage-of="moduleRules.damageOf" :damage-editable="shipDamageEditable"
+      @damage="setShipDamage"
+      :plane-states="moduleRules.planeStates" :plane-state-of="moduleRules.planeStateOf" @plane-state="setPlaneState"
       :editable="alliedComposer.editable" @save="saveAlliedFleet" @close="alliedComposer = null" />
+    <TaskForceComposer v-else-if="raidViews.length" :key="raidViews[0].id" :title="raidViews[0].title" :kind="raidViews[0].fleet.kind"
+      :displays="moduleRules.alliedFleetDisplays" :cell-ids="raidViews[0].fleet.cellIds" :cells="raidViews[0].fleet.cells"
+      :groups="moduleRules.alliedGroups" :fits="moduleRules.alliedShipFits"
+      :air-cell-ids="raidViews[0].fleet.airCellIds ?? []" :deck-of="moduleRules.alliedDeck"
+      :damages="moduleRules.shipDamages" :damage-of="moduleRules.damageOf" :damage-editable="shipDamageEditable"
+      @damage="setShipDamage"
+      :plane-states="moduleRules.planeStates" :plane-state-of="moduleRules.planeStateOf" @plane-state="setPlaneState" :raid="raidViews[0].raid" @close="closeRaidView" />
     <StackPopup v-if="hoveredStackCounters.length" :counters="hoveredStackCounters" :anchor="hoveredCounter.anchor"
       :title="$t('stack.title', { hex: hexId(hoveredCounter.col + 1, hoveredCounter.row), n: hoveredStackCounters.length })" />
 
@@ -3187,22 +3424,15 @@ function onMapDragEnd() {
     <!-- cf. onPhaseNext — changement de phase refusé : unités empilées en fin
          de Mouvement (cf. lib/useAssisted.js::stackedHexes). -->
     <PhaseBlockedModal v-if="showPhaseBlocked" :stacks="stackedHexes" @close="showPhaseBlocked = false" />
-    <PhaseBlockedModal v-if="reconSkipPending" :title="$t('recon.skipTitle')" :confirm-label="$t('recon.skipConfirm')"
-      @close="reconSkipPending = null" @confirm="confirmReconSkip">
-      {{ $t('recon.skipMessage', { n: reconSkipPending }, reconSkipPending) }}
-    </PhaseBlockedModal>
-    <!-- cf. onPhaseNext — fin de la mise en place : trop peu de pions posés
-         (confirmation), ou trop (refus). -->
-    <PhaseBlockedModal v-if="setupShortPending" :title="$t('setupCheck.shortTitle')" :confirm-label="$t('setupCheck.confirm')"
-      @close="setupShortPending = null" @confirm="confirmSetupShort">
-      {{ $t('setupCheck.short', { count: setupShortPending.count, total: setupShortPending.total }) }}
-    </PhaseBlockedModal>
+    <!-- cf. onPhaseNext — fin de la mise en place : trop de pions posés (refus). -->
     <PhaseBlockedModal v-if="setupExcess" :title="$t('setupCheck.excessTitle')" @close="setupExcess = null">
       {{ $t('setupCheck.excess', { count: setupExcess.count, total: setupExcess.total, extra: setupExcess.count - setupExcess.total }) }}
     </PhaseBlockedModal>
-    <PhaseBlockedModal v-if="noMovePending" :title="$t('noMove.title')" :confirm-label="$t('noMove.confirm')"
-      @close="noMovePending = false" @confirm="confirmNoMove">
-      {{ $t('noMove.message') }}
+    <!-- cf. onPhaseNext — confirmation de chaque changement de phase ou de tour. -->
+    <PhaseBlockedModal v-if="phaseConfirm" :title="phaseConfirm.title" :confirm-label="$t('phaseConfirm.confirm')"
+      @close="phaseConfirm = null" @confirm="confirmPhaseNext">
+      {{ phaseConfirm.message }}
+      <template v-for="warning in phaseConfirm.warnings" :key="warning"><br />⚠ {{ warning }}</template>
     </PhaseBlockedModal>
 
     <!-- cf. MoveTimer.vue — timing "Limité" : temps de la phase de Mouvement écoulé. -->

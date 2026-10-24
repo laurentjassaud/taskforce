@@ -1,9 +1,10 @@
 {
   "_comment": [
-    "Catalogue des avions japonais (IJN) de la mer de Corail, relevé sur les pions. Pas encore utilisé par le jeu (à brancher avec les opérations aériennes).",
+    "Catalogue des avions japonais (IJN) de la mer de Corail, relevé sur les pions. Les groupes aériens des scénarios (coral-sea.json, scenarios[].airGroups) y piochent les avions par leur id.",
     "Chaque avion a deux faces : 'full' (pion orange) et 'reduced' (pion blanc et orange), comme les navires ont 'intact' et 'damaged' (cf. fleet-ijn.json).",
     "Face : mission (lettre en haut à gauche : F chasse, T torpille, B bombardement, DB bombardement en piqué), attack (chiffre sous la lettre, absent des chasseurs), airCombat (en haut à droite), code (en bas à gauche, s'il est imprimé), src (image).",
-    "KATE change de mission d'une face à l'autre (B sur la face pleine, T sur la face réduite) : relevé tel qu'imprimé, sens à préciser d'après la règle."
+    "KATE change de mission d'une face à l'autre (B sur la face pleine, T sur la face réduite) : relevé tel qu'imprimé, sens à préciser d'après la règle.",
+    "ijn-kate-torpedo : le KATE torpilleur des porte-avions (T 6 / 1, d'après la planche de mise en place du scénario 5) ; sa face réduite T 3 / 0 est celle des pions codés AKA, ZUI... Image de la face pleine découpée dans cette planche, code effacé, en attendant un scan du pion."
   ],
   "faction": "ijn",
   "missions": {
@@ -32,6 +33,13 @@
       "name": "KATE",
       "model": "B5N",
       "full": { "mission": "B", "attack": 2, "airCombat": 1, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/kate-full.png" },
+      "reduced": { "mission": "T", "attack": 3, "airCombat": 0, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/kate-reduced.png" }
+    },
+    {
+      "id": "ijn-kate-torpedo",
+      "name": "KATE",
+      "model": "B5N",
+      "full": { "mission": "T", "attack": 6, "airCombat": 1, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/kate-torpedo-full.png" },
       "reduced": { "mission": "T", "attack": 3, "airCombat": 0, "code": null, "src": "/modules/coral-sea/images/counters/ijn/air/kate-reduced.png" }
     },
     {

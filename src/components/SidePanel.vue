@@ -216,7 +216,7 @@ function rowVars(tab, tabIndex) {
 
 .dc-content-inner {
   flex: 1;
-  padding: 32px 28px;
+  padding: 32px 56px 32px 28px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
