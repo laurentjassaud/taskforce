@@ -99,6 +99,10 @@ export const INERT_RULES = Object.freeze({
   raidPlan: () => [],
   /** L'unité `unitId` vient de subir un raid (en jeu comme au rejeu) : le camp qui l'a frappée la connaît. */
   noteRaided: () => {},
+  /** Tour en cours, à chaque changement (statut des unités connues, cf. `isKnownTarget`). */
+  noteTurn: () => {},
+  /** Le camp qui lance les raids connaît-il exactement cette unité (déjà frappée) ? Bordure verte sur la carte. */
+  isKnownTarget: () => false,
   /** Probabilités d'une frappe aéronavale (cf. lib/airStrike.js::strikeOdds), ou `null`. */
   airStrikeOdds: () => null,
   /** Navire visé par une frappe : `{ ship, defenders, antiAir, durability }`, ou `null`. */
@@ -161,6 +165,10 @@ export const INERT_RULES = Object.freeze({
   /** Camp qui compose ses task forces, et phase (id de la piste) où il le fait en plus de sa mise en place, ou `null`. */
   alliedFleetSide: null,
   alliedFleetPhase: null,
+  /** Phase (id de la piste) où ce camp place librement les avions de ses task forces, ou `null`. */
+  alliedAirPhase: null,
+  /** Cette case d'une composition range-t-elle un avion (et non un navire) ? */
+  isAirCell: () => false,
 })
 
 const REGISTRY = {

@@ -602,6 +602,8 @@ const moduleRules = useModuleRules(toRef(props, 'moduleId'), {
   air: props.module.airCatalog ?? {},
   // Tableaux de la frappe aéronavale (cf. lib/airStrike.js).
   airStrike: props.module.airStrike ?? null,
+  // Piste de tour : ses nuits (cf. lib/useCoralSea.js, task forces connues).
+  turnTrack: props.module.turnTrack ?? null,
 })
 
 // Étiquette secrète d'un pion (cf. `moduleRules.privateLabel` — ex. vraie
@@ -1009,6 +1011,14 @@ const eliminatedIds = ref(new Set())
 const eliminatedCounters = computed(() =>
   [...eliminatedIds.value].map(counterDefinition).filter(Boolean)
 )
+// Pions retirés du jeu, un par retrait, dans l'ordre : `{ key, id, turn,
+// time, hex, reason }` — tour (et heure de la piste), hex qu'il occupait,
+// raison (ex. leurre démasqué). Montrés sous les unités éliminées (cf.
+// EliminatedPanel.vue), en mode debug comme en mode normal ; refaits au
+// rejeu par les entrées `eliminate`.
+const removals = ref([])
+const removalList = computed(() => removals.value.map((removal) => ({ ...removal, counter: counterDefinition(removal.id) }))
+  .filter((removal) => removal.counter))
 
 // --- Renforts : pions du module avec un hex d'entrée mais pas encore posés
 // ni éliminés (typiquement arrivée tour 2+) — cf. ReinforcementsPanel.vue.
@@ -1022,12 +1032,28 @@ const eliminatedCounters = computed(() =>
 const placedIds = computed(() => new Set(counters.value.map((counter) => String(counter.id))))
 
 /** Retire `id` de la carte et le range dans les "Unités éliminées". Commun
- *  au jeu (cf. `eliminateCounter`) et au rejeu du journal. */
-function noteElimination(id) {
+ *  au jeu (cf. `eliminateCounter`) et au rejeu du journal. `info` (`{
+ *  turn, time, hex, reason }`, cf. `removalInfo`) : ce que le journal en a
+ *  gardé — à défaut (journal plus ancien), le tour et l'hex du moment. */
+function noteElimination(id, info = {}) {
   const key = String(id)
+  const here = removalInfo(id)
   const counterIndex = counters.value.findIndex((counter) => String(counter.id) === key)
   if (counterIndex !== -1) counters.value.splice(counterIndex, 1)
   eliminatedIds.value = new Set(eliminatedIds.value).add(key)
+  removals.value = [...removals.value, { key: newUid(), id: key, turn: info.turn ?? here.turn, time: info.time ?? here.time,
+    hex: info.hex ?? here.hex, reason: info.reason ?? null }]
+}
+/** Tour (et heure de la piste) en cours, et hex qu'occupe le pion `id`
+ *  (`null` hors carte). Le tour se lit sur la piste elle-même : à jour même
+ *  au rejeu. */
+function removalInfo(id) {
+  const counter = counters.value.find((other) => String(other.id) === String(id))
+  return {
+    turn: turnTrackerRef.value?.currentTurn ?? turnInfo.value.turn,
+    time: turnTrackerRef.value?.currentTurnInfo?.time ?? null,
+    hex: counter && counter.col != null ? hexId(counter.col + 1, counter.row) : null,
+  }
 }
 
 const reinforcements = computed(() =>
@@ -1106,6 +1132,7 @@ function closeContextMenu() {
 function returnCounterToReinforcements(id) {
   const counterIndex = counters.value.findIndex((counter) => String(counter.id) === String(id))
   if (counterIndex !== -1) counters.value.splice(counterIndex, 1)
+  forgetRemoval(id)
   eliminatedIds.value.delete(String(id))
   eliminatedIds.value = new Set(eliminatedIds.value)
   const counter = counterDefinition(id)
@@ -1125,9 +1152,17 @@ function returnCounterToReinforcements(id) {
 /** Élimine un pion (menu contextuel, ou leurre démasqué par une recherche —
  *  cf. `performSearch`, qui précise alors pourquoi dans `reason`). */
 function eliminateCounter(id, reason) {
-  noteElimination(id)
+  const info = { ...removalInfo(id), reason: reason ?? null }
+  noteElimination(id, info)
   const counter = counterDefinition(id)
-  log('eliminate', t('log.eliminated', { unit: counter?.name ?? id }) + (reason ? ` (${reason})` : ''), { counterId: id })
+  log('eliminate', t('log.eliminated', { unit: counter?.name ?? id }) + (reason ? ` (${reason})` : ''), { counterId: id, ...info })
+}
+/** Un pion éliminé "replacé" dans les renforts (correction du joueur) : son
+ *  dernier retrait sort de la liste. */
+function forgetRemoval(id) {
+  if (!eliminatedIds.value.has(String(id))) return
+  const index = removals.value.findLastIndex((removal) => removal.id === String(id))
+  if (index >= 0) removals.value = removals.value.filter((_, at) => at !== index)
 }
 /** Pion du camp que joue le moteur (`moduleRules.autoMoveSide`, le Japonais
  *  en mer de Corail) : le joueur ne le replace ni ne l'élimine à la main. */
@@ -1167,7 +1202,8 @@ function onCounterContextMenu(id, ev) {
   // Task force du joueur : sa composition, modifiable ou non selon le moment.
   if (clicked && canSeeAlliedFleet(clicked)) {
     const editable = alliedFleetEditable.value
-    const label = editable ? 'menu.alliedFleetEdit' : debugCompositionVisible.value ? 'menu.viewComposition' : 'menu.alliedFleetView'
+    const label = editable ? 'menu.alliedFleetEdit' : alliedAirEditable.value ? 'menu.alliedAirEdit'
+      : debugCompositionVisible.value ? 'menu.viewComposition' : 'menu.alliedFleetView'
     items.push({ label: t(label), action: () => openAlliedFleet(clicked, editable) })
   } else if (clicked?.type === 'task force' && debugCompositionVisible.value) {
     // Mode debug : la vraie composition d'une task force du moteur (cf.
@@ -1455,9 +1491,9 @@ function onCounterSelect(id) {
   if (onManualRecon({ c: counter.col, r: counter.row }, counter)) return
   // Mise en place et phase de composition (partie Assistée) : une task force
   // du joueur ouvre sa composition, sauf renfort à empiler dessus (cf.
-  // `openAlliedFleet`).
-  if (props.assisted && phase.value !== 0 && selectedReinforcementId.value == null && alliedFleetEditable.value
-    && openAlliedFleet(counter, true)) return
+  // `openAlliedFleet`) ; à sa phase d'Opérations aériennes, ses avions.
+  if (props.assisted && phase.value !== 0 && selectedReinforcementId.value == null
+    && (alliedFleetEditable.value || alliedAirEditable.value) && openAlliedFleet(counter, alliedFleetEditable.value)) return
   // Mise en place : rien ne bouge. Un clic sur un pion déjà posé vaut clic
   // sur son hex, pour y empiler le renfort choisi.
   if (phase.value === PHASE_SETUP) {
@@ -2082,12 +2118,24 @@ function runAirCycle() {
 watch([() => turnInfo.value.step, () => turnInfo.value.activeSideKey], runAirCycle)
 
 /** Pose les pions d'un raid — en jeu comme au rejeu. Sa cible est désormais
- *  connue du camp qui l'a frappée (cf. `moduleRules.noteRaided`). */
+ *  CONNUE du camp qui l'a frappée (cf. `moduleRules.noteRaided`, bordure
+ *  verte) : ses pions de reconnaissance (résultats de recherche, "Sighted")
+ *  quittent la carte sans retourner dans la tasse, et elle n'a plus d'état
+ *  de repérage. */
 function placeRaidMarkers(markers) {
-  for (const unitId of new Set((markers ?? []).map((marker) => marker.attachedTo))) moduleRules.noteRaided(unitId)
+  for (const marker of markers ?? []) moduleRules.noteRaided(marker.attachedTo, marker.placedTurn ?? turnInfo.value.turn)
+  const targets = new Set((markers ?? []).map((marker) => String(marker.attachedTo)))
+  const recon = (counter) => (counter.searchResult || counter.sighted) && targets.has(String(counter.attachedTo))
+  if (counters.value.some(recon)) counters.value = counters.value.filter((counter) => !recon(counter))
+  if ([...targets].some((id) => sightings.value.has(id))) {
+    sightings.value = new Map([...sightings.value].filter(([id]) => !targets.has(id)))
+  }
   const fresh = (markers ?? []).filter((marker) => !counters.value.some((counter) => counter.id === marker.id))
   if (fresh.length) counters.value = [...counters.value, ...fresh.map((marker) => ({ ...marker }))]
 }
+// Tour en cours, pour le statut des task forces connues (cf.
+// `moduleRules.isKnownTarget`).
+watch(() => turnInfo.value.turn, (turn) => moduleRules.noteTurn(turn), { immediate: true })
 watch([phase, () => turnInfo.value.step, () => turnInfo.value.activeSideKey, isReplaying], () => nextTick(playEngineStep))
 
 // --- Reconnaissance (`moduleRules.reconPhase` — cf. lib/useCoralSea.js) :
@@ -2266,7 +2314,7 @@ function setPlaneState({ plane, state }) {
 // Assistée, quand il veut en partie Libre. Hors de ces moments, il peut la
 // consulter (menu du pion). En ligne, seul ce camp-là la voit. Inscrite au
 // journal (entrée `alliedFleet`, toutes les compositions).
-const alliedComposer = ref(null) // { counter, fleet, elsewhere, editable, title } | null
+const alliedComposer = ref(null) // { counter, fleet, elsewhere, editable, airEditable, title } | null
 watch(() => turnInfo.value.step, () => { alliedComposer.value = null })
 
 const alliedFleetEditable = computed(() => {
@@ -2275,6 +2323,14 @@ const alliedFleetEditable = computed(() => {
   if (!props.assisted) return true
   return turnInfo.value.activeSideKey === side
     && (phase.value === PHASE_SETUP || turnTrackerRef.value?.currentSlot?.phase === moduleRules.alliedFleetPhase)
+})
+/** À sa phase d'Opérations aériennes (`moduleRules.alliedAirPhase`, partie
+ *  Assistée), le joueur place librement les avions de ses task forces — pas
+ *  leurs navires. */
+const alliedAirEditable = computed(() => {
+  const side = moduleRules.alliedFleetSide
+  if (!side || !props.assisted || !moduleRules.alliedAirPhase || replayLocked.value || (props.online && props.localSide !== side)) return false
+  return turnInfo.value.activeSideKey === side && turnTrackerRef.value?.currentSlot?.phase === moduleRules.alliedAirPhase
 })
 /** Ce joueur peut-il voir la composition de `counter` ? */
 function canSeeAlliedFleet(counter) {
@@ -2289,7 +2345,8 @@ function openAlliedFleet(counter, editable) {
   const elsewhere = new Map([...moduleRules.alliedAssignments()].filter(([, tf]) => tf !== fleet.tf)
     .map(([key, tf]) => [key, counterDefinition(tf)?.name ?? tf]))
   const display = t(`sighting.${fleet.kind}TF`)
-  alliedComposer.value = { counter, fleet, elsewhere, editable, title: t('alliedFleet.title', { unit: counter.name, display }) }
+  alliedComposer.value = { counter, fleet, elsewhere, editable, airEditable: !editable && alliedAirEditable.value,
+    title: t('alliedFleet.title', { unit: counter.name, display }) }
   return true
 }
 
@@ -2297,8 +2354,8 @@ function saveAlliedFleet(cells) {
   const { counter, fleet } = alliedComposer.value
   alliedComposer.value = null
   const fleets = moduleRules.setAlliedFleet(fleet.tf, cells)
-  // Les navires seuls : les cases Ready et Reserve rangent les avions.
-  const n = Object.keys(cells).filter((cell) => !/^(ready|reserve)\d+$/.test(cell)).length
+  // Les navires seuls : les autres cases rangent les avions.
+  const n = Object.keys(cells).filter((cell) => !moduleRules.isAirCell(cell)).length
   log('alliedFleet', t('log.alliedFleet', { unit: counter.name, n }, n), { fleets })
 }
 
@@ -2813,6 +2870,7 @@ function resetBoardForReplay() {
   reconUses.value = new Map()
   autoMoveTrails.value = new Map()
   eliminatedIds.value = new Set()
+  removals.value = []
   selectedCounterId.value = null
   selectedReinforcementId.value = null
   moveHistory.value = []
@@ -2886,11 +2944,11 @@ function applyReplayEntry(entry) {
     // la partie.
     gameOverReason.value = entryData.reason === 'concede' ? 'concede' : 'blitz'
   } else if (entry.kind === 'eliminate') {
-    noteElimination(entryData.counterId)
-  } else if (entry.kind === 'return') {
+    noteElimination(entryData.counterId, entryData)
   } else if (entry.kind === 'return') {
     const counterIndex = counters.value.findIndex((counter) => String(counter.id) === String(entryData.counterId))
     if (counterIndex !== -1) counters.value.splice(counterIndex, 1)
+    forgetRemoval(entryData.counterId)
     eliminatedIds.value.delete(String(entryData.counterId))
     eliminatedIds.value = new Set(eliminatedIds.value)
   } else if (entry.kind === 'search') {
@@ -3357,6 +3415,7 @@ function onMapDragEnd() {
           <Counter v-for="counter in counters.filter(isUnit)" :key="counter.id" :id="counter.id" :src="unitSrc(counter)" :col="shownHex(counter).col"
             :row="shownHex(counter).row" :calibration="calibration" :selected="selectedCounterId === counter.id" :selectable="selectable"
             :moved="showMovedRings && movedThisTurnIds.has(String(counter.id)) && !autoMoveHeld.has(String(counter.id))" :label="privateLabelOf(counter)"
+            :known="moduleRules.isKnownTarget(counter)"
             :offset="stackOffsets.get(counter.id) ?? ZERO_OFFSET" :drag-px="draggedCounterId === counter.id ? dragCurrentPx : shownPx(counter)"
             @select="onCounterSelect" @dragstart="onCounterDragStart" @contextmenu="onCounterContextMenu"
             @hover="onCounterHover" @unhover="onCounterUnhover" />
@@ -3376,7 +3435,7 @@ function onMapDragEnd() {
 
     <SidePanel :tabs="sidePanelTabs" v-model:open-tab="openTab">
       <template v-for="tab in sidePanelTabs" :key="tab.key" v-slot:[tab.key]>
-        <EliminatedPanel v-if="tab.key === 'eliminated'" :units="eliminatedCounters"
+        <EliminatedPanel v-if="tab.key === 'eliminated'" :units="eliminatedCounters" :removals="removalList"
           @contextmenu="onEliminatedContextMenu" />
         <SearchBagPanel v-else-if="tab.key === 'searchBag'" :bag="moduleRules.searchBag.value"
           :full="moduleRules.searchBagFull ?? {}" :looks="moduleRules.searchResults ?? {}" />
@@ -3404,7 +3463,7 @@ function onMapDragEnd() {
       :damages="moduleRules.shipDamages" :damage-of="moduleRules.damageOf" :damage-editable="shipDamageEditable"
       @damage="setShipDamage"
       :plane-states="moduleRules.planeStates" :plane-state-of="moduleRules.planeStateOf" @plane-state="setPlaneState"
-      :editable="alliedComposer.editable" @save="saveAlliedFleet" @close="alliedComposer = null" />
+      :editable="alliedComposer.editable" :air-editable="alliedComposer.airEditable" @save="saveAlliedFleet" @close="alliedComposer = null" />
     <TaskForceComposer v-else-if="raidViews.length" :key="raidViews[0].id" :title="raidViews[0].title" :kind="raidViews[0].fleet.kind"
       :displays="moduleRules.alliedFleetDisplays" :cell-ids="raidViews[0].fleet.cellIds" :cells="raidViews[0].fleet.cells"
       :groups="moduleRules.alliedGroups" :fits="moduleRules.alliedShipFits"

@@ -73,6 +73,10 @@ export default {
   eliminated: {
     empty: 'Aucune unité éliminée.',
     hint: 'Clic droit sur un pion pour le replacer dans les renforts.',
+    history: 'Retirés du jeu',
+    when: 'Tour {turn}',
+    whenAt: 'Tour {turn} · {time}',
+    hex: 'hex {hex}',
   },
 
   reinforcements: {
@@ -228,6 +232,8 @@ export default {
     toReserve: 'Mettre en Reserve',
     emptyReady: 'Case Ready vide',
     hangar: 'Reserve du porte-avions',
+    zones: { reserve: 'Reserve du porte-avions', cap: 'C.A.P.', landingMap: 'Landing from Map', landingCap: 'Landing from C.A.P.' },
+    airHint: 'Phase d’Opérations aériennes : placez librement vos avions (cliquez un avion puis une case ou une zone, ou glissez-le). Les navires ne bougent pas.',
     readyCell: 'Les cases Ready ne prennent que les avions du porte-avions.',
     planeCell: 'Un avion va dans une case Ready ou dans la Reserve.',
     save: 'Valider',
@@ -274,6 +280,7 @@ export default {
     restack: "Changer l'ordre de l'empilement",
     alliedFleetEdit: 'Composer la task force',
     alliedFleetView: 'Navires de la task force',
+    alliedAirEdit: 'Placer les avions',
     viewComposition: 'Voir la composition',
     noComposition: 'Leurre : aucun navire.',
   },

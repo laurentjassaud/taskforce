@@ -9,7 +9,10 @@
 // son propre jet AA, et les dégâts reçus par un même navire s'additionnent)
 // pour obtenir, EN MOYENNE sur tous les jets, le plus de points de victoire
 // — barème par résultat du navire touché (rien, mineur, significatif,
-// critique, coulé ; cf. coral-sea.json, `victoryPoints`). Tous les avions
+// critique, coulé ; cf. coral-sea.json, `victoryPoints`). Un navire déjà
+// endommagé (`damage`) cumule les nouveaux dégâts à ses dommages (cf.
+// lib/airStrike.js::damageOutcome) et ne rapporte que les résultats qui
+// aggravent son état (cf. lib/airStrike.js::outcomePoints). Tous les avions
 // attaquent ; un navire peut ne pas être visé.
 //
 // Calcul repris de l'optimiseur de l'artefact « Frappe aéronavale · Task
@@ -29,7 +32,7 @@
 //   4. si l'escadrille mélange trop de puissances pour cela, recherche
 //      APPROCHÉE par recuit simulé (`annealingSearch`), à graine fixe : les
 //      mêmes données donnent toujours le même plan.
-import { resolveStrike, damageOutcome, STRIKE_OUTCOMES } from './airStrike.js'
+import { resolveStrike, damageOutcome, outcomePoints, STRIKE_OUTCOMES } from './airStrike.js'
 
 // Garde-fous de la recherche exacte : au-delà, recherche approchée.
 const MAX_SPLITS = 600000
@@ -71,12 +74,14 @@ function addAttacks(lawA, lawB, ceiling) {
 }
 
 /** Évaluateur d'un navire `target` (`{ antiAir, durability: { intact,
- *  reduced }, points }`, `points` : un barème par résultat de
- *  `STRIKE_OUTCOMES`) : puissances des attaques qu'il reçoit (liste
+ *  reduced }, points, damage }`, `points` : un barème par résultat de
+ *  `STRIKE_OUTCOMES` ; `damage` : ses dommages actuels, 'none' par
+ *  défaut) : puissances des attaques qu'il reçoit (liste
  *  croissante, plafonnée) -> `{ expectedPoints, outcomes }` (probabilité de
  *  chaque résultat). Tout est mémorisé, par puissance et par liste. */
 function makeEvaluator(table, target, powerCap) {
   const { intact, reduced } = target.durability
+  const current = target.damage ?? 'none'
   const ceiling = intact + reduced + 2 // seuil "coulé"
   const byPower = Array.from({ length: powerCap + 1 }, (_, power) => attackDamage(table, target.antiAir, power, ceiling))
   const none = new Float64Array(ceiling + 1)
@@ -98,8 +103,8 @@ function makeEvaluator(table, target, powerCap) {
     let result = resultByList.get(key)
     if (!result) {
       const outcomes = STRIKE_OUTCOMES.map(() => 0)
-      lawOf(powers, key).forEach((p, damage) => { outcomes[STRIKE_OUTCOMES.indexOf(damageOutcome(damage, { intact, reduced }))] += p })
-      result = { expectedPoints: outcomes.reduce((sum, p, index) => sum + p * (target.points[index] ?? 0), 0), outcomes }
+      lawOf(powers, key).forEach((p, damage) => { outcomes[STRIKE_OUTCOMES.indexOf(damageOutcome(damage, { intact, reduced }, current))] += p })
+      result = { expectedPoints: outcomes.reduce((sum, p, index) => sum + p * outcomePoints(target.points, STRIKE_OUTCOMES[index], current), 0), outcomes }
       resultByList.set(key, result)
     }
     return result
@@ -184,7 +189,7 @@ function exactSearch(powers, targets, evaluators, keep, powerCap) {
 
   // B. Meilleures attaques de chaque navire avec chaque S (partagées entre
   // navires identiques pour le calcul).
-  const signature = (target) => [target.antiAir, target.durability.intact, target.durability.reduced, target.points.join('/')].join('|')
+  const signature = (target) => [target.antiAir, target.durability.intact, target.durability.reduced, target.points.join('/'), target.damage ?? 'none'].join('|')
   const shared = new Map()
   const options = targets.map((target, index) => {
     const key = signature(target)
@@ -353,7 +358,7 @@ function annealingSearch(powers, targets, evaluators, keep, powerCap) {
 
 /** Meilleurs plans de la frappe des avions `powers` (puissance anti-ship de
  *  chacun ; un chasseur, 0, n'entre pas dans le calcul) sur les navires
- *  `targets` (`{ antiAir, durability: { intact, reduced }, points }`), avec
+ *  `targets` (`{ antiAir, durability: { intact, reduced }, points, damage }`), avec
  *  les tableaux `table` (cf. lib/airStrike.js::resolveAirStrikeTable) : `{
  *  method: 'exact' | 'approximate', plans }`, `plans` du meilleur au moins
  *  bon (`keep` au plus) — `{ expectedPoints, attacks: [{ target, groups,

@@ -259,6 +259,12 @@ export const ALLIED_FLEET_DISPLAYS = {
     src: `${DISPLAYS}carrier-tf-usn.png`, width: 659, height: 678,
     ready: [233, 337, 442, 546].map((x) => ({ x, y: 127, w: 103, h: 100 })),
     reserve: { x: 11, y: 241, w: 638, h: 99 },
+    // Bande C.A.P., cases "Landing from Map" et "Landing from C.A.P." : le
+    // joueur y place ses avions à sa phase d'Opérations aériennes (cf.
+    // TaskForceComposer.vue, `alliedAirPhase`).
+    cap: { x: 117, y: 16, w: 415, h: 98 },
+    landing: { x: 12, y: 123, w: 98, h: 98 },
+    landingCap: { x: 118, y: 123, w: 98, h: 98 },
     carrier: { x: 231, y: 456, w: 204, h: 103 },
     escorts: [
       { x: 231, y: 348, w: 204, h: 102 },
@@ -290,7 +296,10 @@ export function displayCells(kind) {
  *  un avion du porte-avions : 'ready0' à 'ready3'. Ses autres avions sont
  *  en Reserve ('reserve0', 'reserve1'... — cf. `alliedFleet`). */
 export const READY_CELLS = ALLIED_FLEET_DISPLAYS.carrier.ready.map((_, index) => `ready${index}`)
-const isAirCell = (cell) => /^(ready|reserve)\d+$/.test(cell)
+/** Case d'un avion dans la composition alliée : Ready, et, pour les zones à
+ *  plusieurs avions, zone + rang — Reserve, C.A.P., "Landing from Map",
+ *  "Landing from C.A.P.". */
+export const isAirCell = (cell) => /^(ready|reserve|cap|landingMap|landingCap)\d+$/.test(cell)
 /** Clé de pion d'un avion : celle de son porte-avions, '/', son rang. */
 const carrierOfPlane = (key) => key.split('/')[0]
 
@@ -727,21 +736,51 @@ export function useCoralSea(moduleId, ctx = {}) {
     return ctx.airStrike?.victoryPoints?.usn?.[type] ?? [0, 0, 0, 0, 0]
   }
 
-  // Task forces alliées déjà frappées par un raid japonais : le Japonais
-  // connaît leur composition exacte pour toute la partie, même recomposée
-  // (cf. `raidPlan`). Refaite au rejeu avec les entrées `raid` (cf.
-  // HexMap.vue::placeRaidMarkers).
-  const knownAllied = new Set()
-  /** L'unité alliée `unitId` vient de subir un raid. */
-  function noteRaided(unitId) {
-    if (active.value && unitId != null) knownAllied.add(String(unitId))
+  // Statut d'une task force alliée pour le Japonais : INCONNUE (rien à
+  // faire), REPÉRÉE (pion "Sighted" : reconnaissances pour affiner, au
+  // risque de perdre le contact, et raids) ou CONNUE — frappée par un de ses
+  // raids : il sait exactement ce qu'elle porte (navires, défense, dommages,
+  // points ; cf. `actualAlliedTargets`), même recomposée, la frappe quand il
+  // veut à portée de ses raids sans la repérer, et ne la reconnaît plus (cf.
+  // `reconTargetOf`) ; ses pions de reconnaissance sont retirés (cf.
+  // HexMap.vue::placeRaidMarkers). Elle redevient inconnue au premier tour
+  // de nuit qui suit son dernier raid (cf. `NIGHT_TURNS`).
+  // Unité id -> tour de son dernier raid ; refait au rejeu avec les entrées
+  // `raid`. Réactif : la carte montre les task forces connues (cf.
+  // `isKnownTarget`, bordure verte).
+  const knownAllied = ref(new Map())
+  // Tours de nuit de la piste (`turnTrack.periods`, style "night").
+  const NIGHT_TURNS = new Set((ctx.turnTrack?.periods ?? []).filter((period) => period.style === 'night')
+    .flatMap((period) => Array.from({ length: period.to - period.from + 1 }, (_, index) => period.from + index)))
+  // Tour en cours (cf. `noteTurn`).
+  const currentTurn = ref(1)
+  /** Tour en cours, à chaque changement (cf. HexMap.vue). */
+  function noteTurn(turn) {
+    if (active.value && turn != null) currentTurn.value = turn
+  }
+  /** L'unité alliée `unitId` vient de subir un raid, au tour `turn`. */
+  function noteRaided(unitId, turn = null) {
+    if (!active.value || unitId == null) return
+    knownAllied.value = new Map(knownAllied.value).set(String(unitId), turn ?? currentTurn.value)
+  }
+  /** La task force alliée `id` est-elle connue au tour en cours ? */
+  function isKnownId(id) {
+    const since = knownAllied.value.get(String(id))
+    if (since == null) return false
+    for (let turn = since + 1; turn <= currentTurn.value; turn++) if (NIGHT_TURNS.has(turn)) return false
+    return true
+  }
+  /** Le Japonais connaît-il exactement cette task force alliée ? */
+  function isKnownTarget(counter) {
+    return active.value && isKnownId(counter?.id)
   }
 
   /** Navires RÉELS de la task force alliée `counter` (cf. `alliedFleet`),
    *  cibles d'une frappe : `[{ role, key, name, type, antiAir, durability,
-   *  points }]` — `role` : 'carrier' ou 'escort' sur "Carrier TF", 'ship'
-   *  sur "Fleet TF" ; défense AA (avec ses voisins) et durabilité comme
-   *  `strikeTarget`. `null` si aucun navire n'y est posé. */
+   *  points, damage }]` — `role` : 'carrier' ou 'escort' sur "Carrier TF",
+   *  'ship' sur "Fleet TF" ; défense AA (avec ses voisins) et durabilité
+   *  comme `strikeTarget` ; `damage` : ses dommages actuels (cf.
+   *  lib/airStrike.js::damageOutcome). `null` si aucun navire n'y est posé. */
   function actualAlliedTargets(counter) {
     const layout = alliedFleet(counter)?.layout
     if (!layout) return null
@@ -751,7 +790,8 @@ export function useCoralSea(moduleId, ctx = {}) {
     const targets = placed.flatMap(([ship, role]) => {
       const target = strikeTarget(counter, ship.key)
       return target
-        ? [{ role, key: ship.key, name: ship.name, type: ship.type, antiAir: target.antiAir, durability: target.durability, points: pointsOfAlliedType(ship.type) }]
+        ? [{ role, key: ship.key, name: ship.name, type: ship.type, antiAir: target.antiAir, durability: target.durability,
+            points: pointsOfAlliedType(ship.type), damage: damageOf(ship.key) }]
         : []
     })
     return targets.length ? targets : null
@@ -761,8 +801,8 @@ export function useCoralSea(moduleId, ctx = {}) {
    *  TF3 envoient tous les avions des cases Ready de leur porte-avions (cf.
    *  `carrierAir`) sur une TF alliée repérée ("Sighted Carrier" ou "Sighted
    *  Fleet" : toujours une vraie task force, mais un Misdirect a pu faire
-   *  prendre un porte-avions pour une flotte et inversement) à 5 hex ou
-   *  moins d'elles. Les avions des task forces qui frappent la même cible
+   *  prendre un porte-avions pour une flotte et inversement) ou connue (cf.
+   *  `isKnownId`) à 5 hex ou moins d'elles. Les avions des task forces qui frappent la même cible
    *  sont MIS EN COMMUN, et chaque frappe vise une seule TF alliée. Deux
    *  étapes :
    *   1. CHOIX DES CIBLES : pour chaque façon d'affecter ses task forces aux
@@ -805,13 +845,17 @@ export function useCoralSea(moduleId, ctx = {}) {
     for (const marker of counters) {
       if (marker.sighted === 'carrierTF' || (marker.sighted === 'fleetTF' && !sightings.has(marker.attachedTo))) sightings.set(marker.attachedTo, marker.sighted)
     }
-    // Navires que l'IA croit trouver dans chaque cible repérée (étape 1).
+    // Navires que l'IA croit trouver dans chaque cible repérée (étape 1) —
+    // ceux qu'elle sait y trouver, pour une task force connue.
     const estimates = estimatedAlliedTargets()
     const believed = new Map()
     for (const counter of counters) {
       const id = String(counter.id)
-      if (counter.faction !== 'usn' || counter.type !== 'task force' || !sightings.has(id)) continue
-      const ships = (knownAllied.has(id) && actualAlliedTargets(counter)) || estimates[sightings.get(id)]
+      if (counter.faction !== 'usn' || counter.type !== 'task force') continue
+      const known = isKnownId(id)
+      if (!known && !sightings.has(id)) continue
+      if (known) sightings.set(id, 'known')
+      const ships = (known && actualAlliedTargets(counter)) || estimates[sightings.get(id)] || estimates[roleOf(counter) === 'carrier' ? 'carrierTF' : 'fleetTF']
       if (ships) believed.set(counter, ships)
     }
     const targets = shuffle([...believed.keys()])
@@ -878,11 +922,11 @@ export function useCoralSea(moduleId, ctx = {}) {
    *  de la cible (cf. `strikeTarget`), puissance anti-ship du raid (cf.
    *  lib/airStrike.js::antiShipPower), situation de la cible ('dock',
    *  'landBase', rien en mer) — et, avec la durabilité `{ intact, reduced }`
-   *  du navire visé, de chaque résultat (rien, mineur, significatif,
-   *  critique, coulé) : de quoi peser les attaques de l'IA. `null` sans
-   *  tableaux. */
-  function airStrikeOdds(strike, durability = null) {
-    return airStrikeTable ? strikeOdds(airStrikeTable, strike, durability) : null
+   *  du navire visé (et ses dommages actuels `current`), de chaque résultat
+   *  (rien, mineur, significatif, critique, coulé) : de quoi peser les
+   *  attaques de l'IA. `null` sans tableaux. */
+  function airStrikeOdds(strike, durability = null, current = 'none') {
+    return airStrikeTable ? strikeOdds(airStrikeTable, strike, durability, current) : null
   }
 
   // Défense AA estimée des task forces repérées de chaque camp (cf.
@@ -1019,6 +1063,7 @@ export function useCoralSea(moduleId, ctx = {}) {
    *  task force ou un leurre du camp adverse. */
   function reconTargetOf(counter, side) {
     return active.value && counter?.faction === ENEMY[side] && counter.type === 'task force'
+      && !(side === 'ijn' && isKnownId(counter.id))
   }
 
   /** Checks de reconnaissance possibles du camp `side` (japonais par
@@ -1555,7 +1600,10 @@ export function useCoralSea(moduleId, ctx = {}) {
       const air = stored.filter(([cell, key]) => isAirCell(cell) && planes.has(key))
       for (const [cell, key] of air.length ? air : deck.ready.map((plane, index) => [READY_CELLS[index], plane.key])) cells[cell] = key
       const ready = READY_CELLS.map((cell) => planes.get(cells[cell]) ?? null)
-      layout.air = { ready, reserve: deck.planes.filter((plane) => !ready.includes(plane)), lost: deck.lost }
+      const zone = (name) => Object.entries(cells).filter(([cell]) => cell.replace(/\d+$/, '') === name).map(([, key]) => planes.get(key)).filter(Boolean)
+      const away = new Set([...zone('cap'), ...zone('landingMap'), ...zone('landingCap')])
+      layout.air = { ready, reserve: deck.planes.filter((plane) => !ready.includes(plane) && !away.has(plane)),
+        cap: zone('cap'), landing: zone('landingMap'), landingCap: zone('landingCap'), lost: deck.lost }
     }
     return { tf, kind, cellIds, airCellIds: kind === 'carrier' ? READY_CELLS : [], cells, layout }
   }
@@ -1648,7 +1696,7 @@ export function useCoralSea(moduleId, ctx = {}) {
     // avec ses entrées `search` (cf. `noteSighting`), celle des task forces
     // alliées connues avec ses entrées `raid` (cf. `noteRaided`).
     lastSightings.clear()
-    knownAllied.clear()
+    knownAllied.value = new Map()
   }
 
   // Les autres règles : celles du composable inerte (aucune particularité).
@@ -1658,12 +1706,12 @@ export function useCoralSea(moduleId, ctx = {}) {
     reconPhase: RECON_PHASE, reconChecks, reconChoice, noteSighting, reconTargetOf, manualReconSide: 'usn', searchBag, searchBagFull: SEARCH_CHITS, drawSearch, refillSearchBag, restoreSearchBag, searchChitsReturn,
     searchResults: SEARCH_RESULTS, searchOutcome, sightings: SIGHTINGS,
     isReusableDummy: isDummy, dummyReinforcementTurn, planDummyReinforcement, applyDummyReinforcement, playerDummyReinforcement,
-    followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, noteRaided, airStrikeOdds, strikeTarget, sightedDefense, sightedStrikeOdds,
+    followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, noteRaided, noteTurn, isKnownTarget, airStrikeOdds, strikeTarget, sightedDefense, sightedStrikeOdds,
     fleetDisplay, fleetDisplays: FLEET_DISPLAYS, fleetDisplayPhase: FLEET_DISPLAY_PHASE, fleetDisplaySide: 'usn',
     airStrikeReach: alliedAirReach, airStrikeRadius: RAID_RADIUS,
     shipDamages: SHIP_DAMAGE, damageOf, setShipDamage, restoreShipDamage,
     planeStates: PLANE_STATES, planeStateOf, setPlaneState, restorePlaneDamage, launchRaid, landFromRaid, airCycle, restoreAirZones,
     alliedFleet, alliedFleetDisplays: ALLIED_FLEET_DISPLAYS, alliedDeck, alliedGroups, alliedAssignments, alliedShipFits, setAlliedFleet, restoreAlliedFleets,
-    alliedFleetSide: 'usn', alliedFleetPhase: ALLIED_FLEET_PHASE,
+    alliedFleetSide: 'usn', alliedFleetPhase: ALLIED_FLEET_PHASE, alliedAirPhase: RAID_PHASE, isAirCell,
   }
 }

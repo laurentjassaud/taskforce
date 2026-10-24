@@ -94,11 +94,30 @@ export function resolveStrike(table, { antiAir, antiShip, situation = null }, aa
   return { aaColumn, bonus, malus, effectiveAntiShip, aborted, column, row, damage }
 }
 
-/** Résultat de `damage` dégâts sur un navire de durabilité `intact` (face
- *  intacte) et `reduced` (face endommagée, 0 sans elle) : 'none' en
- *  dessous de `intact`, 'minor' à `intact`, 'significant' jusqu'à `intact`
- *  + `reduced`, 'critical' au point suivant, 'sunk' au-delà. */
-export function damageOutcome(damage, { intact, reduced = 0 }) {
+/** État d'un navire de durabilité `intact` (face intacte) et `reduced`
+ *  (face endommagée, 0 sans elle), déjà dans l'état `current` (cf.
+ *  `STRIKE_OUTCOMES`), après `damage` nouveaux dégâts :
+ *   - intact : 'none' en dessous de `intact`, 'minor' à `intact`,
+ *     'significant' jusqu'à `intact` + `reduced`, 'critical' au point
+ *     suivant, 'sunk' au-delà ;
+ *   - dommages mineurs : 'significant' de 1 à `reduced`, 'critical' à
+ *     `reduced` + 1, 'sunk' au-delà ;
+ *   - dommages significatifs : 'critical' à `reduced`, 'sunk' au-delà ;
+ *   - dommages critiques : 'sunk' dès 1 dégât.
+ *  En dessous, il reste dans son état. Ex. `reduced` 4, mineur : significatif
+ *  de 1 à 4 dégâts, critique à 5, coulé à 6 ou plus. */
+export function damageOutcome(damage, { intact, reduced = 0 }, current = 'none') {
+  if (current === 'sunk') return 'sunk'
+  if (current === 'critical') return damage >= 1 ? 'sunk' : 'critical'
+  if (current === 'significant') {
+    if (damage < 1 || damage < reduced) return 'significant'
+    return damage === reduced ? 'critical' : 'sunk'
+  }
+  if (current === 'minor') {
+    if (damage < 1) return 'minor'
+    if (damage <= reduced) return 'significant'
+    return damage === reduced + 1 ? 'critical' : 'sunk'
+  }
   if (damage < intact) return 'none'
   if (damage === intact) return 'minor'
   if (damage <= intact + reduced) return 'significant'
@@ -106,15 +125,25 @@ export function damageOutcome(damage, { intact, reduced = 0 }) {
   return 'sunk'
 }
 
+/** Points de victoire du résultat `outcome` sur un navire déjà dans l'état
+ *  `current`, d'après son barème `points` (un par résultat de
+ *  `STRIKE_OUTCOMES`) : ceux de son nouvel état s'il s'aggrave, rien sinon —
+ *  un navire déjà en dommages significatifs ne rapporte plus les points d'un
+ *  mineur ni d'un significatif. */
+export function outcomePoints(points, outcome, current = 'none') {
+  const index = STRIKE_OUTCOMES.indexOf(outcome)
+  return index > STRIKE_OUTCOMES.indexOf(current) ? points[index] ?? 0 : 0
+}
+
 /** Probabilités EXACTES d'une frappe (`strike` : `{ antiAir, antiShip,
  *  situation }`, cf. `resolveStrike`), sur toutes les combinaisons des deux
  *  dés : `{ combinations, aborted, damage, expectedDamage, outcomes }` —
  *  `aborted` : probabilité qu'il n'y ait pas d'attaque ; `damage` : dégâts
  *  -> probabilité ; `outcomes` (si la durabilité `durability` du navire
- *  visé est donnée, cf. `damageOutcome`, sinon `null`) : résultat ->
- *  probabilité. Chaque probabilité est un nombre exact de combinaisons sur
- *  `combinations`. */
-export function strikeOdds(table, strike, durability = null) {
+ *  visé est donnée, cf. `damageOutcome` — et ses dommages actuels
+ *  `current` —, sinon `null`) : résultat -> probabilité. Chaque
+ *  probabilité est un nombre exact de combinaisons sur `combinations`. */
+export function strikeOdds(table, strike, durability = null, current = 'none') {
   const combinations = table.die * table.die
   // Comptes entiers, divisés à la fin : pas d'erreur d'arrondi cumulée.
   const damage = {}
@@ -127,7 +156,7 @@ export function strikeOdds(table, strike, durability = null) {
       if (result.aborted) aborted++
       damage[result.damage] = (damage[result.damage] ?? 0) + 1
       totalDamage += result.damage
-      if (outcomes) outcomes[damageOutcome(result.damage, durability)] += 1
+      if (outcomes) outcomes[damageOutcome(result.damage, durability, current)] += 1
     }
   }
   const share = (counts) => Object.fromEntries(Object.entries(counts).map(([key, count]) => [key, count / combinations]))

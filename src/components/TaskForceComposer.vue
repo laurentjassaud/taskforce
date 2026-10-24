@@ -13,7 +13,9 @@
 // setAlliedFleet).
 // Avions du porte-avions posé (cf. useCoralSea.js::alliedDeck) : ils
 // arrivent avec lui, rangés par défaut ; le joueur les déplace de même
-// entre les 4 cases Ready et la bande Reserve du support.
+// entre les 4 cases Ready et les zones du support — Reserve, C.A.P.,
+// "Landing from Map", "Landing from C.A.P." (celles que le support a). À sa
+// phase d'Opérations aériennes (`airEditable`), seuls les avions bougent.
 // Raid japonais sur cette task force (`raid`, cf. HexMap.vue::showRaid) : en
 // lecture seule, chaque navire visé porte le numéro de son attaque, et la
 // colonne de droite montre, attaque par attaque, le navire et les pions des
@@ -50,6 +52,9 @@ const props = defineProps({
   // défaut — `{ planes, ready, reserve }` (cf. useCoralSea.js::alliedDeck).
   deckOf: { type: Function, default: () => ({ planes: [], ready: [], reserve: [] }) },
   editable: { type: Boolean, default: false },
+  // Avions seuls déplaçables, navires figés (cf. HexMap.vue, phase
+  // d'Opérations aériennes du joueur). `editable` les rend déplaçables aussi.
+  airEditable: { type: Boolean, default: false },
   // Dommages possibles : état -> `{ reduced, marker }` (cf.
   // useCoralSea.js::SHIP_DAMAGE), ceux d'un navire (`damageOf(clé)`), et le
   // joueur peut-il les changer (au clic droit, à tout moment, composition
@@ -82,16 +87,34 @@ const PLANE_FILL = 1
 const display = computed(() => props.displays[props.kind])
 const ships = computed(() => new Map(props.groups.flatMap((group) => group.ships).map((ship) => [ship.key, ship])))
 
-// Cases des avions : 'ready0'... (les Ready, dans le brouillon) et
-// 'reserve0'... (la Reserve, écrite seulement à l'enregistrement : dans le
-// brouillon, un avion hors des Ready est en Reserve).
-const isReserveCell = (cell) => /^reserve\d+$/.test(cell)
+// Cases des avions : 'ready0'... (les Ready, dans le brouillon `draft`) et,
+// pour les zones à plusieurs avions, zone + rang — 'reserve0', 'cap0',
+// 'landingMap0', 'landingCap0'..., écrits seulement à l'enregistrement :
+// dans le brouillon, un avion est dans la zone que lui donne `airZones`,
+// et en Reserve s'il n'est ni en Ready ni dans une zone.
+const ZONE_CELL = /^(reserve|cap|landingMap|landingCap)(\d+)$/
+const isZoneCell = (cell) => ZONE_CELL.test(cell)
 const isReadyCell = (cell) => props.airCellIds.includes(cell)
-const withoutReserve = (cells) => Object.fromEntries(Object.entries(cells).filter(([cell]) => !isReserveCell(cell)))
+const withoutZones = (cells) => Object.fromEntries(Object.entries(cells).filter(([cell]) => !isZoneCell(cell)))
+/** Avion -> zone (hors Reserve) des cases `cells`. */
+const zonesOf = (cells) => Object.fromEntries(Object.entries(cells).flatMap(([cell, key]) => {
+  const zone = ZONE_CELL.exec(cell)?.[1]
+  return zone && zone !== 'reserve' ? [[key, zone]] : []
+}))
+// Zones du support, et la case de l'image qui porte chacune (cf.
+// useCoralSea.js::ALLIED_FLEET_DISPLAYS) — bande ou case carrée.
+const ZONES = [
+  { zone: 'reserve', box: 'reserve', band: true },
+  { zone: 'cap', box: 'cap', band: true },
+  { zone: 'landingMap', box: 'landing', band: false },
+  { zone: 'landingCap', box: 'landingCap', band: false },
+]
 
-const draft = ref(withoutReserve(props.cells))
+const draft = ref(withoutZones(props.cells))
+const airZones = ref(zonesOf(props.cells))
 const selected = ref(null) // clé du pion choisi, ou null
 const warning = ref('')
+const canMovePlanes = computed(() => props.editable || props.airEditable)
 
 const placedKeys = computed(() => new Set(Object.values(draft.value)))
 const cellOf = (key) => Object.keys(draft.value).find((cell) => draft.value[cell] === key) ?? null
@@ -108,18 +131,23 @@ const deck = computed(() => (props.airCellIds.length && draft.value.carrier ? pr
 const planes = computed(() => new Map((deck.value?.planes ?? []).map((plane) => [plane.key, plane])))
 const planeIn = (cell) => planes.value.get(draft.value[cell]) ?? null
 const selectedPlane = computed(() => planes.value.get(selected.value) ?? null)
-const hangar = computed(() => (deck.value?.planes ?? []).filter((plane) => !placedKeys.value.has(plane.key)))
-/** Cases avions du brouillon, Reserve écrite (cf. `save`). */
-function withReserve(cells) {
-  const reserve = Object.fromEntries(hangar.value.map((plane, index) => [`reserve${index}`, plane.key]))
-  return { ...cells, ...reserve }
+/** Zone de l'avion `key` : 'ready', ou celle de `ZONES`. */
+const planeZone = (key) => (placedKeys.value.has(key) ? 'ready' : airZones.value[key] ?? 'reserve')
+/** Avions de la zone `zone`, dans l'ordre du groupe aérien. */
+const planesIn = (zone) => (deck.value?.planes ?? []).filter((plane) => planeZone(plane.key) === zone)
+// Zones que le support dessine, avec leurs avions.
+const zones = computed(() => ZONES.filter(({ box }) => display.value[box]).map((entry) => ({ ...entry, planes: planesIn(entry.zone) })))
+/** Cases avions du brouillon, zones écrites (cf. `save`). */
+function withZones(cells) {
+  const out = { ...cells }
+  for (const { zone } of ZONES) planesIn(zone).forEach((plane, index) => { out[`${zone}${index}`] = plane.key })
+  return out
 }
 
-// La Reserve se déduit des Ready : seuls navires et Ready comptent.
-const dirty = computed(() => {
-  const before = Object.entries(withoutReserve(props.cells)).sort().join()
-  return Object.entries(draft.value).sort().join() !== before
-})
+// La Reserve se déduit du reste ; le rang dans une zone ne compte pas.
+const signature = (cells) => Object.entries(cells).filter(([cell]) => !/^reserve\d+$/.test(cell))
+  .map(([cell, key]) => (isZoneCell(cell) ? `${ZONE_CELL.exec(cell)[1]}:${key}` : `${cell}=${key}`)).sort().join()
+const dirty = computed(() => signature(props.cells) !== signature(withZones(draft.value)))
 const count = computed(() => [...placedKeys.value].filter((key) => ships.value.has(key)).length)
 
 /** Case `cell` (px de l'image) en % du support. */
@@ -148,19 +176,29 @@ function readyRect(cell) {
   }
 }
 
-/** Bande Reserve, en % du support, et place de chacun de ses avions (en %
- *  de la bande) : côte à côte, centrés, resserrés s'ils n'y tiennent pas. */
-const hangarRect = computed(() => {
-  const { width, height, reserve: band } = display.value
-  return { left: `${(band.x / width) * 100}%`, top: `${(band.y / height) * 100}%`, width: `${(band.w / width) * 100}%`, height: `${(band.h / height) * 100}%` }
-})
-function hangarStyle(index) {
-  const band = display.value.reserve
-  const size = band.h * PLANE_FILL
-  const count = hangar.value.length
-  const step = count > 1 ? Math.min(size, (band.w - size) / (count - 1)) : 0
-  const start = (band.w - (size + step * (count - 1))) / 2
-  return { left: `${((start + index * step) / band.w) * 100}%`, width: `${(size / band.w) * 100}%` }
+/** Zone `entry` (cf. `zones`), en % du support. */
+function zoneRect(entry) {
+  const { width, height } = display.value
+  const box = display.value[entry.box]
+  return { left: `${(box.x / width) * 100}%`, top: `${(box.y / height) * 100}%`, width: `${(box.w / width) * 100}%`, height: `${(box.h / height) * 100}%` }
+}
+/** Place du `index`-ième avion de la zone `entry`, en % de la zone : sur une
+ *  bande, côte à côte, centrés, resserrés s'ils n'y tiennent pas ; dans une
+ *  case carrée, en grille (deux colonnes dès deux avions). */
+function zonePlaneStyle(entry, index) {
+  const box = display.value[entry.box]
+  const count = entry.planes.length
+  const pct = (x, y, w, h) => ({ left: `${(x / box.w) * 100}%`, top: `${(y / box.h) * 100}%`, width: `${(w / box.w) * 100}%`, height: `${(h / box.h) * 100}%` })
+  if (entry.band) {
+    const size = box.h * PLANE_FILL
+    const step = count > 1 ? Math.min(size, (box.w - size) / (count - 1)) : 0
+    const start = (box.w - (size + step * (count - 1))) / 2
+    return pct(start + index * step, (box.h - size) / 2, size, size)
+  }
+  const columns = count > 1 ? 2 : 1
+  const rows = Math.ceil(count / columns)
+  const side = Math.min(box.w / columns, box.h / rows) * PLANE_FILL
+  return pct((box.w - columns * side) / 2 + (index % columns) * side, (box.h - rows * side) / 2 + Math.floor(index / columns) * side, side, side)
 }
 
 /** Dommages du navire `ship` (cf. `damages`), ou `null` intact. */
@@ -261,7 +299,8 @@ const raidOn = (cell) => raidAttacks.value.find((attack) => attack.cell === cell
 const focusedAttack = ref(null)
 const isTarget = (cell) => !!selectedShip.value && props.fits(selectedShip.value.type, cell) && draft.value[cell] !== selected.value
 const isReadyTarget = (cell) => !!selectedPlane.value && draft.value[cell] !== selected.value
-const isHangarTarget = computed(() => !!selectedPlane.value && !!selectedCell.value)
+/** La zone `zone` peut-elle recevoir l'avion choisi (venu d'ailleurs) ? */
+const isZoneTarget = (zone) => !!selectedPlane.value && planeZone(selected.value) !== zone
 
 /** Pourquoi la case refuse ce navire : réservée au porte-avions, ou
  *  porte-avions hors de la case centrale. */
@@ -303,23 +342,50 @@ function placePlane(key, cell) {
     else delete next[from]
   }
   draft.value = next
+  setZone(key, null)
+  selected.value = null
+  warning.value = ''
+}
+
+/** L'avion `key` (rangé ailleurs qu'en Ready) est dans la zone `zone`, ou
+ *  `null` : en Ready, ou en Reserve. */
+function setZone(key, zone) {
+  const next = { ...airZones.value }
+  if (zone && zone !== 'reserve') next[key] = zone
+  else delete next[key]
+  airZones.value = next
+}
+
+/** L'avion `key` va dans la zone `zone` (cf. `ZONES`) : il quitte sa case
+ *  Ready s'il en avait une. */
+function moveToZone(key, zone) {
+  const cell = cellOf(key)
+  if (cell) {
+    const next = { ...draft.value }
+    delete next[cell]
+    draft.value = next
+  }
+  setZone(key, zone)
   selected.value = null
   warning.value = ''
 }
 
 /** Brouillon `next`, avions à jour : les avions suivent le porte-avions de
- *  la case centrale — un autre que lui quitte les Ready, et celui qui
- *  arrive amène les siens, rangés par défaut. */
+ *  la case centrale — un autre que lui quitte les Ready et les zones, et
+ *  celui qui arrive amène les siens, rangés par défaut. */
 function withAir(next) {
   const carrier = next.carrier ?? null
   if (carrier === (draft.value.carrier ?? null)) return next
   const out = Object.fromEntries(Object.entries(next).filter(([cell]) => !isReadyCell(cell)))
   if (carrier && props.airCellIds.length) props.deckOf(carrier).ready.forEach((plane, index) => { out[props.airCellIds[index]] = plane.key })
+  airZones.value = {}
   return out
 }
 
+/** Clic sur une case : navire (composition modifiable) ou case Ready (avions
+ *  déplaçables, cf. `canMovePlanes`). */
 function onCell(cell) {
-  if (!props.editable) return
+  if (!(isReadyCell(cell) ? canMovePlanes.value : props.editable)) return
   if (selected.value) {
     if (draft.value[cell] === selected.value) { selected.value = null; return }
     place(selected.value, cell)
@@ -336,22 +402,23 @@ function toggle(key) {
 
 /** Le pion `key` (posé) revient à la réserve — un avion, en Reserve. */
 function unplace(key) {
+  if (planes.value.has(key)) { moveToZone(key, 'reserve'); return }
   const cell = cellOf(key)
   if (!cell) return
   const next = { ...draft.value }
   delete next[cell]
-  draft.value = planes.value.has(key) ? next : withAir(next)
+  draft.value = withAir(next)
   selected.value = null
 }
 
-/** Clic sur la bande Reserve : l'avion choisi, posé en Ready, y passe. */
-function onHangar() {
-  if (props.editable && isHangarTarget.value) unplace(selected.value)
+/** Clic sur une zone : l'avion choisi, venu d'ailleurs, y passe. */
+function onZone(zone) {
+  if (canMovePlanes.value && isZoneTarget(zone)) moveToZone(selected.value, zone)
 }
 
 // Glisser-déposer : même chose qu'au clic.
 function onDragStart(event, key) {
-  if (!props.editable) return
+  if (!(planes.value.has(key) ? canMovePlanes.value : props.editable)) return
   selected.value = key
   warning.value = ''
   event.dataTransfer.effectAllowed = 'move'
@@ -369,12 +436,16 @@ function onReserveDrop(event) {
   const key = event.dataTransfer.getData('text/plain') || selected.value
   if (key) unplace(key)
 }
-function onHangarDragOver(event) {
-  if (isHangarTarget.value) event.preventDefault()
+function onZoneDragOver(event, zone) {
+  if (isZoneTarget(zone)) event.preventDefault()
+}
+function onZoneDrop(event, zone) {
+  const key = event.dataTransfer.getData('text/plain') || selected.value
+  if (key && planes.value.has(key) && canMovePlanes.value) moveToZone(key, zone)
 }
 
 function save() {
-  emit('save', withReserve(draft.value))
+  emit('save', withZones(draft.value))
 }
 
 const dialog = ref(null)
@@ -420,24 +491,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
                 :alt="markerOf(shipIn(cell)).name" draggable="false" />
             </span>
           </button>
-          <!-- Avions du porte-avions : cases Ready, puis bande Reserve. Pas
-               `disabled` non plus : le clic droit (pertes) doit les atteindre. -->
+          <!-- Avions du porte-avions : cases Ready, puis les zones (Reserve,
+               C.A.P., Landing). Pas `disabled` non plus : le clic droit
+               (pertes) doit les atteindre. -->
           <template v-if="deck">
             <button v-for="cell in airCellIds" :key="cell" type="button" class="tc-cell tc-ready"
               :class="{ filled: !!planeIn(cell), target: isReadyTarget(cell), chosen: !!draft[cell] && draft[cell] === selected }"
-              :style="readyRect(cell)" :aria-disabled="!editable || null"
+              :style="readyRect(cell)" :aria-disabled="!canMovePlanes || null"
               :aria-label="planeIn(cell) ? planeTitle(planeIn(cell)) : $t('alliedFleet.emptyReady')"
               @click="onCell(cell)" @dragover="onDragOver($event, cell)" @drop.prevent="onDrop($event, cell)"
               @contextmenu="planeIn(cell) && openPlaneMenu($event, planeIn(cell))">
               <img v-if="planeIn(cell)" class="tc-plane" :src="planeLook(planeIn(cell)).src" :alt="planeTitle(planeIn(cell))"
-                :title="planeTitle(planeIn(cell))" :draggable="editable" @dragstart="onDragStart($event, draft[cell])" />
+                :title="planeTitle(planeIn(cell))" :draggable="canMovePlanes" @dragstart="onDragStart($event, draft[cell])" />
               <span v-if="planeIn(cell) && planeLook(planeIn(cell)).tag" class="tc-plane-tag">{{ $t('planeState.tag') }}</span>
             </button>
-            <div class="tc-hangar" :class="{ target: isHangarTarget }" :style="hangarRect" :aria-label="$t('alliedFleet.hangar')"
-              @click.self="onHangar" @dragover="onHangarDragOver" @drop.prevent="onReserveDrop">
-              <button v-for="(plane, index) in hangar" :key="plane.key" type="button" class="tc-hangar-plane"
-                :class="{ chosen: selected === plane.key }" :style="hangarStyle(index)" :aria-disabled="!editable || null"
-                :title="planeTitle(plane)" :draggable="editable" @click="editable && toggle(plane.key)" @dragstart="onDragStart($event, plane.key)"
+            <div v-for="entry in zones" :key="entry.zone" class="tc-hangar" :class="{ target: isZoneTarget(entry.zone) }"
+              :style="zoneRect(entry)" :aria-label="$t(`alliedFleet.zones.${entry.zone}`)"
+              @click.self="onZone(entry.zone)" @dragover="onZoneDragOver($event, entry.zone)" @drop.prevent="onZoneDrop($event, entry.zone)">
+              <button v-for="(plane, index) in entry.planes" :key="plane.key" type="button" class="tc-hangar-plane"
+                :class="{ chosen: selected === plane.key }" :style="zonePlaneStyle(entry, index)" :aria-disabled="!canMovePlanes || null"
+                :title="planeTitle(plane)" :draggable="canMovePlanes" @click="canMovePlanes && toggle(plane.key)" @dragstart="onDragStart($event, plane.key)"
                 @contextmenu="openPlaneMenu($event, plane)">
                 <img class="tc-plane" :src="planeLook(plane).src" :alt="planeTitle(plane)" draggable="false" />
                 <span v-if="planeLook(plane).tag" class="tc-plane-tag">{{ $t('planeState.tag') }}</span>
@@ -505,6 +578,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
           <p class="tc-raid-total">{{ $t('raidView.total', { points: points(raid.expectedPoints) }) }}</p>
           <p v-if="damageEditable && damages" class="tc-hint">{{ $t('raidView.damageHint') }}</p>
         </section>
+        <div v-else-if="airEditable">
+          <p class="tc-hint" :class="{ warn: !!warning }" aria-live="polite">{{ warning || $t('alliedFleet.airHint') }}</p>
+          <p v-if="sunkShips.length" class="tc-empty">{{ $t('damage.sunkList', { ships: sunkShips.map(label).join(', ') }) }}</p>
+        </div>
         <div v-else>
           <p class="tc-hint">{{ $t('alliedFleet.readOnly') }}</p>
           <p v-if="sunkShips.length" class="tc-empty">{{ $t('damage.sunkList', { ships: sunkShips.map(label).join(', ') }) }}</p>
@@ -524,8 +601,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
         <span class="tc-count">
           {{ $t('alliedFleet.count', { n: count }, count) }}<template v-if="damageEditable && damages"> · {{ $t('damage.hint') }}</template>
         </span>
-        <template v-if="editable">
-          <button v-if="selectedCell" type="button" class="tc-cancel" @click="unplace(selected)">
+        <template v-if="editable || airEditable">
+          <button v-if="selectedPlane ? planeZone(selected) !== 'reserve' : selectedCell" type="button" class="tc-cancel" @click="unplace(selected)">
             {{ selectedPlane ? $t('alliedFleet.toReserve') : $t('alliedFleet.remove') }}
           </button>
           <button type="button" class="tc-cancel" @click="emit('close')">{{ $t('common.cancel') }}</button>

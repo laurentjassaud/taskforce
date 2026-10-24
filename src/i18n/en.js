@@ -71,6 +71,10 @@ export default {
   eliminated: {
     empty: 'No unit eliminated.',
     hint: 'Right-click a counter to put it back into the reinforcements.',
+    history: 'Removed from play',
+    when: 'Turn {turn}',
+    whenAt: 'Turn {turn} · {time}',
+    hex: 'hex {hex}',
   },
 
   reinforcements: {
@@ -225,6 +229,8 @@ export default {
     remove: 'Remove from the display',
     toReserve: 'Move to Reserve',
     emptyReady: 'Empty Ready box',
+    zones: { reserve: 'Carrier reserve', cap: 'C.A.P.', landingMap: 'Landing from Map', landingCap: 'Landing from C.A.P.' },
+    airHint: 'Air Operations phase: place your aircraft freely (click an aircraft then a box or zone, or drag it). Ships stay put.',
     hangar: 'Carrier Reserve',
     readyCell: 'Ready boxes only take the carrier’s aircraft.',
     planeCell: 'An aircraft goes in a Ready box or in the Reserve.',
@@ -272,6 +278,7 @@ export default {
     restack: 'Change the stacking order',
     alliedFleetEdit: 'Compose the task force',
     alliedFleetView: 'Task force ships',
+    alliedAirEdit: 'Place the aircraft',
     viewComposition: 'View the composition',
     noComposition: 'Dummy: no ships.',
   },

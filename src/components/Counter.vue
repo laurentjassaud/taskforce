@@ -34,6 +34,10 @@ const props = defineProps({
   // dragCurrentPx dans HexMap.vue) — remplace le centre calculé depuis
   // col/row tant que ce pion est celui suivi par le glisser.
   dragPx: { type: Object, default: null },
+  // Vrai si l'ennemi connaît exactement cette unité (cf. HexMap.vue,
+  // `moduleRules.isKnownTarget` — task force déjà frappée par un raid) :
+  // bordure verte 2px.
+  known: { type: Boolean, default: false },
   // Étiquette secrète sous le pion (cf. HexMap.vue::privateLabelOf — ex.
   // vraie identité d'un leurre à la mer de Corail), ou `null`.
   label: { type: String, default: null },
@@ -79,6 +83,8 @@ function onMouseDown(ev) {
       @mouseenter="emit('hover', id, $event)" @mouseleave="emit('unhover', id)" />
     <rect v-if="selected" class="counter-ring" :x="center.x - counterSizePx / 2 - 3" :y="center.y - counterSizePx / 2 - 3" :width="counterSizePx + 6"
       :height="counterSizePx + 6" rx="5" ry="5" />
+    <rect v-if="known" class="counter-known-ring" :x="center.x - counterSizePx / 2 - 1" :y="center.y - counterSizePx / 2 - 1" :width="counterSizePx + 2"
+      :height="counterSizePx + 2" rx="4" ry="4" />
     <rect v-if="moved" class="counter-moved-ring" :x="center.x - counterSizePx / 2" :y="center.y - counterSizePx / 2" :width="counterSizePx" :height="counterSizePx"
       rx="3" ry="3" />
     <text v-if="label" class="counter-label" :x="center.x" :y="center.y + counterSizePx / 2 - 2" :font-size="counterSizePx * 0.2">{{ label }}</text>
@@ -109,6 +115,14 @@ function onMouseDown(ev) {
   text-anchor: middle;
   pointer-events: none;
   user-select: none;
+}
+
+.counter-known-ring {
+  fill: none;
+  stroke: var(--c-green);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .counter-moved-ring {
