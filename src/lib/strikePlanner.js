@@ -114,7 +114,7 @@ function makeEvaluator(table, target, powerCap) {
 /** L'escadrille `powers` (une puissance par avion, déjà plafonnée) décrite
  *  par puissance : puissances distinctes (décroissantes), nombre d'avions de
  *  chacune, et la numérotation en base mixte de ses sous-escadrilles. */
-function describeSquad(powers) {
+export function describeSquad(powers) {
   const distinct = [...new Set(powers)].sort((a, b) => b - a)
   const planesOf = distinct.map((power) => powers.flatMap((p, index) => (p === power ? [index] : [])))
   const base = planesOf.map((planes) => planes.length + 1)
@@ -123,11 +123,11 @@ function describeSquad(powers) {
   const size = base.reduce((product, b) => product * b, 1)
   const toVector = (id) => base.map((b, k) => Math.floor(id / weights[k]) % b)
   const totalPower = (id) => toVector(id).reduce((sum, count, k) => sum + count * distinct[k], 0)
-  return { distinct, planesOf, weights, size, full: size - 1, toVector, totalPower }
+  return { distinct, planesOf, base, weights, size, full: size - 1, toVector, totalPower }
 }
 
 /** `action(id)` pour chaque sous-escadrille incluse dans le vecteur `max`. */
-function eachSubsquad(squad, max, action) {
+export function eachSubsquad(squad, max, action) {
   (function walk(digit, id) {
     if (digit === max.length) return action(id)
     for (let count = 0; count <= max[digit]; count++) walk(digit + 1, id + count * squad.weights[digit])
@@ -380,4 +380,50 @@ export function planStrike(table, powers, targets, keep = 1) {
     for (const attack of plan.attacks) attack.groups = attack.groups.map((group) => group.map((index) => attackers[index]))
   }
   return result
+}
+
+/** Meilleurs plans de la frappe des avions `powers` sur les task forces
+ *  `fleets` (`[{ ships }]`, `ships` : cibles de `planStrike`) : `{ method,
+ *  plans, duration }` — `plans` du meilleur au moins bon (`keep` au plus),
+ *  chaque attaque marquée de sa task force (`fleet` : index dans `fleets` ;
+ *  `target` : index dans ses `ships`) ; `method` : 'approximate' si une
+ *  recherche au moins l'a été ; `duration` : durée du calcul, en ms.
+ *  `oneFleet` : toute la frappe sur UNE task force (la règle des raids
+ *  japonais) — sinon, ses avions se répartissent entre toutes. */
+export function planAcrossFleets(table, powers, fleets, { oneFleet = true, keep = 30 } = {}) {
+  const start = Date.now()
+  // Deux fois plus de plans demandés : les doublons (cf. `planKey`) partent.
+  const asked = keep * 2
+  let method = 'exact'
+  let plans = []
+  if (oneFleet) {
+    for (const [fleet, { ships }] of fleets.entries()) {
+      if (!ships.length) continue
+      const result = planStrike(table, powers, ships, asked)
+      if (result.method === 'approximate') method = 'approximate'
+      plans.push(...result.plans.map((plan) => ({ ...plan, attacks: plan.attacks.map((attack) => ({ ...attack, fleet })) })))
+    }
+    plans.sort((a, b) => b.expectedPoints - a.expectedPoints)
+  } else {
+    const ships = fleets.flatMap(({ ships: list }, fleet) => list.map((ship, target) => ({ ship, fleet, target })))
+    const result = ships.length ? planStrike(table, powers, ships.map(({ ship }) => ship), asked) : { method, plans: [] }
+    method = result.method
+    plans = result.plans.map((plan) => ({ ...plan, attacks: plan.attacks.map((attack) => ({ ...attack, fleet: ships[attack.target].fleet, target: ships[attack.target].target })) }))
+  }
+  // Un plan ne compte qu'une fois : deux navires sans pion (estimés) aux
+  // mêmes valeurs sont interchangeables, comme deux avions de même puissance.
+  const shipId = (fleet, target) => {
+    const ship = fleets[fleet].ships[target]
+    return `${fleet}:${ship.key ?? [ship.role, ship.type, ship.antiAir, ship.durability.intact, ship.durability.reduced, ship.points.join('/'), ship.damage ?? 'none'].join('|')}`
+  }
+  const planKey = (plan) => plan.attacks.map((attack) => `${shipId(attack.fleet, attack.target)}<${attack.groups
+    .map((group) => group.map((index) => powers[index]).sort().join('+')).sort().join('|')}`).sort().join(' ')
+  const seen = new Set()
+  plans = plans.filter((plan) => {
+    const key = planKey(plan)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }).slice(0, keep)
+  return { method, plans, duration: Date.now() - start }
 }

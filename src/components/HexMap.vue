@@ -32,6 +32,7 @@ import { isUnit } from '../lib/units.js'
 import { parseSetup, rangeCells } from '../lib/setup.js'
 import { resolveRules, resolveTurnStructure, stackingLimitOf } from '../lib/rules.js'
 import { sideOfStep, resolveTrack, sidesOfTurn, turnOfStep } from '../lib/turnTrack.js'
+import { connectedGroups } from '../lib/navalCombat.js'
 import CalibrationPanel from './CalibrationPanel.vue'
 import Counter from './Counter.vue'
 import TurnTracker from './TurnTracker.vue'
@@ -45,6 +46,8 @@ import Toast from './Toast.vue'
 import StackPopup from './StackPopup.vue'
 import FleetDisplayModal from './FleetDisplayModal.vue'
 import TaskForceComposer from './TaskForceComposer.vue'
+import RaidOddsModal from './RaidOddsModal.vue'
+import NavalCombatModal from './NavalCombatModal.vue'
 import RollModal from './RollModal.vue'
 import GameEndModal from './GameEndModal.vue'
 import PhaseBlockedModal from './PhaseBlockedModal.vue'
@@ -602,6 +605,8 @@ const moduleRules = useModuleRules(toRef(props, 'moduleId'), {
   air: props.module.airCatalog ?? {},
   // Tableaux de la frappe aéronavale (cf. lib/airStrike.js).
   airStrike: props.module.airStrike ?? null,
+  // Tableau du combat de surface (cf. lib/navalCombat.js).
+  navalCombat: props.module.navalCombat ?? null,
   // Piste de tour : ses nuits (cf. lib/useCoralSea.js, task forces connues).
   turnTrack: props.module.turnTrack ?? null,
 })
@@ -844,6 +849,16 @@ function phaseChangeConfirmation() {
     if (setup && setup.count < setup.total) warnings.push(t('phaseConfirm.setupShort', { count: setup.count, total: setup.total }))
   }
   if (endsMovementUnmoved()) warnings.push(t('phaseConfirm.noMove'))
+  // Pions que la fin des Mouvements va retirer (cf. `removeAtMovementEnd`),
+  // camp par camp — ceux du moteur compris.
+  if (endsAllMovements()) {
+    const lostBySide = new Map()
+    for (const id of moduleRules.movementEndRemovals(counters.value)) {
+      const side = sideOfCounter(counterDefinition(id))
+      lostBySide.set(side, (lostBySide.get(side) ?? 0) + 1)
+    }
+    for (const [side, lost] of lostBySide) warnings.push(t('phaseConfirm.movementEndRemovals', { side: sideLabel(side), n: lost }, lost))
+  }
   const recons = pendingEngineRecons()
   if (recons > 0) warnings.push(t('phaseConfirm.recons', { n: recons }, recons))
   return { title: nextLabel.value ?? t('turnTracker.nextTurn'), message: nextPhaseMessage(), warnings }
@@ -878,6 +893,15 @@ function onPhaseNext() {
   // NON `inputLocked`, qu'un temps de Mouvement écoulé ferme alors que c'est
   // précisément ce bouton-là qu'il faut pouvoir cliquer).
   if (phaseControlsLocked.value) return
+  // Combat naval du tour pas encore joué (cf. `startNavalCombat`) : il se
+  // lance (ou reprend), la phase attend — en ligne, chez l'autre joueur
+  // aussi, le temps que ses batailles arrivent (cf. `navalCombatPending`).
+  if (startNavalCombat()) { phaseConfirmed = false; return }
+  if (navalCombatPending()) {
+    phaseConfirmed = false
+    reconToast.value = { id: newUid(), text: t('naval.waitingOther') }
+    return
+  }
   const confirmed = phaseConfirmed
   phaseConfirmed = false
   // Fin de la mise en place : plus de pions que n'en permet le module (cf.
@@ -898,6 +922,10 @@ function onPhaseNext() {
     phaseConfirm.value = phaseChangeConfirmation()
     return
   }
+  // Fin des Mouvements de tous les camps : la règle du module retire
+  // certains pions du jeu (cf. `removeAtMovementEnd`), avant que la piste
+  // n'avance.
+  if (endsAllMovements()) removeAtMovementEnd()
   const before = phase.value
   const stepBefore = turnTrackerRef.value?.currentStep
   advance()
@@ -921,6 +949,29 @@ function onPhaseNext() {
     // Multijoueur : les autres joueurs suivent la phase (cf. applyRemotePhase).
     emit('phase', { phase: phase.value, step: turnInfo.value.step, blitzUsed })
   }
+}
+
+/** Le "suivant" en cours clôt-il les Mouvements de TOUS les camps du tour ?
+ *  Piste à phases entremêlées : on quitte le dernier créneau de Mouvement
+ *  du tour (celui du camp qui bouge en second, selon l'initiative). Sinon,
+ *  chaque camp jouant toutes ses phases : la phase de Mouvement du dernier
+ *  camp du tour. */
+function endsAllMovements() {
+  if (phase.value !== 0) return false
+  const tracker = turnTrackerRef.value
+  const slot = tracker?.currentSlot
+  if (!slot) return !!tracker?.isLastSideOfTurn
+  const next = tracker.nextSlot
+  return !next || next.turn !== slot.turn || next.phase !== slot.phase
+}
+
+/** Fin des Mouvements du tour (cf. onPhaseNext, `endsAllMovements`) : les
+ *  pions que la règle du module retire alors du jeu (cf.
+ *  `moduleRules.movementEndRemovals` — les leurres au contact d'une task
+ *  force ennemie, à la mer de Corail), chacun inscrit au journal (entrée
+ *  `eliminate`), d'où le rejeu et les autres joueurs le reprennent. */
+function removeAtMovementEnd() {
+  for (const id of moduleRules.movementEndRemovals(counters.value)) eliminateCounter(id, t('log.dummyContact'))
 }
 
 /** Multijoueur : un autre joueur a changé de phase (cf. RoomLobby.vue,
@@ -1380,8 +1431,14 @@ const isZocHex = (hex) => zocSet.value.has(hex.c + ',' + hex.r)
 const autoMovers = computed(() => counters.value
   .map((counter) => ({ id: counter.id, target: moduleRules.autoMoveTarget(counter) }))
   .filter((mover) => mover.target))
+// La portée tient compte aussi des hex que la règle du module interdit au
+// pion (cf. `moduleRules.barredHexes`), comme le clic (cf. canEnterHex) —
+// calculés une fois par pion choisi, pas à chaque hex du parcours.
+const selectedBarred = computed(() => (selectedCounter.value ? moduleRules.barredHexes(selectedCounter.value, counters.value) : null))
+const canEnterInRange = (unit, hex, from) => canEnterTerrain(unit, hex, from)
+  && !(unit === selectedCounter.value ? selectedBarred.value : moduleRules.barredHexes(unit, counters.value))?.has(hex.c + ',' + hex.r)
 const { debug, adjacentCotLabels, isInRange, entrySurchargeLabels, autoMoveTrailLines } = useDebug(
-  hexes, isAdjacent, terrainCost, selectedCounter, remainingMp, neighborsOf, hexOnMap, canEnterTerrain, zocSet,
+  hexes, isAdjacent, terrainCost, selectedCounter, remainingMp, neighborsOf, hexOnMap, canEnterInRange, zocSet,
   entryHexSet, entrySurcharge, wouldOverstack, isZocFrozen, rules.zoc.stopOnEntry, autoMoveTrails, autoMovers,
 )
 
@@ -1486,6 +1543,9 @@ function onCounterSelect(id) {
   if (inputLocked.value) return
   const counter = counters.value.find((counter) => String(counter.id) === String(id))
   if (!counter) return
+  // Organisation des combats navals (cf. `onNavalOrgClick`) : le clic ne
+  // fait rien d'autre.
+  if (navalOrg.value) { onNavalOrgClick(counter); return }
   // Reconnaissance du joueur (cf. `onManualRecon`) : le clic choisit une
   // source ou explore une cible, rien d'autre.
   if (onManualRecon({ c: counter.col, r: counter.row }, counter)) return
@@ -1774,14 +1834,16 @@ function planAutoMoves() {
  *  sur celui du meneur — un libre d'abord, au hasard parmi ceux à sa portée.
  *  Trop loin pour en atteindre un, il se rapproche du meneur. Un suiveur
  *  posé sur l'hex de son meneur (leurre d'un renfort, cf.
- *  `reinforceDummies`) s'en écarte de même. */
+ *  `reinforceDummies`) s'en écarte de même. Jamais vers un hex que la
+ *  règle du module lui interdit (cf. `moduleRules.barredHexes`). */
 function moveFollower(counter, leader) {
   const mp = remainingMp(counter) ?? Infinity
   if (mp <= 0) return
   const hexKey = (hex) => hex.col + ',' + hex.row
   const occupied = new Set(counters.value.filter((other) => isUnit(other) && other !== counter).map(hexKey))
+  const barred = moduleRules.barredHexes(counter, counters.value)
   const around = shuffled(playAdjacentHexes(counter, leader.col, leader.row)
-    .filter((hex) => hexKey(hex) !== hexKey(counter) && hexDistance(counter, hex) <= mp))
+    .filter((hex) => hexKey(hex) !== hexKey(counter) && hexDistance(counter, hex) <= mp && !barred?.has(hexKey(hex))))
   const from = hexKey(counter)
   // Le chemin contourne l'hex du meneur : à court de MP, le suiveur ne doit
   // pas s'y arrêter en route.
@@ -1950,17 +2012,20 @@ function farthestFrom(counter, avoided) {
  *  s'y arrête pas si elles y sont déjà autant que la limite d'empilement
  *  de son camp (cf. lib/rules.js::stackingLimitOf — il s'arrête alors
  *  avant ; sans limite, il s'y arrête librement) ; un hex occupé par
- *  l'ennemi, il ne s'y aventure pas. */
+ *  l'ennemi, il ne s'y aventure pas, ni dans un hex que la règle du module
+ *  lui interdit (cf. `moduleRules.barredHexes` — ex. un leurre à côté
+ *  d'une task force ennemie). */
 function walkToward(counter, target, refuse, done = () => false, allowStep = () => true) {
   const hexKey = (hex) => hex.col + ',' + hex.row
   const others = counters.value.filter((other) => isUnit(other) && other.id !== counter.id)
   const hostile = new Set(others.filter((other) => isEnemyOf(counter, other)).map(hexKey))
+  const barred = moduleRules.barredHexes(counter, counters.value)
   const path = pathToward({ col: counter.col, row: counter.row, enteredFrom: counter.enteredFrom ?? null }, target, {
     hexOnMap,
     // Le pion tel qu'il serait en `from`, entré par `enteredFrom` : les
     // règles du terrain (passages d'île compris) jugent alors chaque pas
     // du chemin, pas seulement le premier.
-    canStep: (from, to, enteredFrom) => !hostile.has(to.c + ',' + to.r)
+    canStep: (from, to, enteredFrom) => !hostile.has(to.c + ',' + to.r) && !barred?.has(to.c + ',' + to.r)
       && allowStep({ col: from.c, row: from.r }, { col: to.c, row: to.r })
       && canEnterTerrain({ ...counter, col: from.c, row: from.r, enteredFrom }, to, from),
     cost: (from, to) => terrainCost(to, from),
@@ -2060,7 +2125,7 @@ function showRaid({ markers, raiders, strike } = {}) {
   raidViews.value = [...raidViews.value, { id: ++raidViewCount, fleet: moduleRules.alliedFleet(target),
     // Journal antérieur au pion unique : un pion par task force, à son nom.
     raid: { ...strike, raiders: raiders ?? markers.map((marker) => marker.name).join(', ') },
-    title: t('raidView.title', { unit: target.name }), markerIds: markers.map((marker) => marker.id), unit: target.name,
+    title: t('raidView.title', { unit: target.name }), markerIds: markers.map((marker) => marker.id), unit: target.name, targetId: String(target.id),
     planeKeys: strike.planes.map((plane) => plane.key) }]
   return true
 }
@@ -2075,7 +2140,18 @@ function endRaid({ markerIds, unit, planeKeys }) {
   moduleRules.landFromRaid(planeKeys)
   log('raidEnd', t('log.raidEnd', { unit }), { markerIds, planeKeys })
 }
+// Debug : "Probabilités" du raid montré (cf. RaidOddsModal.vue) — `{ title,
+// planes, candidates, chosenId, chosenPoints }`, ou `null`.
+const raidOdds = ref(null)
+function openRaidOdds() {
+  const view = raidViews.value[0]
+  if (!view) return
+  const planes = view.raid.planes ?? []
+  raidOdds.value = { title: t('raidOdds.title', { unit: view.unit }), planes, candidates: moduleRules.raidCandidates(counters.value, planes),
+    chosenId: view.targetId, chosenPoints: view.raid.expectedPoints ?? null }
+}
 function closeRaidView() {
+  raidOdds.value = null
   const [view, ...rest] = raidViews.value
   raidViews.value = rest
   if (view) endRaid(view)
@@ -2146,9 +2222,10 @@ watch([phase, () => turnInfo.value.step, () => turnInfo.value.activeSideKey, isR
 // (cf. `performSearch`, entrée `search` du journal).
 //   - Camp du MOTEUR (`moduleRules.autoMoveSide`) : parmi les sources qui
 //     ont encore un check et une cible, il choisit une source et l'une de
-//     ses cibles (surlignée sur la carte) par l'arbre de décision du module
-//     (`moduleRules.reconChoice`, décision inscrite au journal, cf.
-//     `logAiRecon` — au hasard sans arbre), et attend : le joueur ouvre le
+//     ses cibles (surlignée sur la carte) par l'IA de repérage du module
+//     (`moduleRules.reconChoice` — à la mer de Corail, celle du scénario ;
+//     décision inscrite au journal, cf. `logAiRecon` — au hasard sans IA),
+//     et attend : le joueur ouvre le
 //     "Rapport de reconnaissance" d'un clic droit sur une unité de cet hex
 //     (cf. `reportRecon`). Puis la source suivante ; quand il n'en reste
 //     plus, le joueur passe la phase ("suivant").
@@ -2308,6 +2385,242 @@ function setPlaneState({ plane, state }) {
   log('planeState', t('log.planeState', { plane: [plane.name, plane.code].filter(Boolean).join(' '), state: t(`planeState.${state}`) }), { key: plane.key, state })
 }
 
+// --- Combat naval (cf. lib/useCoralSea.js, en-tête "Combat naval", et
+// lib/navalCombat.js) : à la phase `moduleRules.navalCombatPhase`, les task
+// forces ennemies au contact se battent, un round par tour.
+//   1. CONTACT : elles se connaissent désormais (entrée `navalContact`) ;
+//   2. ORGANISATION par le camp qui a l'initiative : le moteur la décide
+//      (cf. `moduleRules.planNavalBattles`) ; le joueur clique une de ses
+//      task forces en contact, puis les task forces ennemies qu'elle attaque
+//      — une flèche par attaque —, et valide quand chacune est dans une
+//      bataille (rien à choisir : chaque groupe en contact n'en compte que
+//      deux). Toutes les task forces reliées forment une bataille ;
+//   3. chaque BATAILLE, l'une après l'autre (cf. NavalCombatModal.vue) :
+//      portée, attaques, dés ; ses dommages sont posés (entrées
+//      `shipDamage`) et elle est inscrite au journal (entrée
+//      `navalCombat`), d'où le rejeu sait quelles task forces se sont déjà
+//      battues ce tour.
+// Le "suivant" reste bloqué tant que des task forces en contact ne se sont
+// pas battues (cf. onPhaseNext) ; une partie rechargée en pleine phase
+// reprend là. Jamais pendant un rejeu ; en ligne, chez le joueur qui
+// affronte le moteur.
+const navalOrg = ref(null) // { contacts, side, arrows: [{ from, to }], selected } : organisation par le joueur
+const navalArrows = ref([]) // flèches des batailles en cours : [{ from, to }]
+const navalQueue = ref(null) // { turn, initiative, battles: [[ids]], index }
+const navalView = ref(null) // bataille ouverte : { battle, initiative, title, fleetNames }
+const foughtFleets = ref(new Map()) // task force id -> tour de son dernier combat
+
+/** Créneau de la piste en cours s'il est de la phase de combat naval. */
+function navalCombatSlot() {
+  const slot = turnTrackerRef.value?.currentSlot
+  return moduleRules.navalCombatPhase && slot?.phase === moduleRules.navalCombatPhase ? slot : null
+}
+/** Ce navigateur mène-t-il les combats navals ? */
+const navalDriver = () => props.assisted && !isReplaying.value && !replayLocked.value
+  && (!props.online || props.localSide !== moduleRules.autoMoveSide)
+/** Task forces qui se sont déjà battues ce tour. */
+function foughtThisTurn() {
+  const turn = turnInfo.value.turn
+  return new Set([...foughtFleets.value].filter(([, when]) => when === turn).map(([id]) => id))
+}
+/** En ligne, chez le joueur qui ne mène pas les combats (cf. `navalDriver`) :
+ *  des task forces en contact ne se sont pas encore battues ce tour — l'autre
+ *  joueur les joue, ses batailles arrivent par le journal partagé. */
+function navalCombatPending() {
+  return props.assisted && !!navalCombatSlot() && !navalDriver()
+    && moduleRules.navalContacts(counters.value, foughtThisTurn()).length > 0
+}
+/** Abandonne ici le combat naval en cours (organisation, batailles,
+ *  flèches) — rejeu, ou sortie de la phase autrement que par la fin des
+ *  batailles (ex. changement de pas venu d'un autre navigateur). */
+function clearNavalCombat() {
+  navalOrg.value = null
+  navalQueue.value = null
+  navalView.value = null
+  navalArrows.value = []
+}
+const counterById = (id) => counters.value.find((counter) => String(counter.id) === String(id)) ?? null
+/** Nom d'une task force en combat : celui de son vrai pion s'il est connu. */
+function navalName(id) {
+  const counter = counterById(id)
+  return counter ? moduleRules.revealedLook(counter)?.name ?? counter.name : id
+}
+/** Task forces `ids`, camp par camp : "Japonais : TF 9, TF 7 ; Américains : TF 7". */
+function namesBySide(ids) {
+  const bySide = new Map()
+  for (const id of ids) {
+    const side = sideOfCounter(counterDefinition(id))
+    bySide.set(side, [...(bySide.get(side) ?? []), navalName(id)])
+  }
+  return [...bySide].map(([side, names]) => `${sideLabel(side)} : ${names.join(', ')}`).join(' ; ')
+}
+/** Flèche d'un contact, de la task force du camp `side` vers l'autre. */
+const arrowOf = (side) => (contact) => {
+  const other = Object.keys(contact).find((key) => key !== side)
+  return { from: contact[side], to: contact[other] }
+}
+
+/** Lance (ou reprend) le combat naval du tour s'il en reste un à jouer.
+ *  Vrai tant qu'il bloque le passage à la suite. */
+function startNavalCombat() {
+  if (!navalCombatSlot() || !navalDriver()) return false
+  if (navalOrg.value || navalQueue.value) return true
+  const contacts = moduleRules.navalContacts(counters.value, foughtThisTurn())
+  if (!contacts.length) return false
+  const turn = turnInfo.value.turn
+  const ids = [...new Set(contacts.flatMap((contact) => Object.values(contact)))]
+  applyNavalContact(ids, turn)
+  log('navalContact', t('log.navalContact', { units: namesBySide(ids) }), { ids, turn })
+  const initiative = turnTrackerRef.value?.currentTurnInfo?.initiative ?? turnInfo.value.activeSideKey
+  if (initiative === moduleRules.autoMoveSide) {
+    const plan = moduleRules.planNavalBattles(contacts, counters.value, turn)
+    beginNavalBattles(plan.battles, plan.arrows, initiative)
+    return true
+  }
+  const groups = connectedGroups(contacts.map((contact) => Object.values(contact)))
+  if (groups.every((group) => group.length === 2)) beginNavalBattles(groups, contacts.map(arrowOf(initiative)), initiative)
+  else navalOrg.value = { contacts, side: initiative, arrows: [], selected: null }
+  return true
+}
+
+/** Le contact fait se connaître les task forces `ids` (en jeu comme au
+ *  rejeu) : celles du moteur, du joueur ; les autres, du moteur. */
+function applyNavalContact(ids, turn) {
+  for (const id of ids) {
+    if (sideOfCounter(counterDefinition(id)) === moduleRules.autoMoveSide) moduleRules.noteRevealed(id, turn)
+    else moduleRules.noteRaided(id, turn)
+  }
+}
+
+/** Organisation par le joueur : clic sur une task force en contact — une
+ *  des siennes la choisit, une ennemie au contact de celle choisie reçoit
+ *  (ou perd) une flèche. */
+function onNavalOrgClick(counter) {
+  const org = navalOrg.value
+  const id = String(counter.id)
+  if (!org.contacts.some((contact) => Object.values(contact).includes(id))) return
+  if (sideOfCounter(counter) === org.side) {
+    org.selected = org.selected === id ? null : id
+    return
+  }
+  if (!org.selected || !org.contacts.some((contact) => contact[org.side] === org.selected && Object.values(contact).includes(id))) return
+  const index = org.arrows.findIndex((arrow) => arrow.from === org.selected && arrow.to === id)
+  if (index >= 0) org.arrows.splice(index, 1)
+  else org.arrows.push({ from: org.selected, to: id })
+}
+/** Task forces en contact encore sans bataille (organisation du joueur). */
+const navalOrgMissing = computed(() => {
+  const org = navalOrg.value
+  if (!org) return []
+  const linked = new Set(org.arrows.flatMap((arrow) => [arrow.from, arrow.to]))
+  return [...new Set(org.contacts.flatMap((contact) => Object.values(contact)))].filter((id) => !linked.has(id))
+})
+function confirmNavalOrg() {
+  const org = navalOrg.value
+  if (!org || navalOrgMissing.value.length) return
+  beginNavalBattles(connectedGroups(org.arrows.map((arrow) => [arrow.from, arrow.to])), org.arrows.slice(), org.side)
+}
+
+/** Les batailles `battles` (ids de task forces) sont décidées par `side` :
+ *  au journal, puis la première s'ouvre. */
+function beginNavalBattles(battles, arrows, side) {
+  navalOrg.value = null
+  navalArrows.value = arrows
+  const names = (ids) => t('naval.versus', { a: namesBySide(ids.filter((id) => sideOfCounter(counterDefinition(id)) === side)),
+    b: namesBySide(ids.filter((id) => sideOfCounter(counterDefinition(id)) !== side)) })
+  log('navalBattles', t('log.navalBattles', { side: sideLabel(side), n: battles.length, battles: battles.map(names).join(' ; ') }, battles.length),
+    { side, battles, arrows })
+  navalQueue.value = { turn: turnInfo.value.turn, initiative: side, battles, index: 0 }
+  openNavalBattle()
+}
+
+/** Ouvre la bataille suivante de la file, ou clôt le combat naval. */
+function openNavalBattle() {
+  const queue = navalQueue.value
+  if (!queue) return
+  if (queue.index >= queue.battles.length) {
+    navalQueue.value = null
+    navalArrows.value = []
+    return
+  }
+  const ids = queue.battles[queue.index]
+  const battle = moduleRules.navalBattle(ids, counters.value, queue.turn)
+  const fleetNames = Object.fromEntries(Object.keys(battle.ships).map((side) => [side,
+    ids.filter((id) => sideOfCounter(counterDefinition(id)) === side).map(navalName).join(', ')]))
+  const when = t(battle.night ? 'naval.night' : 'naval.day')
+  navalView.value = { battle, initiative: queue.initiative, fleetNames,
+    title: t('naval.title', { n: queue.index + 1, total: queue.battles.length, when, turn: queue.turn }) }
+}
+
+/** Fin d'une bataille (cf. NavalCombatModal.vue) : au journal, puis ses
+ *  dommages — le dernier état de chaque navire touché —, et la suivante. */
+function onNavalBattleDone({ range, results }) {
+  const queue = navalQueue.value
+  const { battle, fleetNames } = navalView.value
+  const ships = new Map(Object.values(battle.ships).flat().map((ship) => [ship.key, ship]))
+  const shipName = (key) => `${ships.get(key)?.type ?? ''} ${ships.get(key)?.name ?? key}`.trim()
+  const lines = results.map((result) => t('naval.logAttack', { side: result.side.toUpperCase(),
+    shooters: result.shooters.map(shipName).join(' + '), firepower: result.firepower, target: shipName(result.target),
+    die: result.die, bonus: result.bonus ? `+${result.bonus}` : '', damage: result.damage, outcome: t(`naval.state.${result.after}`) }))
+  const where = Object.entries(fleetNames).map(([side, names]) => `${sideLabel(side)} (${names})`).join(` ${t('naval.against')} `)
+  const when = battle.night ? t('naval.night') : t('naval.dayRange', { range: range ?? '—' })
+  log('navalCombat', t('log.navalCombat', { fleets: where, when, attacks: lines.join(' ; ') || t('naval.noShot') }),
+    { turn: queue.turn, fleetIds: battle.fleetIds, night: battle.night, range, results })
+  noteFought(battle.fleetIds, queue.turn)
+  const finals = new Map(results.map((result) => [result.target, result.after]))
+  for (const [key, state] of finals) {
+    const ship = ships.get(key)
+    if (ship && state !== ship.damage) setShipDamage({ ship, state })
+  }
+  navalView.value = null
+  queue.index += 1
+  openNavalBattle()
+}
+function noteFought(ids, turn) {
+  const next = new Map(foughtFleets.value)
+  for (const id of ids) next.set(String(id), turn)
+  foughtFleets.value = next
+}
+
+// Flèches des combats sur la carte : de la task force qui attaque vers sa
+// cible, par-dessus les pions.
+const navalArrowLines = computed(() => (navalOrg.value?.arrows ?? navalArrows.value).flatMap((arrow) => {
+  const from = counterById(arrow.from)
+  const to = counterById(arrow.to)
+  if (!from || !to) return []
+  const a = hexCenterPx(shownHex(from))
+  const b = hexCenterPx(shownHex(to))
+  const length = Math.hypot(b.x - a.x, b.y - a.y) || 1
+  const ux = (b.x - a.x) / length
+  const uy = (b.y - a.y) / length
+  const start = calibration.rowStep * 0.12
+  const end = calibration.rowStep * 0.3
+  return [{ key: `${arrow.from}>${arrow.to}`, x1: a.x + ux * start, y1: a.y + uy * start, x2: b.x - ux * end, y2: b.y - uy * end }]
+}))
+// Hex des task forces en contact (organisation du joueur), et celui de la
+// task force choisie.
+const navalOrgHexes = computed(() => {
+  const org = navalOrg.value
+  if (!org) return new Map()
+  const out = new Map()
+  for (const id of new Set(org.contacts.flatMap((contact) => Object.values(contact)))) {
+    const counter = counterById(id)
+    if (counter) out.set(counter.col + ',' + counter.row, out.get(counter.col + ',' + counter.row) || id === org.selected)
+  }
+  return out
+})
+
+// Nom de chaque camp, pour la modale de bataille.
+const navalSideLabels = computed(() => Object.fromEntries(Object.keys(props.module.sides ?? {}).map((side) => [side, sideLabel(side)])))
+
+// Entrée dans la phase de combat naval : il se lance tout seul. Sortie de
+// la phase avant la fin des batailles : il est abandonné ici (cf.
+// `clearNavalCombat`).
+watch(() => turnInfo.value.step, () => nextTick(() => {
+  if (!navalCombatSlot()) clearNavalCombat()
+  startNavalCombat()
+}))
+
 // --- Composition des task forces du joueur (cf. `moduleRules.alliedFleet`,
 // TaskForceComposer.vue) : il pose ses pions navires sur le support de
 // chacune — à sa mise en place et à sa phase `alliedFleetPhase` en partie
@@ -2431,13 +2744,15 @@ const replacingSighted = computed(() => {
 })
 const replacesUnitImage = (marker) => replacingSighted.value.get(marker.attachedTo)?.id === marker.id
 
-/** Image affichée d'une unité : celle de son pion "Sighted" s'il la
- *  remplace, sinon la sienne. */
+/** Image affichée d'une unité : son vrai pion si l'adversaire la connaît
+ *  (cf. `moduleRules.revealedLook`), sinon celle de son pion "Sighted" s'il
+ *  la remplace, sinon la sienne. */
 function unitSrc(counter) {
-  return replacingSighted.value.get(String(counter.id))?.src ?? counter.src
+  return moduleRules.revealedLook(counter)?.src ?? replacingSighted.value.get(String(counter.id))?.src ?? counter.src
 }
 
-// Toast du résultat d'une reconnaissance du joueur (cf. Toast.vue).
+// Toast (cf. Toast.vue) : résultat d'une reconnaissance du joueur, ou
+// combat naval en cours chez l'autre joueur (cf. onPhaseNext).
 const reconToast = ref(null)
 
 /** Explore l'hex de l'unité `unit` depuis la source `source` : tire UN chit,
@@ -2869,6 +3184,9 @@ function resetBoardForReplay() {
   sightings.value = new Map()
   reconUses.value = new Map()
   autoMoveTrails.value = new Map()
+  // Combats navals : rétablis par les entrées `navalCombat` rejouées.
+  foughtFleets.value = new Map()
+  clearNavalCombat()
   eliminatedIds.value = new Set()
   removals.value = []
   selectedCounterId.value = null
@@ -2943,6 +3261,10 @@ function applyReplayEntry(entry) {
     // Journaux antérieurs à la concession : seule la pendule mettait fin à
     // la partie.
     gameOverReason.value = entryData.reason === 'concede' ? 'concede' : 'blitz'
+  } else if (entry.kind === 'navalContact') {
+    applyNavalContact(entryData.ids ?? [], entryData.turn)
+  } else if (entry.kind === 'navalCombat') {
+    noteFought(entryData.fleetIds ?? [], entryData.turn)
   } else if (entry.kind === 'eliminate') {
     noteElimination(entryData.counterId, entryData)
   } else if (entry.kind === 'return') {
@@ -3372,6 +3694,14 @@ function onMapDragEnd() {
           <polygon v-for="hex in hexes.filter((hex) => fleetDisplayHexes.has(hex.c + ',' + hex.r))" :key="'fd' + hex.id"
             class="hex-fleet-display" :points="hex.pts" vector-effect="non-scaling-stroke" />
         </g>
+        <!-- Organisation des combats navals : task forces en contact
+             (contour), et celle choisie (plein). Les clics traversent
+             jusqu'aux pions (cf. `onNavalOrgClick`). -->
+        <g v-if="navalOrgHexes.size">
+          <polygon v-for="hex in hexes.filter((hex) => navalOrgHexes.has(hex.c + ',' + hex.r))" :key="'naval' + hex.id"
+            :class="navalOrgHexes.get(hex.c + ',' + hex.r) ? 'hex-naval-chosen' : 'hex-naval-contact'"
+            :points="hex.pts" vector-effect="non-scaling-stroke" />
+        </g>
 
         <g v-if="showLabels">
           <text v-for="hex in hexes" :key="'t' + hex.id" class="coordtxt" :x="hex.cx" :y="hex.cy + calibration.a * 0.18"
@@ -3427,6 +3757,19 @@ function onMapDragEnd() {
             :row="shownHex(counter).row" :calibration="calibration" :selected="false" :selectable="false"
             :offset="stackOffsets.get(counter.id) ?? ZERO_OFFSET" :drag-px="shownPx(counter)" class="search-marker" />
         </g>
+
+        <!-- Combat naval (cf. `navalArrowLines`) : une flèche par attaque, de
+             la task force qui attaque vers sa cible, par-dessus les pions.
+             Les clics la traversent. -->
+        <g v-if="navalArrowLines.length" class="naval-arrows">
+          <defs>
+            <marker id="naval-arrowhead" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3" markerHeight="3" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" class="naval-arrowhead" />
+            </marker>
+          </defs>
+          <line v-for="line in navalArrowLines" :key="line.key" class="naval-arrow" :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2"
+            :stroke-width="calibration.rowStep * 0.09" marker-end="url(#naval-arrowhead)" />
+        </g>
       </svg>
     </main>
 
@@ -3450,6 +3793,21 @@ function onMapDragEnd() {
     </SidePanel>
 
     <Toast :message="reconToast" @close="reconToast = null" />
+    <!-- Organisation des combats navals par le joueur (cf. `onNavalOrgClick`). -->
+    <div v-if="navalOrg" class="naval-org" role="region" :aria-label="$t('naval.orgTitle', { side: sideLabel(navalOrg.side) })">
+      <strong>{{ $t('naval.orgTitle', { side: sideLabel(navalOrg.side) }) }}</strong>
+      <p>{{ $t('naval.orgHint') }}</p>
+      <p v-if="navalOrgMissing.length" class="naval-org-missing">{{ $t('naval.orgMissing', { units: navalOrgMissing.map(navalName).join(', ') }) }}</p>
+      <button type="button" class="naval-org-btn" :disabled="navalOrgMissing.length > 0" @click="confirmNavalOrg">{{ $t('naval.orgValidate') }}</button>
+    </div>
+    <NavalCombatModal v-if="navalView" :key="navalView.battle.key" :title="navalView.title" :battle="navalView.battle"
+      :initiative="navalView.initiative" :engine-side="moduleRules.autoMoveSide" :side-labels="navalSideLabels"
+      :fleet-names="navalView.fleetNames" :damages="moduleRules.shipDamages"
+      :firing="(side, range) => moduleRules.navalFiring(navalView.battle, side, range)"
+      :plan="(side, range) => moduleRules.navalPlan(navalView.battle, side, range)"
+      :propose-range="() => moduleRules.navalRangeProposal(navalView.battle)"
+      :accepts-range="(range) => moduleRules.navalAcceptsRange(navalView.battle, range)"
+      :resolve="(attacks) => moduleRules.resolveNavalAttacks(navalView.battle, attacks)" @done="onNavalBattleDone" />
     <ContextMenu v-if="contextMenu" :left-px="contextMenu.x" :top-px="contextMenu.y" :items="contextMenu.items"
       @choose="chooseContextMenuItem" @close="closeContextMenu" />
     <FleetDisplayModal v-if="fleetDisplayLayout" :layout="fleetDisplayLayout" :displays="moduleRules.fleetDisplays"
@@ -3470,7 +3828,9 @@ function onMapDragEnd() {
       :air-cell-ids="raidViews[0].fleet.airCellIds ?? []" :deck-of="moduleRules.alliedDeck"
       :damages="moduleRules.shipDamages" :damage-of="moduleRules.damageOf" :damage-editable="shipDamageEditable"
       @damage="setShipDamage"
-      :plane-states="moduleRules.planeStates" :plane-state-of="moduleRules.planeStateOf" @plane-state="setPlaneState" :raid="raidViews[0].raid" @close="closeRaidView" />
+      :plane-states="moduleRules.planeStates" :plane-state-of="moduleRules.planeStateOf" @plane-state="setPlaneState" :raid="raidViews[0].raid" :debug="debug" @odds="openRaidOdds" @close="closeRaidView" />
+    <RaidOddsModal v-if="raidOdds" :title="raidOdds.title" :planes="raidOdds.planes" :candidates="raidOdds.candidates"
+      :plan="moduleRules.planRaidOptions" :chosen-id="raidOdds.chosenId" :chosen-points="raidOdds.chosenPoints" @close="raidOdds = null" />
     <StackPopup v-if="hoveredStackCounters.length" :counters="hoveredStackCounters" :anchor="hoveredCounter.anchor"
       :title="$t('stack.title', { hex: hexId(hoveredCounter.col + 1, hoveredCounter.row), n: hoveredStackCounters.length })" />
 
@@ -3766,6 +4126,80 @@ polygon.hex.entry:hover {
   stroke: var(--c-orange);
   stroke-width: 3;
   pointer-events: none;
+}
+/* Combat naval : task forces en contact, celle choisie, flèches. */
+.hex-naval-contact {
+  fill: none;
+  stroke: var(--c-red);
+  stroke-width: 3;
+  pointer-events: none;
+}
+.hex-naval-chosen {
+  fill: color-mix(in srgb, var(--c-red) 25%, transparent);
+  stroke: var(--c-red);
+  stroke-width: 4;
+  pointer-events: none;
+}
+.naval-arrows {
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px var(--c-white));
+}
+.naval-arrow {
+  stroke: var(--c-red);
+  stroke-linecap: round;
+}
+.naval-arrowhead {
+  fill: var(--c-red);
+}
+.naval-org {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-floating);
+  width: min(560px, calc(100vw - 32px));
+  padding: 10px 14px 12px;
+  border-radius: var(--radius-8);
+  border-top: 3px solid var(--c-red);
+  background: var(--c-panel);
+  color: var(--c-panel-text);
+  box-shadow: var(--shadow-widget);
+  font-size: var(--fs-sm);
+}
+.naval-org strong {
+  color: var(--c-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.naval-org p {
+  margin: 6px 0;
+}
+.naval-org-missing {
+  color: var(--c-steel);
+}
+.naval-org-btn {
+  display: block;
+  margin-left: auto;
+  padding: 6px 14px;
+  border: 1px solid var(--c-gold);
+  border-radius: var(--radius-6);
+  background: color-mix(in srgb, var(--c-gold) 22%, transparent);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 120ms ease-out;
+}
+.naval-org-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (hover: hover) and (pointer: fine) {
+  .naval-org-btn:not(:disabled):hover {
+    background: color-mix(in srgb, var(--c-gold) 34%, transparent);
+  }
+}
+.naval-org-btn:not(:disabled):active {
+  transform: scale(0.97);
 }
 @keyframes recon-pulse {
   from { fill-opacity: 0.35; }

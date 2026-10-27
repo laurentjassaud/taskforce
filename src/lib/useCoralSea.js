@@ -6,102 +6,59 @@
 // `null` = "pas de règle particulière", composable INERTE sur tout autre
 // module.
 //
-// Bataille de la mer de Corail (7-8 mai 1942) : seuls les 12 leurres (Dummy)
-// japonais sont sur la carte au coup d'envoi. Les Américains posent ensuite
-// leurs task forces et autant de leurres qu'ils veulent pendant leur mise en
-// place (`turnTrack.setup`, avant le tour 1). Task forces et marqueurs de
-// recherche (Detected!, Contact Lost, Misdirect) attendent tous dans le
-// panneau latéral, d'où les joueurs les posent sur la carte (zone d'entrée
-// IJN en haut de la carte ; USN n'importe où, à la mise en place).
+// Bataille de la mer de Corail (7-8 mai 1942). Task forces et marqueurs de
+// recherche (Detected!, Contact Lost, Misdirect) attendent dans le panneau
+// latéral, d'où les joueurs les posent sur la carte (zone d'entrée IJN en
+// haut de la carte ; USN n'importe où, à la mise en place —
+// `turnTrack.setup`, avant le tour 1).
 //
-// FORMATION JAPONAISE : au coup d'envoi, sans intervention humaine, l'appli
-// tire à chances égales une des formations du scénario (`formations.ijn`,
-// cf. coral-sea.json et `drawFormation`) : deux groupements fixes, ou un
-// groupement ALÉATOIRE composé selon sa règle (cf. `composeRandomFormation`
-// — chaque CV avec 2 CA + 1 DD, le CVL avec 2 DD, les AK par 2 ou 3 avec 1
-// DD chacun, le reste en 2 groupes). Chaque task force prend un comportement
-// d'après ses navires (cf. `behaviorOfShips`, `movementPlan`). Les navires
-// viennent du catalogue de la flotte (cf. lib/moduleLoader.js) ; sans lui,
-// l'ancien tirage (TF1, TF2, TF3, TF7, TF8, TF10) s'applique.
-//
-// IDENTITÉ SECRÈTE DES LEURRES JAPONAIS : chaque task force de la formation
-// est portée en secret par un des 12 leurres, tiré au hasard. Les autres
-// (12 moins le nombre de task forces) sont de vrais leurres, dont chacun se
-// déplace, à pile ou face, comme une task force normale ou comme un
-// transport (pour ne pas se trahir par son allure). Allures (cf.
-// `movementAllowance`) :
-//   - normale : celle de la piste de tour (2 hex de nuit, 1 de jour) ;
-//   - transport (AK) : 1 hex de nuit, 1 hex aux tours de jour impairs, 0
-//     aux tours de jour pairs — exactement les tours où la piste coche
-//     "Mouvement AK" (`turnInfo.conditions.akMovement`, cf. coral-sea.json).
-// Ce tirage est inscrit dans l'entrée `setup` du journal (cf. `setupSecrets`
-// et HexMap.vue::logDeploymentOnce/startSharedJournal) : il survit donc au
-// rejeu et est commun à tous les joueurs en ligne.
-//
-// GROUPES : chaque leurre porteur d'une task force reçoit un leurre
-// d'escorte, porte-avions d'abord, tant qu'il reste de vrais leurres, posé
-// sur un hex adjacent de la zone de départ ; les vrais leurres restants
-// forment un faux groupe, posé au hasard, les autres adjacents au premier
-// (cf. `drawLeaders`, `arrangeInitialPositions`). Un suiveur suit son
-// meneur en restant adjacent, à SON allure (cf. `followTarget`,
-// `isTransport`), et bouge à chaque mouvement tant qu'il a des MP — vers
-// un autre hex voisin du meneur, pas le sien si possible : un leurre
-// immobile à côté d'un voisin qui avance trahirait le meneur (cf.
+// SCÉNARIOS (cf. lib/coralSea/scenarios/) : ce qui dépend du scénario joué
+// — la CONSTITUTION des flottes japonaises (formation, task forces portées
+// en secret par les leurres), le PLACEMENT (déploiement, groupes,
+// hex-objectifs, mise en place US, renforts de leurres), le DÉPLACEMENT
+// (allures, arbre de décision du mouvement) et le REPÉRAGE (bases, portée,
+// couverture, arbre de décision des reconnaissances) — vit à part, un
+// dossier par scénario (ex. scenario-5/), en quatre moteurs (cf.
+// `engines`) ; chaque scénario a les siens. Ce
+// composable garde l'état qu'ils tirent au coup d'envoi — rôle secret de
+// chaque leurre japonais (`dummyRoles`), groupes (`leaders`, suiveur ->
+// meneur) et hex-objectifs (`objectives`) —, l'inscrit au journal avec le
+// déploiement (cf. `setupSecrets` et HexMap.vue::logDeploymentOnce/
+// startSharedJournal : il survit au rejeu et est commun à tous les joueurs
+// en ligne), et le fait vivre : un suiveur suit son meneur en restant
+// adjacent, à SON allure (cf. `followTarget`, `isTransport`,
 // HexMap.vue::moveFollower) ; si le meneur disparaît, il reprend son
-// hex-objectif.
-//
-// MOUVEMENTS PARTICULIERS (cf. `movementPlan`), qui REMPLACENT la marche
-// vers l'hex-objectif, selon les navires de la task force : avec des AK,
-// elle reste à plus de 6 hex de toute TF alliée repérée ; avec un CV ou un
-// CVL, elle fonce à 5 hex d'une TF alliée vue comme porte-avions (les
-// porte-avions s'attendent à 6 hex, 2 tours au plus), et, sans porte-avions
-// allié repéré, s'écarte à plus de 6 hex de toute unité alliée dès qu'elle
-// est elle-même repérée ; rien que des DD, elle va vers la TF alliée non
-// repérée la plus proche ; les autres vont vers la TF alliée repérée la
-// plus proche. Leurs suiveurs suivent. Ces règles forment un ARBRE DE
-// DÉCISION, décrit en données dans lib/ai/coralSeaTrees.js, sur ce que sait
-// le Japonais (cf. lib/ai/coralSeaPerception.js).
-//
-// HEX-OBJECTIF : chaque MENEUR (leurre porteur, tête du faux couple) reçoit
-// au coup d'envoi une destination tirée au hasard parmi les hex d'arrivée
-// japonais (`terrain.ijnArrivalHexes`, cf. coral-sea.json). À chaque phase
-// de Mouvement japonaise, le moteur les rapproche automatiquement de cet
-// objectif, puis les suiveurs les rejoignent (cf. `autoMoveTarget` et
-// HexMap.vue::runAutoMoves). Tirés avec l'identité des leurres, groupes et
-// objectifs sont inscrits au journal de la même façon.
+// hex-objectif (cf. `promote`) ; à chaque phase de Mouvement japonaise, le
+// moteur rapproche chaque meneur de son objectif (cf. `autoMoveTarget`,
+// HexMap.vue::runAutoMoves), sauf mouvement particulier décidé par le
+// moteur de déplacement du scénario (cf. `movementPlan`).
 //
 // RECONNAISSANCE JAPONAISE : pendant la phase de Reconnaissance du camp
-// japonais (joué par le moteur), chaque SOURCE fait UN check, et un seul :
-// les bases aériennes japonaises (Rabaul 0506, Buka 1004, Gasmata 0510, Lae
-// 0115) et les task forces de porte-avions japonaises sur la carte (`role`
-// "carrier", cf. coral-sea.json — vrais pions, ou leurres qui les portent en
-// secret). Chacune explore UN hex parmi ceux, à 8 hex ou moins d'elle, où se
-// trouve une task force ou un leurre allié pas encore exploré (cf.
-// `reconChecks` et HexMap.vue::continueEngineRecon) — un porte-avions qui a
-// trois leurres à portée n'en explore qu'un. Lequel, et quelle source joue
-// d'abord, c'est l'arbre de décision du repérage qui le choisit (cf.
-// `reconChoice`, lib/ai/coralSeaTrees.js::reconTree). Et
-// seulement un hex COUVERT : assez d'unités japonaises (task forces,
-// leurres et bases) à 8 hex ou moins de lui — 4 avec 12 task forces et
-// leurres japonais en jeu, 3 de 8 à 11, 2 de 4 à 7, 1 en dessous (cf.
-// `ijnCoverageFilter`). Les sources
-// jouent une par une, dans l'ordre que choisit l'arbre ; pour chacune, le
-// joueur ouvre le rapport (clic droit sur l'unité) et un chit est tiré de
-// la tasse de recherche (cf. `drawSearch`) : 30 Detected!, 12 Misdirect,
-// 12 Contact Lost. Les chits tirés ne retournent pas dans la tasse : elle
-// n'est remplie à nouveau qu'aux tours "Tous rendus" de la piste
-// (`turnInfo.conditions.reconChits`, les tours de nuit), où les marqueurs
-// quittent la carte et les task forces repérées redeviennent de simples
-// drapeaux.
+// japonais (joué par le moteur), chaque SOURCE fait ses checks : les bases
+// aériennes japonaises et les task forces de porte-avions japonaises sur la
+// carte (`role` "carrier", cf. coral-sea.json — vrais pions, ou leurres qui
+// les portent en secret). Chacune explore un hex à sa portée où se trouve
+// une task force ou un leurre allié pas encore exploré pendant la phase (cf.
+// `reconChecks` et HexMap.vue::continueEngineRecon). Quelles bases, quelle
+// portée, combien de checks, quels hex sont permis (couverture) et lequel
+// le moteur explore d'abord, c'est le moteur de repérage du scénario qui le
+// dit (cf. lib/coralSea/scenarios/, ex. scenario-5/recon.js). Les sources
+// jouent une par une ; pour chacune, le joueur ouvre le rapport (clic droit
+// sur l'unité) et un chit est tiré de la tasse de recherche (cf.
+// `drawSearch`) : 30 Detected!, 12 Misdirect, 12 Contact Lost. Les chits
+// tirés ne retournent pas dans la tasse : elle n'est remplie à nouveau
+// qu'aux tours "Tous rendus" de la piste (`turnInfo.conditions.reconChits`,
+// les tours de nuit), où les marqueurs quittent la carte et les task forces
+// repérées redeviennent de simples drapeaux.
 //
 // RECONNAISSANCE ALLIÉE (camp du joueur, `manualReconSide`) : le joueur
-// clique une task force de porte-avions alliée (`role` "carrier"), puis
-// jusqu'à 2 hex DIFFÉRENTS à 8 hex ou moins d'elle où se trouve une task
-// force ou un leurre japonais. Pas de base alliée dans ce scénario. Même
-// tasse et mêmes résultats, mais le chit tiré lui reste caché : un pion
-// "Search" générique est posé à la place, et un toast lui dit ce qu'il a vu.
-// Un leurre japonais qui porte en secret une task force est jugé comme
-// elle (cf. `roleOf`).
+// clique une task force de porte-avions alliée (`role` "carrier"), puis les
+// hex DIFFÉRENTS à sa portée où se trouve une task force ou un leurre
+// japonais (combien, et à quelle distance : cf. le moteur de repérage du
+// scénario). Même tasse et mêmes résultats, mais le chit tiré lui reste
+// caché : un pion "Search" générique est posé à la place, et un toast lui
+// dit ce qu'il a vu. Un leurre japonais qui porte en secret une task force
+// est jugé comme elle (cf. `roleOf`).
 //
 // RÉSULTAT D'UNE RECHERCHE (cf. `searchOutcome`) : une recherche explore un
 // HEX — le chit tiré vaut pour toutes les task forces et tous les leurres
@@ -121,27 +78,62 @@
 // tous les pions de repérage posés sur elles, chacun avec son tour de pose
 // au survol (cf. HexMap.vue::keepsOwnLook, unitSrc).
 //
-// RENFORT DE LEURRES : au premier tour de chaque nuit (tours 11 et 23,
-// `dummyReinforcement` de la piste), juste avant que les repérages ne
-// tombent, les leurres japonais éliminés reviennent pour ramener à 12 les
-// task forces japonaises sur la carte — sur les porte-avions repérés,
-// sinon les flottes repérées, sinon au hasard (cf.
-// `planDummyReinforcement`) : chacun posé SUR l'hex de l'unité qu'il
-// suivra désormais, puis tous bougent (le suiveur s'en écarte à son
-// mouvement, cf. HexMap.vue::runAutoMoves).
+// RENFORT DE LEURRES : aux tours `dummyReinforcement` de la piste (le
+// premier de chaque nuit), juste avant que les repérages ne tombent, les
+// leurres japonais éliminés reviennent sur la carte, et le joueur US peut
+// poser des leurres sur ses task forces avant de bouger (cf.
+// `planDummyReinforcement`, `playerDummyReinforcement` — où et combien,
+// c'est le moteur de placement du scénario qui le dit).
 //
-// MISE EN PLACE US : le joueur pose 12 task forces, leurres compris (cf.
-// `setupCount`) — moins, il confirme qu'il commence quand même ; plus, il
-// ne peut pas commencer. Il peut les empiler, pendant la mise en place comme
-// pendant ses mouvements (`rules.stackingLimit` du module : aucune limite,
-// pour aucun camp — les task forces japonaises s'empilent aussi, ce qui
-// laisse le moteur les déplacer sans qu'elles se bloquent entre elles).
+// MISE EN PLACE US : le joueur pose ses task forces, leurres compris (cf.
+// `setupCount`, total du moteur de placement) — moins, il confirme qu'il
+// commence quand même ; plus, il ne peut pas commencer. Il peut les
+// empiler, pendant la mise en place comme pendant ses mouvements
+// (`rules.stackingLimit` du module : aucune limite, pour aucun camp — les
+// task forces japonaises s'empilent aussi, ce qui laisse le moteur les
+// déplacer sans qu'elles se bloquent entre elles).
 //
-// Aux mêmes tours, le joueur US peut lui aussi poser des leurres, AVANT de
-// bouger quoi que ce soit dans sa phase de Mouvement : chacun sur l'hex d'une
-// de ses task forces, jusqu'à 12 task forces américaines (leurres compris)
-// sur la carte ; puis il fait son mouvement (cf.
-// `playerDummyReinforcement`).
+// ADJACENCE (cf. `adjacent`) : deux hex voisins sont adjacents si l'on peut
+// passer de l'un à l'autre — pas à travers une barrière de corail (arête
+// infranchissable, cf. lib/edges.js). Aucune task force n'entre jamais sur
+// l'hex d'une task force ennemie (cf. `barredHexes`).
+//
+// CONTACT DES LEURRES (cf. `barredHexes`, `movementEndRemovals`) : un vrai
+// leurre — américain, ou japonais qui ne porte pas de task force — n'entre
+// jamais, en mouvement, sur un hex adjacent à une task force ennemie,
+// qu'elle soit repérée ou non. Les leurres ennemis comptent : rien ne les
+// distingue des vraies task forces aux yeux de son camp. Interdit au
+// joueur US comme au moteur japonais (suiveurs compris) ; s'éloigner reste
+// permis. Une fois que les deux camps ont fait leur Mouvement (une seule
+// fois par tour), un vrai leurre au contact d'une task force ennemie (venue
+// jusqu'à lui, ou posé là par un renfort) est retiré du jeu (cf.
+// HexMap.vue::removeAtMovementEnd).
+//
+// COMBAT NAVAL (cf. lib/navalCombat.js, `navalContacts`, `navalBattle`,
+// HexMap.vue::startNavalCombat) : à la phase Combat naval, les task forces
+// ennemies adjacentes se battent, un round par tour. Le contact les fait se
+// connaître : la task force américaine l'est du Japonais comme après un raid
+// (bordure verte, cf. `noteRaided`), la japonaise du joueur US (son vrai
+// pion TF remplace le drapeau, cf. `revealedLook`) — jusqu'au premier tour
+// de nuit qui suit. Le camp qui a l'initiative organise les batailles
+// (flèches de ses task forces vers les task forces ennemies qu'elles
+// attaquent ; une bataille = toutes celles reliées, chaque camp y compte
+// comme une seule flotte) ; le moteur japonais prend l'organisation qui lui
+// rapporte le plus (cf. `planNavalBattles`). Dans chaque bataille, tous les
+// navires sont visibles des deux camps :
+//   - de jour, PORTÉE : seuls tirent les navires dont la portée est au moins
+//     celle du combat (BB > CA > CL > DD) — par défaut la plus longue
+//     présente. Chaque camp, l'initiative d'abord, peut proposer une portée
+//     plus courte, que l'autre accepte ou refuse ; le moteur propose et
+//     accepte selon son intérêt (cf. `navalRangeProposal`,
+//     `navalAcceptsRange`). De nuit, tous tirent, et les DD japonais ont une
+//     puissance de feu doublée ;
+//   - ATTAQUES : l'initiative choisit les siennes, puis l'autre camp, qui
+//     les voit ; le moteur cherche les points de victoire espérés les plus
+//     hauts (cf. `navalPlan`) ;
+//   - RÉSOLUTION simultanée (cf. `resolveNavalAttacks`) : un d6 par attaque
+//     (l'IJN +1), dégâts appliqués comme ceux des raids, attaque après
+//     attaque, sans s'additionner.
 //
 // SUPPORT DE TASK FORCE (cf. `fleetDisplay`, FleetDisplayModal.vue) :
 // pendant SA phase d'Opérations aériennes, le joueur US choisit "Attaque
@@ -178,49 +170,27 @@
 // frappes sur ses navires (cf. `strikeTarget`) ; l'IA japonaise, elle, ne
 // la lit que pour une task force qu'elle a déjà frappée (cf. `raidPlan`),
 // et s'en tient sinon à son estimation.
-//
-// Un porte-avions repéré COMME porte-avions ("Sighted Carrier" sur un vrai
-// porte-avions) n'a plus rien à cacher : il cherche sans règle de
-// couverture.
-//
-// Le Japonais ne revient pas sur une task force alliée déjà repérée
-// ("Sighted Carrier" ou "Sighted Fleet") tant qu'une source a à portée une
-// autre unité alliée non repérée.
 import { computed, ref, unref } from 'vue'
 import { INERT_RULES } from './moduleRules.js'
-import { hexDistance } from './hex.js'
-import { resolveAirStrikeTable, strikeOdds } from './airStrike.js'
+import { hexDistance, neighborsOf } from './hex.js'
+import { hexId } from './calibration.js'
+import { resolveEdges } from './edges.js'
+import { resolveNavalTable, rangeOptions, firingShips, planNavalAttacks, navalDamage, connectedGroups } from './navalCombat.js'
+import { resolveAirStrikeTable, strikeOdds, damageOutcome } from './airStrike.js'
 import { airGroupCounters, chooseReady, deckAircraft, withPlaneStates } from './airGroups.js'
-import { planStrike } from './strikePlanner.js'
-import { decide } from './ai/decisionTree.js'
-import { perceiveTaskForce, perceiveReconTarget, sightedDefenseEstimate, sightedTargetsEstimate } from './ai/coralSeaPerception.js'
-import { movementTree, movementTests, movementActions, reconTree, reconTests } from './ai/coralSeaTrees.js'
+import { planAcrossFleets, planStrike } from './strikePlanner.js'
+import { sightedDefenseEstimate, sightedTargetsEstimate } from './ai/coralSeaPerception.js'
+import { CARRIER_TYPES, RAID_RADIUS, expandShips, hexOfId, isDummy, isIjnTaskForce, shuffle } from './coralSea/shared.js'
+import { scenarioEngines } from './coralSea/scenarios/index.js'
 
 export const CORAL_SEA_MODULE_ID = 'coral-sea'
 
-/** Bases aériennes japonaises d'où partent les reconnaissances, rayon
- *  d'action en hex, et porte-avions qui en lancent aussi. */
-const RECON_BASES = { '0506': 'Rabaul', '1004': 'Buka', '0510': 'Gasmata', '0115': 'Lae' }
-const RECON_RANGE = 8
-/** Hex que chaque source explore par phase. */
-const BASE_CHECKS = 1
-const CARRIER_CHECKS = { ijn: 1, usn: 2 }
 const ENEMY = { ijn: 'usn', usn: 'ijn' }
-/** Couverture des reconnaissances japonaises : `[task forces japonaises en
- *  jeu au moins, unités japonaises requises à 8 hex de l'hex exploré]`, du
- *  plus grand au plus petit (cf. `ijnCoverageFilter`). */
-const COVERAGE_THRESHOLDS = [[12, 4], [8, 3], [4, 2], [1, 1]]
 const RECON_PHASE = 'reconnaissance'
-/** Raids aériens japonais (cf. `raidPlan`) : phase, task forces qui en
- *  lancent (et leur nom au journal), rayon d'action, et pion "IJN Raid"
- *  posé sur la cible, un par raid, le temps du raid. */
+/** Raids aériens japonais (cf. `raidPlan`) : phase, et pion "IJN Raid" posé
+ *  sur la cible, un par raid, le temps du raid. Leur portée : cf.
+ *  coralSea/shared.js::RAID_RADIUS. */
 const RAID_PHASE = 'airOperations'
-const RAID_RADIUS = 5
-const RAID_MARKERS = {
-  'ijn-tf1': { name: 'Raid TF1' },
-  'ijn-tf2': { name: 'Raid TF2' },
-  'ijn-tf3': { name: 'Raid TF3' },
-}
 const RAID_MARKER = { name: 'IJN Raid', src: '/modules/coral-sea/images/counters/markers/Marker_Raid-IJN.png' }
 /** Supports des task forces JAPONAISES (cf. `fleetDisplay`) : image, taille
  *  en px, et cases où poser les navires, en px de l'image. "Carrier TF" : la
@@ -279,6 +249,11 @@ export const ALLIED_FLEET_DISPLAYS = {
   },
 }
 const FLEET_DISPLAY_PHASE = 'airOperations'
+/** Phase (id de la piste) des combats de surface (cf. `navalContacts`). */
+const NAVAL_COMBAT_PHASE = 'navalCombat'
+/** Contacts d'un même groupe au-delà desquels le moteur ne cherche plus à le
+ *  découper en batailles (cf. `planNavalBattles` : 2^n découpages). */
+const MAX_SPLIT_CONTACTS = 6
 /** Phase (id de la piste) où le joueur US compose ses task forces, en plus
  *  de sa mise en place (cf. `alliedFleet`). */
 const ALLIED_FLEET_PHASE = 'administrative'
@@ -302,8 +277,6 @@ export const READY_CELLS = ALLIED_FLEET_DISPLAYS.carrier.ready.map((_, index) =>
 export const isAirCell = (cell) => /^(ready|reserve|cap|landingMap|landingCap)\d+$/.test(cell)
 /** Clé de pion d'un avion : celle de son porte-avions, '/', son rang. */
 const carrierOfPlane = (key) => key.split('/')[0]
-
-const hexOfId = (id) => ({ col: Number(id.slice(0, 2)) - 1, row: Number(id.slice(2)) })
 
 /** Tasse de recherche pleine : nombre de chits par résultat, et pion posé
  *  sur l'hex exploré pour chacun. */
@@ -345,233 +318,6 @@ export const SIGHTINGS = {
   fleetTF: { name: 'Sighted Fleet', src: { usn: `${MARKERS}Marker_Sighted-Fleet.png`, ijn: `${MARKERS}Marker_Sighted-Fleet-IJN.png` } },
 }
 
-/** Task forces japonaises (leurres compris) ramenées sur la carte à chaque
- *  renfort de leurres (cf. `planDummyReinforcement`). */
-const DUMMY_TOTAL = 12
-
-/** Rayon dans lequel sont tirés les hex-objectifs des porte-avions (cf.
- *  `groupCarrierObjectives`). */
-const GROUPED_RADIUS = 5
-
-/** Types de navires qui font d'une task force une task force de
- *  porte-avions (cf. `behaviorOfShips`). */
-const CARRIER_TYPES = new Set(['CV', 'CVL'])
-
-/** Task forces portées en secret par un leurre quand le scénario ne déclare
- *  pas de formations, ou que le catalogue de navires manque — et rôles d'un
- *  journal antérieur aux formations (cf. `behaviorIn`). */
-const LEGACY_TASK_FORCES = [
-  { tf: 'ijn-tf1', code: 'TF1', movement: 'normal', behavior: 'carrier' },
-  { tf: 'ijn-tf2', code: 'TF2', movement: 'normal', behavior: 'carrier' },
-  { tf: 'ijn-tf3', code: 'TF3', movement: 'normal', behavior: 'carrier' },
-  { tf: 'ijn-tf7', code: 'TF7', movement: 'transport', behavior: 'transport' },
-  { tf: 'ijn-tf8', code: 'TF8', movement: 'transport', behavior: 'transport' },
-  { tf: 'ijn-tf10', code: 'TF10', movement: 'transport', behavior: 'transport' },
-]
-
-/** Navires d'une liste d'ordre de bataille (`"id"` ou `{ ship, count }`,
- *  cf. coral-sea.json), un id par navire. */
-function expandShips(list) {
-  return (list ?? []).flatMap((entry) => (typeof entry === 'string' ? [entry] : Array(entry?.count ?? 1).fill(entry?.ship)))
-}
-
-/** Comportement d'une task force d'après ses navires (`typeOf(id)` : type
- *  du catalogue, CV, CVL, CA, CL, DD, AK) :
- *   - 'carrier' : un CV ou un CVL — elle attaque ;
- *   - 'transport' : des AK — allure de transport, à l'écart des Alliés ;
- *   - 'destroyers' : rien que des DD — vers les TF alliées non repérées ;
- *   - 'surface' : les autres — vers les TF alliées repérées. */
-function behaviorOfShips(ships, typeOf) {
-  const types = ships.map(typeOf)
-  if (types.some((type) => CARRIER_TYPES.has(type))) return 'carrier'
-  if (types.includes('AK')) return 'transport'
-  if (types.length && types.every((type) => type === 'DD')) return 'destroyers'
-  return 'surface'
-}
-
-/** Découpages de `total` en groupes dont la taille est dans `sizes` (ex. 6
- *  en [2, 2, 2] ou [3, 3]), chacun trié. */
-function partitions(total, sizes) {
-  if (total === 0) return [[]]
-  const sorted = [...sizes].sort((a, b) => a - b)
-  return sorted.filter((size) => size <= total)
-    .flatMap((size) => partitions(total - size, sorted.filter((other) => other >= size)).map((rest) => [size, ...rest]))
-}
-
-/** Formation ALÉATOIRE (`random` d'une formation, cf. coral-sea.json),
- *  composée à partir des navires de l'ordre de bataille (`pool`) :
- *   - chaque CV avec `carrierEscort` (2 CA + 1 DD), chaque CVL avec
- *     `lightCarrierEscort` (2 DD), pris au hasard ;
- *   - les AK en groupes de `transportGroupSizes` (2 ou 3 — découpage tiré au
- *     hasard parmi les possibles), chacun avec `transportEscort` (1 DD) ;
- *   - le reste, mélangé et partagé en `remainderGroups` groupes équilibrés.
- *  Les navires `spare` (le DD isolé) n'escortent personne et vont au reste —
- *  sauf s'il ne reste plus d'autre DD pour un groupe d'AK.
- *  Porte-avions (CV puis CVL) -> `carrierTaskForces`, dans l'ordre ; groupes
- *  d'AK puis le reste -> `fleetTaskForces`. Task force -> ids des navires. */
-function composeRandomFormation(rule, pool, typeOf) {
-  const spare = new Set(rule.spare ?? [])
-  const left = shuffle(pool)
-  const take = (type, count, spareToo) => {
-    const out = []
-    while (out.length < count) {
-      let index = left.findIndex((id) => typeOf(id) === type && !spare.has(id))
-      if (index === -1 && spareToo) index = left.findIndex((id) => typeOf(id) === type)
-      if (index === -1) break
-      out.push(...left.splice(index, 1))
-    }
-    return out
-  }
-  const escort = (spec, spareToo = false) => Object.entries(spec ?? {}).flatMap(([type, count]) => take(type, count, spareToo))
-  const carriers = []
-  for (const [type, spec] of [['CV', rule.carrierEscort], ['CVL', rule.lightCarrierEscort]]) {
-    for (const ship of pool.filter((id) => typeOf(id) === type)) {
-      left.splice(left.indexOf(ship), 1)
-      carriers.push([ship, ...escort(spec)])
-    }
-  }
-  const transports = left.filter((id) => typeOf(id) === 'AK')
-  for (const ship of transports) left.splice(left.indexOf(ship), 1)
-  const splits = partitions(transports.length, rule.transportGroupSizes ?? [transports.length])
-  const sizes = splits.length ? splits[Math.floor(Math.random() * splits.length)] : [transports.length]
-  const fleets = []
-  let start = 0
-  for (const size of sizes.filter(Boolean)) {
-    fleets.push([...transports.slice(start, start += size), ...escort(rule.transportEscort, true)])
-  }
-  const rest = shuffle(left)
-  const groups = Math.min(rule.remainderGroups ?? 1, rest.length)
-  for (let group = 0; group < groups; group++) fleets.push(rest.filter((_, index) => index % groups === group))
-  const taskForces = {}
-  carriers.forEach((ships, index) => { if (rule.carrierTaskForces?.[index]) taskForces[rule.carrierTaskForces[index]] = ships })
-  fleets.forEach((ships, index) => { if (rule.fleetTaskForces?.[index]) taskForces[rule.fleetTaskForces[index]] = ships })
-  return taskForces
-}
-
-/** Formation des task forces japonaises, tirée au hasard (à chances égales)
- *  parmi celles du scénario (`formations.ijn`, cf. coral-sea.json) : `{ id,
- *  taskForces }` (task force -> ids de ses navires) et `typeOf` (id de
- *  navire -> type), ou `null` sans formations ou sans catalogue (cf.
- *  lib/moduleLoader.js). */
-function drawFormation(scenario, fleets) {
-  const options = scenario?.formations?.ijn
-  const catalog = fleets?.ijn?.ships
-  if (!options?.length || !catalog) return null
-  const types = new Map(catalog.map((ship) => [ship.id, ship.type]))
-  const typeOf = (id) => types.get(id) ?? null
-  const choice = options[Math.floor(Math.random() * options.length)]
-  const taskForces = choice.random
-    ? composeRandomFormation(choice.random, (scenario.orderOfBattle?.ijn ?? []).flatMap((group) => expandShips(group.ships)), typeOf)
-    : Object.fromEntries(Object.entries(choice.taskForces ?? {}).map(([tf, list]) => [tf, expandShips(list)]))
-  return { id: choice.id, taskForces, typeOf }
-}
-
-/** Task forces que portent les leurres pour la formation `formation` :
- *  `{ tf, code, movement, behavior, ships }` (`code` lu sur le pion de la
- *  task force), ou l'ancien tirage sans formation. */
-function hiddenTaskForces(formation, allCounters) {
-  if (!formation) return LEGACY_TASK_FORCES
-  return Object.entries(formation.taskForces).map(([tf, ships]) => {
-    const behavior = behaviorOfShips(ships, formation.typeOf)
-    const code = allCounters.find((counter) => String(counter.id) === tf)?.code ?? tf
-    return { tf, code, movement: behavior === 'transport' ? 'transport' : 'normal', behavior, ships }
-  })
-}
-
-/** Rôle de la task force `tf` parmi les rôles des leurres (`roles`), ou,
- *  pour un journal antérieur aux formations (aucun rôle n'a de
- *  `behavior`), celui de l'ancien tirage. */
-function taskForceRoleIn(roles, tf) {
-  const all = Object.values(roles)
-  const pool = all.some((role) => role.behavior) ? all : LEGACY_TASK_FORCES
-  return pool.find((role) => role.tf === tf) ?? null
-}
-
-/** Une task force JAPONAISE (vrai pion) ou un leurre japonais : les pions
- *  qui marchent seuls vers leur hex-objectif. */
-function isIjnTaskForce(counter) {
-  return counter?.faction === 'ijn' && counter.type === 'task force'
-}
-
-/** Un leurre (Dummy) JAPONAIS : task force factice déployée d'office au coup
- *  d'envoi. Les leurres américains, eux, se posent à la mise en place US
- *  et aux renforts de leurres (cf. `playerDummyReinforcement`). */
-function isDummy(counter) {
-  return counter?.code === 'Dummy' && counter.faction === 'ijn'
-}
-
-function shuffle(list) {
-  const copy = [...list]
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
-  }
-  return copy
-}
-
-/** Tirage des rôles : id de leurre -> `{ tf, code, movement, behavior,
- *  ships }` pour ceux qui portent une des task forces `hidden`, `{ tf: null,
- *  code: null, movement }` pour les vrais leurres (tous les autres). */
-function drawDummyRoles(dummyIds, hidden) {
-  const roles = {}
-  shuffle(dummyIds).forEach((id, index) => {
-    roles[id] = hidden[index]
-      ?? { tf: null, code: null, movement: Math.random() < 0.5 ? 'normal' : 'transport' }
-  })
-  return roles
-}
-
-/** Groupes de départ : chaque leurre qui porte une task force reçoit un
- *  leurre d'escorte, porte-avions d'abord, tant qu'il en reste ; les
- *  leurres restants forment un faux couple (le premier mène, le second le
- *  suit). Suiveur id -> meneur id. */
-function drawLeaders(roles) {
-  const plain = shuffle(Object.keys(roles).filter((id) => !roles[id].tf))
-  const leaders = {}
-  const carried = Object.keys(roles).filter((id) => roles[id].tf)
-  const isCarrier = (id) => taskForceRoleIn(roles, roles[id].tf)?.behavior === 'carrier'
-  for (const id of [...carried.filter(isCarrier), ...carried.filter((id) => !isCarrier(id))]) {
-    const escort = plain.shift()
-    if (escort) leaders[escort] = id
-  }
-  const [pairLeader, ...others] = plain
-  for (const id of others) leaders[id] = pairLeader
-  return leaders
-}
-
-/** Tirage des hex-objectifs : id de pion -> id d'hex "CCRR", tous
- *  différents tant qu'il y a assez d'hex d'arrivée. */
-function drawObjectives(counterIds, arrivalHexes) {
-  const objectives = {}
-  if (!arrivalHexes?.length) return objectives
-  let pool = []
-  for (const id of counterIds) {
-    if (!pool.length) pool = shuffle(arrivalHexes)
-    objectives[id] = pool.pop()
-  }
-  return objectives
-}
-
-/** Hex-objectifs GROUPÉS des task forces de porte-avions (comportement
- *  'carrier', cf. `behaviorOfShips`) : un hex d'arrivée tiré au hasard sert
- *  de centre, et chacune reçoit un hex d'arrivée à 5 hex ou moins de lui
- *  (cf. `GROUPED_RADIUS`). Concerne les leurres qui les portent (`roles`)
- *  comme les vrais pions. Remplace leur tirage dans `objectives`, renvoyé
- *  modifié. */
-function groupCarrierObjectives(objectives, roles, arrivalHexes) {
-  if (!arrivalHexes?.length) return objectives
-  const center = hexOfId(arrivalHexes[Math.floor(Math.random() * arrivalHexes.length)])
-  const carriers = Object.keys(objectives).filter((id) => taskForceRoleIn(roles, roles[id]?.tf ?? id)?.behavior === 'carrier')
-  // Jamais deux task forces sur le même hex-objectif : ni entre elles, ni
-  // avec un objectif déjà tiré pour une autre (tant qu'il reste de quoi).
-  const taken = new Set(Object.keys(objectives).filter((id) => !carriers.includes(id)).map((id) => objectives[id]))
-  const near = arrivalHexes.filter((id) => hexDistance(hexOfId(id), center) <= GROUPED_RADIUS)
-  const free = shuffle(near.filter((id) => !taken.has(id)))
-  const pool = free.length >= carriers.length ? free : shuffle(near)
-  carriers.forEach((id, index) => { objectives[id] = pool[index % pool.length] })
-  return objectives
-}
-
 /** Navires qui défendent le navire `targetKey` contre une frappe
  *  aéronavale, sur le support de sa task force (`layout`, cf.
  *  `fleetDisplay`) : lui d'abord, puis ses voisins — sur "Carrier TF", le
@@ -600,37 +346,65 @@ export function useCoralSea(moduleId, ctx = {}) {
   const active = computed(() => unref(moduleId) === CORAL_SEA_MODULE_ID)
 
   const allCounters = ctx.allCounters?.() ?? []
-  // Formation des task forces japonaises, tirée au hasard au coup d'envoi
-  // (cf. `drawFormation`) ; chacune est ensuite portée en secret par un
-  // leurre, les autres leurres restant de vrais leurres.
-  const drawn = active.value ? drawFormation(ctx.scenario, ctx.fleets) : null
-  const formationId = ref(drawn?.id ?? null)
-  const dummyRoles = ref(active.value
-    ? drawDummyRoles(allCounters.filter(isDummy).map((counter) => String(counter.id)), hiddenTaskForces(drawn, allCounters))
-    : {})
-  // Suiveurs (escortes, second du faux couple, leurres d'un renfort de
-  // nuit) : id -> id de leur meneur, qu'ils suivent en restant adjacents
-  // (cf. `followTarget`). Pas d'hex-objectif à eux.
-  const leaders = ref(active.value ? drawLeaders(dummyRoles.value) : {})
-  const objectives = ref(active.value
-    ? groupCarrierObjectives(drawObjectives(allCounters.filter(isIjnTaskForce).map((counter) => String(counter.id))
-      .filter((id) => !leaders.value[id]), ctx.terrain?.ijnArrivalHexes), dummyRoles.value, ctx.terrain?.ijnArrivalHexes)
-    : {})
+  // Moteurs du scénario joué — constitution des flottes, placement,
+  // déplacement (cf. lib/coralSea/scenarios/).
+  const engines = active.value ? scenarioEngines(ctx.scenario?.id) : null
 
-  /** Au chargement, seuls les 12 leurres (Dummy) japonais sont posés, tirés
-   *  au hasard dans leur plage `setup` (bord haut, 0601-2701, cf.
-   *  coral-sea.json) ; tous les autres pions partent du panneau. */
-  function autoPlacesAtLoad(counter) {
-    if (!active.value) return null
-    return isDummy(counter)
+  // Rôle secret de chaque leurre japonais, tiré au coup d'envoi par le
+  // moteur de constitution des flottes : la task force qu'il porte, ou rien
+  // (vrai leurre) ; et la formation tirée.
+  const composed = active.value
+    ? engines.fleets.composeFleets({ scenario: ctx.scenario, fleets: ctx.fleets, allCounters,
+        dummyIds: allCounters.filter(isDummy).map((counter) => String(counter.id)) })
+    : null
+  const formationId = ref(composed?.formationId ?? null)
+  const dummyRoles = ref(composed?.roles ?? {})
+
+  /** Rôle de la task force `tf` parmi les rôles des leurres (`roles`), ou,
+   *  pour un journal antérieur aux formations (aucun rôle n'a de
+   *  `behavior`), celui de l'ancien tirage du scénario. */
+  function taskForceRole(tf, roles = dummyRoles.value) {
+    const all = Object.values(roles)
+    const pool = all.some((role) => role.behavior) ? all : engines?.fleets.legacyTaskForces ?? []
+    return pool.find((role) => role.tf === tf) ?? null
   }
 
-  /** Mise en place US : 12 task forces sur la carte, leurres compris (cf.
-   *  `DUMMY_TOTAL`, le même total que les renforts de leurres). */
+  /** Comportement de la task force `tf` (cf. le moteur `fleets` du
+   *  scénario), ou `null` (vrai leurre, task force hors de la formation). */
+  function behaviorOf(tf) {
+    return tf ? taskForceRole(tf)?.behavior ?? null : null
+  }
+
+  // Suiveurs (escortes, second du faux couple, leurres d'un renfort de
+  // nuit) : id -> id de leur meneur, qu'ils suivent en restant adjacents
+  // (cf. `followTarget`) ; pas d'hex-objectif à eux. Puis l'hex-objectif de
+  // chaque meneur. Tirés au coup d'envoi par le moteur de placement.
+  const leaders = ref(active.value ? engines.placement.drawGroups(dummyRoles.value, behaviorOf) : {})
+  const objectives = ref(active.value
+    ? engines.placement.drawObjectives({
+        counterIds: allCounters.filter(isIjnTaskForce).map((counter) => String(counter.id)).filter((id) => !leaders.value[id]),
+        roles: dummyRoles.value, behaviorOf, arrivalHexes: ctx.terrain?.ijnArrivalHexes,
+      })
+    : {})
+  // Décideur du mouvement japonais du scénario, avec sa mémoire (cf.
+  // `movementPlan`).
+  const planMovement = active.value ? engines.movement.createMovementPlanner() : null
+
+  /** Ce pion est-il posé sur la carte au chargement (cf. le moteur de
+   *  placement — au scénario 5, les leurres japonais, tirés dans leur plage
+   *  `setup`) ? Tous les autres partent du panneau. */
+  function autoPlacesAtLoad(counter) {
+    if (!active.value) return null
+    return engines.placement.deploysAtLoad(counter)
+  }
+
+  /** Mise en place US : task forces sur la carte, leurres compris, pour le
+   *  total du moteur de placement (le même que celui des renforts de
+   *  leurres). */
   function setupCount(counters) {
     if (!active.value) return null
     const count = counters.filter((counter) => counter.faction === 'usn' && counter.type === 'task force').length
-    return { count, total: DUMMY_TOTAL }
+    return { count, total: engines.placement.setupTotal }
   }
 
   /** Rôle secret d'un leurre japonais, ou `null`. */
@@ -651,21 +425,16 @@ export function useCoralSea(moduleId, ctx = {}) {
    *  de la tête de son groupe. */
   function isTransport(counter) {
     const head = headOf(String(counter?.id))
-    const role = dummyRoles.value[head] ?? taskForceRoleIn(dummyRoles.value, head)
+    const role = dummyRoles.value[head] ?? taskForceRole(head)
     return role?.movement === 'transport'
   }
 
-  /** Comportement de la task force `tf` (cf. `behaviorOfShips`), ou `null`
-   *  (vrai leurre, task force hors de la formation). */
-  function behaviorOf(tf) {
-    return tf ? taskForceRoleIn(dummyRoles.value, tf)?.behavior ?? null : null
-  }
-
-  /** Allure de transport : 1 hex aux tours "Mouvement AK" de la piste, 0
-   *  sinon. `null` (allure de la piste) pour tout autre pion. */
+  /** Potentiel de mouvement de ce pion au tour `turnInfo`, selon le moteur
+   *  de déplacement du scénario (ex. allure de transport), ou `null` (allure
+   *  de la piste). */
   function movementAllowance(counter, turnInfo) {
-    if (!active.value || !turnInfo || !isTransport(counter)) return null
-    return turnInfo.conditions?.akMovement ? 1 : 0
+    if (!active.value) return null
+    return engines.movement.allowance(counter, turnInfo, { transport: isTransport(counter) })
   }
 
   /** Étiquette privée d'un leurre (rôle secret), réservée au joueur japonais. */
@@ -683,19 +452,12 @@ export function useCoralSea(moduleId, ctx = {}) {
     return String(counter?.id)
   }
 
-  // Attente des porte-avions aux portes du rayon d'attaque (cf.
-  // `movementPlan`) : task force -> tour où elle a commencé à attendre les
-  // autres.
-  const waitingSince = new Map()
-
   /** Mouvement PARTICULIER d'une task force japonaise, qui REMPLACE la
    *  marche vers son hex-objectif (cf. HexMap.vue::runAutoMoves) — ses
-   *  suiveurs la suivent comme d'habitude. Décidé par l'arbre
-   *  `movementTree` (cf. lib/ai/coralSeaTrees.js, où il est dessiné) sur ce
-   *  que sait le Japonais : la carte, plus le comportement de la task force
-   *  et ses porte-avions partenaires (cf. lib/ai/coralSeaPerception.js).
-   *  Seule la feuille 'hold' (attendre les partenaires) entretient la
-   *  mémoire d'attente ; toute autre décision l'efface.
+   *  suiveurs la suivent comme d'habitude. Décidé par le moteur de
+   *  déplacement du scénario (cf. lib/coralSea/scenarios/, ex.
+   *  scenario-5/movement.js) sur ce que sait le Japonais : la carte, et ce
+   *  que ce composable sait de ses forces (`taskForceOf`, `behaviorOf`).
    *  `{ kind: 'avoid', avoid: [hex], range }` (vers l'objectif, en restant à
    *  plus de `range` hex des `avoid`, ou en s'en éloignant), `{ kind:
    *  'attack', target: hex, radius, hold }` (jusqu'à `radius` hex de
@@ -707,18 +469,8 @@ export function useCoralSea(moduleId, ctx = {}) {
    *  debug (cf. HexMap.vue::logAiDecision). */
   function movementPlan(counter, counters, turn, allowanceOf, onDecision = null) {
     if (!active.value || !isIjnTaskForce(counter)) return null
-    const tf = taskForceOf(counter)
-    const behavior = behaviorOf(tf)
-    const partners = behavior === 'carrier'
-      ? counters.filter((other) => isIjnTaskForce(other) && taskForceOf(other)
-        && taskForceOf(other) !== tf && behaviorOf(taskForceOf(other)) === 'carrier')
-      : []
-    const facts = perceiveTaskForce(counter, counters, { behavior, partners, allowanceOf, turn, waitingSince: waitingSince.get(tf) ?? null })
-    const { leaf, trace } = decide(movementTree, facts, movementTests)
-    if (leaf.do === 'hold') waitingSince.set(tf, waitingSince.get(tf) ?? turn)
-    else waitingSince.delete(tf)
-    const plan = movementActions[leaf.do](facts, leaf)
-    onDecision?.({ side: 'ijn', action: leaf.do, trace, plan })
+    const { action, trace, plan } = planMovement(counter, counters, { turn, allowanceOf, taskForceOf, behaviorOf })
+    onDecision?.({ side: 'ijn', action, trace, plan })
     return plan
   }
 
@@ -733,7 +485,7 @@ export function useCoralSea(moduleId, ctx = {}) {
   /** Points de victoire d'un navire allié de type `type` touché par une
    *  frappe, par résultat (rien, mineur, significatif, critique, coulé). */
   function pointsOfAlliedType(type) {
-    return ctx.airStrike?.victoryPoints?.usn?.[type] ?? [0, 0, 0, 0, 0]
+    return shipPoints('usn', type)
   }
 
   // Statut d'une task force alliée pour le Japonais : INCONNUE (rien à
@@ -763,12 +515,38 @@ export function useCoralSea(moduleId, ctx = {}) {
     if (!active.value || unitId == null) return
     knownAllied.value = new Map(knownAllied.value).set(String(unitId), turn ?? currentTurn.value)
   }
-  /** La task force alliée `id` est-elle connue au tour en cours ? */
-  function isKnownId(id) {
-    const since = knownAllied.value.get(String(id))
+  /** L'unité `id` de `known` (unité id -> tour où elle l'est devenue)
+   *  est-elle connue au tour en cours ? Plus après le premier tour de nuit
+   *  qui suit. */
+  function knownIn(known, id) {
+    const since = known.get(String(id))
     if (since == null) return false
     for (let turn = since + 1; turn <= currentTurn.value; turn++) if (NIGHT_TURNS.has(turn)) return false
     return true
+  }
+  /** La task force alliée `id` est-elle connue au tour en cours ? */
+  function isKnownId(id) {
+    return knownIn(knownAllied.value, id)
+  }
+
+  // Task forces japonaises que le joueur US connaît (contact d'un combat
+  // naval, cf. en-tête) : unité id -> tour du contact ; refait au rejeu
+  // avec les entrées `navalContact`. Même durée que `knownAllied`.
+  const knownIjn = ref(new Map())
+  /** Le joueur US vient de connaître la task force japonaise `unitId`, au
+   *  tour `turn`. */
+  function noteRevealed(unitId, turn = null) {
+    if (!active.value || unitId == null) return
+    knownIjn.value = new Map(knownIjn.value).set(String(unitId), turn ?? currentTurn.value)
+  }
+  /** Pion d'une task force japonaise CONNUE du joueur US (`{ src, name }`
+   *  de son vrai pion TF, cf. coral-sea.json), qui remplace son drapeau sur
+   *  la carte ; `null` sinon. */
+  function revealedLook(counter) {
+    if (!active.value || !isIjnTaskForce(counter) || !knownIn(knownIjn.value, counter.id)) return null
+    const tf = taskForceOf(counter)
+    const look = tf && allCounters.find((other) => String(other.id) === tf)
+    return look?.src ? { src: look.src, name: look.name } : null
   }
   /** Le Japonais connaît-il exactement cette task force alliée ? */
   function isKnownTarget(counter) {
@@ -797,9 +575,57 @@ export function useCoralSea(moduleId, ctx = {}) {
     return targets.length ? targets : null
   }
 
-  /** Raids aériens japonais de la phase "Opérations aériennes" : TF1, TF2 et
-   *  TF3 envoient tous les avions des cases Ready de leur porte-avions (cf.
-   *  `carrierAir`) sur une TF alliée repérée ("Sighted Carrier" ou "Sighted
+  /** Repérage de chaque unité alliée d'après les pions "Sighted" de
+   *  `counters` : unité id -> 'carrierTF' ou 'fleetTF' ("Sighted Carrier"
+   *  l'emporte). */
+  function sightingsOn(counters) {
+    const sightings = new Map()
+    for (const marker of counters) {
+      if (marker.sighted === 'carrierTF' || (marker.sighted === 'fleetTF' && !sightings.has(marker.attachedTo))) sightings.set(marker.attachedTo, marker.sighted)
+    }
+    return sightings
+  }
+
+  /** Debug (cf. RaidOddsModal.vue) : toutes les task forces alliées que les
+   *  avions `planes` d'un raid (`[{ tf }]`, cf. `raidPlan`) pourraient
+   *  viser, avec ce que le Japonais en sait : `[{ id, name, status,
+   *  sighting, distance, inRange, estimate, actual }]` — `status` : 'known'
+   *  (cf. `isKnownId`), 'sighted' (pion "Sighted", `sighting`) ou 'unknown'
+   *  ; `distance` : en hex, de la plus proche task force du raid (`inRange`
+   *  : à portée, `RAID_RADIUS`) ; `estimate` : les navires que l'IA croit y
+   *  trouver d'après le repérage (cf. `estimatedAlliedTargets`, `null` hors
+   *  repérage) ; `actual` : ses navires réels (cf. `actualAlliedTargets`).
+   *  Connues, puis repérées, puis inconnues ; les plus proches d'abord. */
+  function raidCandidates(counters, planes) {
+    if (!active.value) return []
+    const tfs = new Set((planes ?? []).map((plane) => plane.tf))
+    const raiders = counters.filter((counter) => counter.faction === 'ijn' && counter.type === 'task force' && counter.col != null
+      && tfs.has(taskForceOf(counter)))
+    const sightings = sightingsOn(counters)
+    const estimates = estimatedAlliedTargets()
+    const order = { known: 0, sighted: 1, unknown: 2 }
+    return counters.filter((counter) => isAlliedTaskForce(counter) && counter.col != null).map((counter) => {
+      const id = String(counter.id)
+      const status = isKnownId(id) ? 'known' : sightings.has(id) ? 'sighted' : 'unknown'
+      const distance = raiders.length ? Math.min(...raiders.map((unit) => hexDistance(unit, counter))) : null
+      return { id, name: counter.name, status, sighting: sightings.get(id) ?? null, distance, inRange: distance != null && distance <= RAID_RADIUS,
+        estimate: status === 'sighted' ? estimates[sightings.get(id)] ?? null : null, actual: actualAlliedTargets(counter) }
+    }).filter((candidate) => candidate.estimate || candidate.actual)
+      .sort((a, b) => order[a.status] - order[b.status] || (a.distance ?? Infinity) - (b.distance ?? Infinity))
+  }
+
+  /** Meilleurs plans des avions de puissances `powers` sur les task forces
+   *  `fleets` (cf. lib/strikePlanner.js::planAcrossFleets), ou `null` sans
+   *  tableaux de frappe. */
+  function planRaidOptions(powers, fleets, options) {
+    return airStrikeTable ? planAcrossFleets(airStrikeTable, powers, fleets, options) : null
+  }
+
+  /** Raids aériens japonais de la phase "Opérations aériennes" : les task
+   *  forces japonaises dont le porte-avions est à flot (cf.
+   *  `raidingTaskForces` — au scénario 5, TF1, TF2 et TF3) envoient tous les
+   *  avions des cases Ready de leur porte-avions (cf. `carrierAir`) sur une
+   *  TF alliée repérée ("Sighted Carrier" ou "Sighted
    *  Fleet" : toujours une vraie task force, mais un Misdirect a pu faire
    *  prendre un porte-avions pour une flotte et inversement) ou connue (cf.
    *  `isKnownId`) à 5 hex ou moins d'elles. Les avions des task forces qui frappent la même cible
@@ -834,17 +660,14 @@ export function useCoralSea(moduleId, ctx = {}) {
     // Une entrée par TF, avec les pions qui la sont (elle, ou le leurre qui
     // la porte) et ses avions.
     const byTf = new Map()
+    const raiding = new Set(raidingTaskForces())
     for (const counter of counters) {
       const tf = counter.faction === 'ijn' && counter.type === 'task force' ? taskForceOf(counter) : null
-      if (RAID_MARKERS[tf]) byTf.set(tf, [...(byTf.get(tf) ?? []), counter])
+      if (raiding.has(tf)) byTf.set(tf, [...(byTf.get(tf) ?? []), counter])
     }
     const raiders = [...byTf].map(([tf, units]) => ({ tf, units, planes: (carrierAir(tf)?.ready ?? []).map((plane) => ({ tf, ...plane })) }))
       .filter((raider) => raider.planes.length)
-    // Repérage de chaque unité alliée : "Sighted Carrier" l'emporte.
-    const sightings = new Map()
-    for (const marker of counters) {
-      if (marker.sighted === 'carrierTF' || (marker.sighted === 'fleetTF' && !sightings.has(marker.attachedTo))) sightings.set(marker.attachedTo, marker.sighted)
-    }
+    const sightings = sightingsOn(counters)
     // Navires que l'IA croit trouver dans chaque cible repérée (étape 1) —
     // ceux qu'elle sait y trouver, pour une task force connue.
     const estimates = estimatedAlliedTargets()
@@ -901,7 +724,8 @@ export function useCoralSea(moduleId, ctx = {}) {
         targetId: String(target.id),
         sighting: sightings.get(String(target.id)),
         marker: RAID_MARKER,
-        raiders: group.map((index) => raiders[index].tf).sort().map((tf) => ({ tf, ...RAID_MARKERS[tf] })),
+        raiders: group.map((index) => raiders[index].tf).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+          .map((tf) => ({ tf, name: raidName(tf) })),
         planes: planes.map(({ tf, key, name, code, face, mission, attack, src, reducedFace }) => ({ tf, key, name, code, face, mission, attack, src, reducedSrc: reducedFace?.src ?? null })),
         estimatedPoints: estimated.expectedPoints,
         expectedPoints: plan.expectedPoints,
@@ -1007,24 +831,11 @@ export function useCoralSea(moduleId, ctx = {}) {
     if (objective) objectives.value = { ...objectives.value, [id]: objective }
   }
 
-  /** Placement initial des groupes : chaque suiveur posé (`placed`, pions
-   *  déjà tirés dans leur plage) va sur un hex adjacent à son meneur, au
-   *  hasard parmi `adjacentHexes(pion, col, row)`, de préférence libre. */
+  /** Placement initial des groupes (`placed`, pions déjà tirés dans leur
+   *  plage, modifiés sur place) : cf. le moteur de placement du scénario. */
   function arrangeInitialPositions(placed, adjacentHexes) {
     if (!active.value) return
-    const byId = new Map(placed.map((counter) => [String(counter.id), counter]))
-    for (const [followerId, leaderId] of Object.entries(leaders.value)) {
-      const follower = byId.get(followerId)
-      const leader = byId.get(leaderId)
-      if (!follower || !leader) continue
-      const around = adjacentHexes(follower, leader.col, leader.row)
-      const free = around.filter((hex) => !placed.some((other) => other !== follower && other.col === hex.col && other.row === hex.row))
-      const pool = free.length ? free : around
-      if (!pool.length) continue
-      const hex = pool[Math.floor(Math.random() * pool.length)]
-      follower.col = hex.col
-      follower.row = hex.row
-    }
+    engines.placement.arrangeInitialPositions(placed, adjacentHexes, leaders.value)
   }
 
   /** `role` déclaré de chaque pion (cf. coral-sea.json). */
@@ -1041,20 +852,21 @@ export function useCoralSea(moduleId, ctx = {}) {
 
   /** Sources de reconnaissance du camp `side` : `{ key, base, name,
    *  unitId, checks, col, row }` — `base`, nom de la base aérienne (`null`
-   *  pour un porte-avions) ; `checks`, hex qu'elle explore par phase. Les
-   *  bases sont japonaises (aucune base alliée dans ce scénario). Un
+   *  pour un porte-avions) ; `checks`, hex qu'elle explore par phase. Bases
+   *  et nombre de checks : cf. le moteur de repérage du scénario. Un
    *  porte-avions japonais porté par un leurre part de l'hex du leurre, sous
    *  la clé de la task force (une seule source, même si le vrai pion est
    *  posé). */
   function reconSources(counters, side) {
-    const sources = new Map(side !== 'ijn' ? [] : Object.entries(RECON_BASES)
-      .map(([id, base]) => [`base:${id}`, { key: `base:${id}`, base, name: base, unitId: null, checks: BASE_CHECKS, ...hexOfId(id) }]))
+    const { bases, checksPerPhase } = engines.recon
+    const sources = new Map(Object.entries(bases[side] ?? {})
+      .map(([id, base]) => [`base:${id}`, { key: `base:${id}`, base, name: base, unitId: null, checks: checksPerPhase.base, ...hexOfId(id) }]))
     for (const counter of counters) {
       if (counter.faction !== side || counter.type !== 'task force' || roleOf(counter) !== 'carrier') continue
       const tf = counter.code === 'Dummy' ? dummyRole(counter).tf : String(counter.id)
       if (sources.has(`tf:${tf}`)) continue
       sources.set(`tf:${tf}`, { key: `tf:${tf}`, base: null, name: counter.name, unitId: String(counter.id),
-        checks: CARRIER_CHECKS[side] ?? 1, col: counter.col, row: counter.row })
+        checks: checksPerPhase.carrier[side] ?? 1, col: counter.col, row: counter.row })
     }
     return [...sources.values()]
   }
@@ -1068,12 +880,14 @@ export function useCoralSea(moduleId, ctx = {}) {
 
   /** Checks de reconnaissance possibles du camp `side` (japonais par
    *  défaut) : pour chaque source, les hex (`{ col, row }`) qu'elle peut
-   *  explorer — une cible (cf. `reconTargetOf`) s'y trouve, à 8 hex ou
-   *  moins, et aucun résultat de recherche n'y a été posé PENDANT CETTE
-   *  PHASE (`step`, pas de la piste noté sur le pion — un hex marqué à une
-   *  phase précédente peut être exploré à nouveau ; une même source
-   *  n'explore jamais deux fois le même hex dans la phase). `[{ source,
-   *  targets }]`, sources sans cible comprises ; `null` hors mer de Corail. */
+   *  explorer — une cible (cf. `reconTargetOf`) s'y trouve, à portée de la
+   *  source, aucun résultat de recherche n'y a été posé PENDANT CETTE PHASE
+   *  (`step`, pas de la piste noté sur le pion — un hex marqué à une phase
+   *  précédente peut être exploré à nouveau ; une même source n'explore
+   *  jamais deux fois le même hex dans la phase), et le moteur de repérage
+   *  du scénario le permet (portée, couverture, préférences de l'IA — cf.
+   *  son `createTargetFilter`). `[{ source, targets }]`, sources sans cible
+   *  comprises ; `null` hors mer de Corail. */
   function reconChecks(counters, side = 'ijn', step = null) {
     if (!active.value) return null
     const searched = new Set(counters.filter((counter) => counter.searchResult && counter.step === step)
@@ -1084,25 +898,14 @@ export function useCoralSea(moduleId, ctx = {}) {
       const key = counter.col + ',' + counter.row
       if (!searched.has(key)) enemies.set(key, { col: counter.col, row: counter.row })
     }
-    const covered = side === 'ijn' ? ijnCoverageFilter(counters) : () => true
-    // Porte-avions déjà repéré COMME porte-avions : plus rien à cacher, il
-    // cherche quoi qu'il arrive (pas celui pris pour une flotte).
-    const seenAsCarrier = new Set(counters.filter((counter) => counter.sighted === 'carrierTF').map((counter) => counter.attachedTo))
-    // Hex dont une cible au moins n'est pas encore repérée (ni "Sighted
-    // Carrier" ni "Sighted Fleet") : le Japonais y cherche d'abord, et ne
-    // revient sur une task force déjà repérée que s'il n'a plus rien d'autre
-    // à portée.
-    const sighted = new Set(counters.filter((counter) => counter.sighted === 'carrierTF' || counter.sighted === 'fleetTF')
-      .map((counter) => counter.attachedTo))
-    const undetected = new Set(counters.filter((counter) => reconTargetOf(counter, side) && !sighted.has(String(counter.id)))
-      .map((counter) => counter.col + ',' + counter.row))
-    return reconSources(counters, side).map((source) => {
-      const targets = [...enemies.values()].filter((hex) => hexDistance(source, hex) <= RECON_RANGE
-        && (seenAsCarrier.has(source.unitId) || covered(hex)))
-      if (side !== 'ijn') return { source, targets }
-      const fresh = targets.filter((hex) => undetected.has(hex.col + ',' + hex.row))
-      return { source, targets: fresh.length ? fresh : targets }
-    })
+    const { range, createTargetFilter } = engines.recon
+    const allowed = createTargetFilter({ side, counters,
+      isOwnUnit: (counter) => counter.faction === side && counter.type === 'task force',
+      isTarget: (counter) => reconTargetOf(counter, side) })
+    return reconSources(counters, side).map((source) => ({
+      source,
+      targets: allowed(source, [...enemies.values()].filter((hex) => hexDistance(source, hex) <= range)),
+    }))
   }
 
   // Mémoire des repérages : unité id -> dernier "carrierTF" ou "fleetTF" posé
@@ -1119,40 +922,15 @@ export function useCoralSea(moduleId, ctx = {}) {
 
   /** Hex que le moteur explore maintenant, parmi les checks encore ouverts
    *  du camp japonais (`checks`, cf. `reconChecks` — sources qui ont un
-   *  check et des cibles) : chaque couple source/hex passe dans l'arbre
-   *  `reconTree` (cf. lib/ai/coralSeaTrees.js), qui lui donne une priorité.
-   *  Le plus prioritaire l'emporte ; à égalité, celui de la source qui a le
-   *  moins de cibles (elle n'a pas d'autre choix), puis au hasard. `{ source,
-   *  target, side, action, priority, trace, options }` — `options`, nombre
-   *  de couples pesés —, ou `null` sans check. */
+   *  check et des cibles) : le choix de l'IA de repérage du scénario (cf.
+   *  son `chooseRecon`), sur ce que sait le Japonais. `{ source, target,
+   *  side, action, priority, trace, options }` — `options`, nombre de
+   *  couples pesés —, ou `null` sans check. */
   function reconChoice(checks, counters) {
     if (!active.value) return null
-    const own = counters.filter(isIjnTaskForce)
-    const ownCarriers = own.filter((counter) => behaviorOf(taskForceOf(counter)) === 'carrier')
-    const ownTransports = own.filter((counter) => behaviorOf(taskForceOf(counter)) === 'transport')
     const lastSeen = (id) => lastSightings.get(id) ?? null
-    const options = shuffle(checks.flatMap((check) => check.targets.map((target) => {
-      const facts = perceiveReconTarget(target, counters, { ownCarriers, ownTransports, lastSeen })
-      return { check, target, ...decide(reconTree, facts, reconTests) }
-    })))
-    if (!options.length) return null
-    const better = (a, b) => a.leaf.priority > b.leaf.priority
-      || (a.leaf.priority === b.leaf.priority && a.check.targets.length < b.check.targets.length)
-    const best = options.reduce((top, option) => (better(option, top) ? option : top))
-    return { source: best.check.source, target: best.target, side: 'ijn', action: best.leaf.do,
-      priority: best.leaf.priority, trace: best.trace, options: options.length }
-  }
-
-  /** Règle de couverture des reconnaissances JAPONAISES : un hex n'est
-   *  exploré que si assez d'unités japonaises sont à 8 hex ou moins de lui
-   *  — task forces et leurres sur la carte, plus les bases (cf.
-   *  `RECON_BASES`). Le seuil suit le nombre de task forces et leurres
-   *  japonais en jeu (cf. `COVERAGE_THRESHOLDS`). Filtre `hex -> booléen`. */
-  function ijnCoverageFilter(counters) {
-    const units = counters.filter(isIjnTaskForce)
-    const needed = COVERAGE_THRESHOLDS.find(([minUnits]) => units.length >= minUnits)?.[1] ?? 1
-    const anchors = [...units, ...Object.keys(RECON_BASES).map(hexOfId)]
-    return (hex) => anchors.filter((anchor) => hexDistance(anchor, hex) <= RECON_RANGE).length >= needed
+    const choice = engines.recon.chooseRecon(checks, counters, { taskForceOf, behaviorOf, lastSeen })
+    return choice && { ...choice, side: 'ijn' }
   }
 
   // Chits restant dans la tasse de recherche (cf. `drawSearch`).
@@ -1209,45 +987,269 @@ export function useCoralSea(moduleId, ctx = {}) {
     return active.value && !!turnInfo?.dummyReinforcement
   }
 
-  /** Renfort de leurres japonais : de quoi ramener à `DUMMY_TOTAL` les task
-   *  forces japonaises sur la carte, en reprenant les leurres éliminés
-   *  (`freeDummyIds`). Où les poser, d'après les repérages alliés du jour
-   *  (`sightings`, id -> clé de `SIGHTINGS`), avant qu'ils ne tombent :
-   *    1. sur les hex des unités vues comme porte-avions ;
-   *    2. sinon, sur ceux des unités vues comme flottes ;
-   *    3. sinon, au hasard parmi les task forces japonaises.
-   *  Répartis à tour de rôle entre les unités retenues, chacun SUR l'hex de
-   *  l'unité qu'il SUIVRA désormais (pas d'hex-objectif à lui) : il s'en
-   *  écarte au mouvement qui suit. Chaque leurre posé est un vrai leurre.
-   *  `{ placements: [{ id, col, row }], roles, leaders }`, ou `null` s'il
-   *  n'y a rien à poser. */
+  /** Renfort de leurres japonais, tiré par le moteur de placement du
+   *  scénario d'après les pions de la carte (`counters`), les repérages
+   *  alliés du jour (`sightings`, id -> clé de `SIGHTINGS`, avant qu'ils ne
+   *  tombent) et les leurres éliminés (`freeDummyIds`) : `{ placements: [{
+   *  id, col, row }], roles, leaders }`, ou `null` s'il n'y a rien à poser
+   *  (cf. `applyDummyReinforcement`). */
   function planDummyReinforcement(counters, sightings, freeDummyIds) {
     if (!active.value) return null
-    const onMap = counters.filter(isIjnTaskForce)
-    const missing = Math.min(DUMMY_TOTAL - onMap.length, freeDummyIds.length)
-    if (missing <= 0) return null
-    const seenAs = (sighting) => onMap.filter((counter) => sightings.get(String(counter.id)) === sighting)
-    const anchors = shuffle([seenAs('carrierTF'), seenAs('fleetTF'), onMap].find((list) => list.length) ?? [])
-    if (!anchors.length) return null
-    const ids = freeDummyIds.slice(0, missing)
-    const placements = ids.map((id, index) => {
-      const anchor = anchors[index % anchors.length]
-      return { id, col: anchor.col, row: anchor.row }
-    })
-    const roles = Object.fromEntries(ids.map((id) => [id, { tf: null, code: null, movement: 'normal' }]))
-    const newLeaders = Object.fromEntries(ids.map((id, index) => [id, String(anchors[index % anchors.length].id)]))
-    return { placements, roles, leaders: newLeaders }
+    return engines.placement.planDummyReinforcement({ counters, sightings, freeDummyIds })
   }
 
   /** Renfort de leurres du JOUEUR US, aux mêmes tours que le japonais (cf.
-   *  `dummyReinforcementTurn`) : si `counter` est le leurre américain (pion
-   *  en nombre illimité du panneau), `{ total, anchors }` — il se pose sur
-   *  l'hex d'une task force américaine (`anchors(pion)`), tant qu'il y en a
-   *  moins de `total` sur la carte, leurres compris. `null` sinon. Le moment
-   *  (phase Mouvement US, avant tout mouvement) est vérifié par HexMap.vue. */
+   *  `dummyReinforcementTurn`) : `{ total, anchors }` si `counter` est un
+   *  leurre qu'il peut poser (cf. le moteur de placement du scénario),
+   *  `null` sinon. Le moment (phase Mouvement US, avant tout mouvement) est
+   *  vérifié par HexMap.vue. */
   function playerDummyReinforcement(counter, turnInfo) {
-    if (!dummyReinforcementTurn(turnInfo) || counter?.code !== 'Dummy' || counter.faction !== 'usn') return null
-    return { total: DUMMY_TOTAL, anchors: (other) => other.faction === 'usn' && other.type === 'task force' }
+    if (!dummyReinforcementTurn(turnInfo)) return null
+    return engines.placement.playerDummyReinforcement(counter)
+  }
+
+  /** Un VRAI leurre, d'un camp ou de l'autre : un leurre américain, ou un
+   *  leurre japonais qui ne porte pas de task force (cf. `roleOf`). */
+  function isPlainDummy(counter) {
+    return counter?.type === 'task force' && roleOf(counter) === 'dummy'
+  }
+
+  /** Task forces sur la carte du camp ennemi de `counter`, leurres compris. */
+  function enemyTaskForces(counter, counters) {
+    return counters.filter((other) => other.faction === ENEMY[counter.faction] && other.type === 'task force' && other.col != null)
+  }
+
+  // Côtés d'hex du module (barrières de corail, cf. lib/edges.js).
+  const edges = resolveEdges(ctx.terrain)
+  /** Les hex `a` et `b` (`{ col, row }`) sont-ils adjacents : voisins, sans
+   *  barrière entre eux (cf. en-tête) ? */
+  function adjacent(a, b) {
+    return hexDistance(a, b) === 1 && !edges.propsOf(`${hexId(a.col + 1, a.row)}-${hexId(b.col + 1, b.row)}`)?.impassable
+  }
+  /** `a` et `b` sont-ils au contact : même hex, ou adjacents ? */
+  const inContact = (a, b) => (a.col === b.col && a.row === b.row) || adjacent(a, b)
+
+  /** Hex ("col,row") où une task force ne peut pas entrer en mouvement (cf.
+   *  en-tête) : ceux des task forces ennemies — et, pour un vrai leurre, les
+   *  hex qui leur sont adjacents. `null` pour tout autre pion. */
+  function barredHexes(counter, counters) {
+    if (!active.value || counter?.type !== 'task force' || !ENEMY[counter.faction]) return null
+    const plain = isPlainDummy(counter)
+    const barred = new Set()
+    for (const enemy of enemyTaskForces(counter, counters)) {
+      barred.add(enemy.col + ',' + enemy.row)
+      if (plain) for (const hex of neighborsOf(enemy.col, enemy.row)) if (adjacent(enemy, hex)) barred.add(hex.col + ',' + hex.row)
+    }
+    return barred
+  }
+
+  /** Vrais leurres au contact (même hex ou adjacent) d'une task force
+   *  ennemie une fois les Mouvements des deux camps joués, retirés du jeu
+   *  (cf. en-tête) : ids. */
+  function movementEndRemovals(counters) {
+    if (!active.value) return []
+    return counters.filter((counter) => counter.col != null && isPlainDummy(counter)
+      && enemyTaskForces(counter, counters).some((enemy) => inContact(enemy, counter)))
+      .map((counter) => String(counter.id))
+  }
+
+  // --- Combat naval (cf. en-tête, lib/navalCombat.js) ----------------------
+  // Tableau du module (`navalCombat` de coral-sea.json), ou `null`.
+  const navalTable = active.value ? resolveNavalTable(ctx.navalCombat) : null
+
+  /** Une task force qui se bat : vraie task force américaine, ou japonaise
+   *  (son pion, ou le leurre qui la porte) — pas un vrai leurre. */
+  function isCombatFleet(counter) {
+    return counter?.type === 'task force' && counter.col != null && !!ENEMY[counter.faction] && !isPlainDummy(counter)
+  }
+
+  /** Contacts du combat naval : paires `{ ijn, usn }` (ids) de task forces
+   *  ennemies au contact (cf. `inContact`), sauf celles de `excluded` (ids,
+   *  déjà battues ce tour). Vide sans tableau de combat. */
+  function navalContacts(counters, excluded = new Set()) {
+    if (!navalTable) return []
+    const fleets = counters.filter((counter) => isCombatFleet(counter) && !excluded.has(String(counter.id)))
+    const usn = fleets.filter((counter) => counter.faction === 'usn')
+    return fleets.filter((counter) => counter.faction === 'ijn')
+      .flatMap((ijn) => usn.filter((other) => inContact(ijn, other)).map((other) => ({ ijn: String(ijn.id), usn: String(other.id) })))
+  }
+
+  /** Barème de points de victoire d'un navire du camp `side` touché, par
+   *  résultat. Sans barème pour ce camp, celui de l'autre (même type). */
+  function shipPoints(side, type) {
+    const table = ctx.airStrike?.victoryPoints ?? {}
+    return table[side]?.[type] ?? table[ENEMY[side]]?.[type] ?? [0, 0, 0, 0, 0]
+  }
+
+  /** Navires à flot de la task force `counter`, tels qu'ils se battent : `[{
+   *  key, id, name, type, side, fleetId, src, intactSrc, reducedSrc, marker,
+   *  damage, firepower, durability, points }]` — `src`/`marker` : face et
+   *  pion de dommages du moment ; `firepower` : celle de sa face du moment
+   *  (0 en dommages critiques), doublée de nuit pour les types
+   *  `nightDoubled` de son camp. */
+  function combatShips(counter, night) {
+    const side = counter.faction
+    const layout = side === 'ijn' ? fleetDisplay(counter) : alliedFleet(counter)?.layout
+    if (!layout) return []
+    const placed = layout.kind === 'carrier'
+      ? [layout.carrier, ...layout.escorts.map((entry) => entry.ship)]
+      : layout.slots.map((entry) => entry.ship)
+    const catalog = new Map((ctx.fleets?.[side]?.ships ?? []).map((ship) => [ship.id, ship]))
+    return [...placed, ...(layout.extra ?? [])].filter((ship) => ship && !isSunk(ship.key)).map((ship) => {
+      const entry = catalog.get(ship.id)
+      const damage = damageOf(ship.key)
+      const { reduced, marker } = SHIP_DAMAGE[damage]
+      const base = damage === 'critical' ? 0 : ((reduced ? entry?.damaged?.firepower : null) ?? entry?.intact?.firepower ?? 0)
+      const doubled = night && (navalTable.nightDoubled[side] ?? []).includes(ship.type)
+      return {
+        key: ship.key, id: ship.id, name: ship.name, type: ship.type, side, fleetId: String(counter.id),
+        src: (reduced && ship.reducedSrc) || ship.src, intactSrc: ship.src, reducedSrc: ship.reducedSrc ?? null,
+        marker, damage, firepower: doubled ? base * 2 : base,
+        durability: { intact: entry?.intact?.durability ?? 0, reduced: entry?.damaged?.durability ?? 0 },
+        points: shipPoints(side, ship.type),
+      }
+    })
+  }
+
+  /** Bataille entre les task forces `fleetIds` (des deux camps) au tour
+   *  `turn` : `{ key, fleetIds, night, ships: { ijn, usn }, ranges }` —
+   *  `ranges` : portées possibles de jour, la plus longue d'abord (cf.
+   *  lib/navalCombat.js::rangeOptions), vide de nuit. */
+  function navalBattle(fleetIds, counters, turn) {
+    const ids = new Set(fleetIds.map(String))
+    const night = NIGHT_TURNS.has(turn)
+    const ships = { ijn: [], usn: [] }
+    // Une task force japonaise ne compte qu'une fois, même si son leurre et
+    // son vrai pion sont tous deux sur la carte (cf. `taskForceOf`).
+    const seen = new Set()
+    for (const counter of counters) {
+      if (!ids.has(String(counter.id)) || !isCombatFleet(counter)) continue
+      const tf = counter.faction === 'ijn' ? taskForceOf(counter) : String(counter.id)
+      if (seen.has(tf)) continue
+      seen.add(tf)
+      ships[counter.faction].push(...combatShips(counter, night))
+    }
+    return { key: `${turn}|${[...ids].sort().join(',')}`, turn, fleetIds: [...ids], night, ships,
+      ranges: night ? [] : rangeOptions(navalTable, [...ships.ijn, ...ships.usn]) }
+  }
+
+  /** Navires du camp `side` qui tirent dans `battle` à la portée `range`
+   *  (tous de nuit ; personne de jour sans portée, cf. `rangeOptions`). */
+  function navalFiring(battle, side, range) {
+    if (!battle.night && range == null) return []
+    return firingShips(navalTable, battle.ships[side], battle.night ? null : range)
+  }
+
+  /** Meilleur plan de tir du camp `side` dans `battle` à la portée `range`
+   *  (cf. lib/navalCombat.js::planNavalAttacks), en points de victoire
+   *  espérés : `{ expectedPoints, attacks: [{ side, shooters, target }] }`
+   *  (clés de pions navires, dans l'ordre de résolution). Mémorisé pour le
+   *  tour de la bataille (un round par tour : la mémoire repart à neuf au
+   *  tour suivant, elle ne grossit pas de partie en partie). */
+  const navalPlans = new Map()
+  let navalPlansTurn = null
+  function navalPlan(battle, side, range) {
+    if (battle.turn !== navalPlansTurn) {
+      navalPlans.clear()
+      navalPlansTurn = battle.turn
+    }
+    const key = `${battle.key}|${side}|${range}|${battle.ships.ijn.concat(battle.ships.usn).map((ship) => ship.damage).join('')}`
+    if (!navalPlans.has(key)) {
+      const shooters = navalFiring(battle, side, range)
+      const targets = battle.ships[ENEMY[side]]
+      const plan = planNavalAttacks(navalTable, shooters.map((ship) => ship.firepower), targets, navalTable.bonus[side] ?? 0)
+      navalPlans.set(key, { expectedPoints: plan.expectedPoints,
+        attacks: plan.attacks.map((attack) => ({ side, shooters: attack.shooters.map((index) => shooters[index].key), target: targets[attack.target].key })) })
+    }
+    return navalPlans.get(key)
+  }
+
+  /** Ce que la bataille rapporte au Japonais à la portée `range` : ses
+   *  points espérés moins ceux du joueur US, chacun tirant au mieux. */
+  function navalBalance(battle, range) {
+    return navalPlan(battle, 'ijn', range).expectedPoints - navalPlan(battle, 'usn', range).expectedPoints
+  }
+
+  /** Portée plus courte que le moteur japonais propose dans `battle` : la
+   *  plus rentable pour lui, si elle l'est plus que la portée la plus
+   *  longue ; `null` sinon (et de nuit). */
+  function navalRangeProposal(battle) {
+    if (battle.night || battle.ranges.length < 2) return null
+    let best = { range: null, value: navalBalance(battle, battle.ranges[0]) }
+    for (const range of battle.ranges.slice(1)) {
+      const value = navalBalance(battle, range)
+      if (value > best.value + 1e-9) best = { range, value }
+    }
+    return best.range
+  }
+
+  /** Le moteur japonais accepte-t-il la portée `range` proposée par le
+   *  joueur US ? Seulement si elle lui rapporte plus que la plus longue. */
+  function navalAcceptsRange(battle, range) {
+    return navalBalance(battle, range) > navalBalance(battle, battle.ranges[0]) + 1e-9
+  }
+
+  /** Organisation des combats que décide le moteur japonais quand il a
+   *  l'initiative : pour chaque groupe de task forces en contact (les
+   *  groupes ne se touchent pas : chacun s'organise seul), parmi toutes les
+   *  façons de le découper en batailles (chaque task force dans une
+   *  bataille, chaque bataille d'un seul tenant), celle qui lui rapporte le
+   *  plus (cf. `navalBalance`, à la portée la plus longue — c'est elle qui
+   *  s'applique tant que l'adversaire n'accepte rien d'autre). Au-delà de
+   *  `MAX_SPLIT_CONTACTS` contacts dans un groupe, il s'y bat en une seule
+   *  bataille. `{ battles: [[ids]], arrows: [{ from, to }] }` — flèches de
+   *  ses task forces vers celles qu'elles attaquent. */
+  function planNavalBattles(contacts, counters, turn) {
+    const value = new Map()
+    const valueOf = (ids) => {
+      const key = [...ids].sort().join(',')
+      if (!value.has(key)) {
+        const battle = navalBattle(ids, counters, turn)
+        value.set(key, navalBalance(battle, battle.ranges[0] ?? null))
+      }
+      return value.get(key)
+    }
+    const pairOf = (contact) => [contact.ijn, contact.usn]
+    const battles = connectedGroups(contacts.map(pairOf)).flatMap((group) => {
+      const members = new Set(group)
+      const links = contacts.filter((contact) => members.has(contact.ijn))
+      if (links.length > MAX_SPLIT_CONTACTS) return [group]
+      let best = null
+      for (let mask = 1; mask < 1 << links.length; mask++) {
+        const chosen = links.filter((_, index) => mask & (1 << index))
+        if (new Set(chosen.flatMap(pairOf)).size !== group.length) continue
+        const split = connectedGroups(chosen.map(pairOf))
+        const total = split.reduce((sum, ids) => sum + valueOf(ids), 0)
+        if (!best || total > best.total + 1e-9) best = { total, split }
+      }
+      return best?.split ?? [group]
+    })
+    const battleOf = new Map(battles.flatMap((ids, index) => ids.map((id) => [id, index])))
+    const arrows = contacts.filter((contact) => battleOf.get(contact.ijn) === battleOf.get(contact.usn))
+      .map((contact) => ({ from: contact.ijn, to: contact.usn }))
+    return { battles, arrows }
+  }
+
+  /** Résout les attaques `attacks` (`[{ side, shooters, target }]`, clés de
+   *  pions navires, dans leur ordre) de `battle` — les dés sont tirés ici :
+   *  `[{ side, shooters, target, firepower, die, bonus, damage, before, after
+   *  }]`. Tout se résout en même temps : chaque tireur garde la puissance
+   *  qu'il avait avant le combat ; chaque navire visé passe d'état en état,
+   *  attaque après attaque, sans que les dégâts s'additionnent. */
+  function resolveNavalAttacks(battle, attacks) {
+    const byKey = new Map([...battle.ships.ijn, ...battle.ships.usn].map((ship) => [ship.key, ship]))
+    const states = new Map()
+    return attacks.map((attack) => {
+      const target = byKey.get(attack.target)
+      const firepower = attack.shooters.reduce((sum, key) => sum + (byKey.get(key)?.firepower ?? 0), 0)
+      const die = 1 + Math.floor(Math.random() * navalTable.die)
+      const bonus = navalTable.bonus[attack.side] ?? 0
+      const damage = navalDamage(navalTable, firepower, die + bonus)
+      const before = states.get(attack.target) ?? target.damage
+      const after = damageOutcome(damage, target.durability, before)
+      states.set(attack.target, after)
+      return { ...attack, firepower, die, bonus, damage, before, after }
+    })
   }
 
   /** Rôles et hex-objectifs des leurres d'un renfort (en jeu comme au
@@ -1306,7 +1308,7 @@ export function useCoralSea(moduleId, ctx = {}) {
    *  `null` sans porte-avions — ou s'il est coulé. */
   function carrierCounters(tf) {
     const types = new Map((ctx.fleets?.ijn?.ships ?? []).map((ship) => [ship.id, ship.type]))
-    const carrier = (taskForceRoleIn(dummyRoles.value, tf)?.ships ?? [])
+    const carrier = (taskForceRole(tf)?.ships ?? [])
       .find((id, index) => CARRIER_TYPES.has(types.get(id)) && !isSunk(ijnShipKey(tf, id, index)))
     if (!carrier) return null
     return airGroupCounters(ctx.scenario?.airGroups?.ijn?.[carrier], ctx.air?.ijn)
@@ -1319,6 +1321,15 @@ export function useCoralSea(moduleId, ctx = {}) {
     }
     return startZones.get(tf)
   }
+
+  /** Task forces japonaises qui lancent des raids : celles de la formation
+   *  (rôles des leurres, cf. le moteur `fleets` du scénario) dont le
+   *  porte-avions est à flot (cf. `carrierCounters`). */
+  function raidingTaskForces() {
+    return [...new Set(Object.values(dummyRoles.value).map((role) => role.tf).filter(Boolean))].filter((tf) => carrierCounters(tf))
+  }
+  /** Nom au journal d'un raid de la task force `tf` : "Raid TF1". */
+  const raidName = (tf) => `Raid ${taskForceRole(tf)?.code ?? tf}`
 
   /** Avions du porte-avions de la task force japonaise `tf`, selon leurs
    *  pertes (cf. `planeStateOf`), par zone : `{ ready, reserve, cap, raid,
@@ -1356,12 +1367,12 @@ export function useCoralSea(moduleId, ctx = {}) {
   function airCycle(step, phaseId, side) {
     if (!active.value) return
     if (airOpsStep != null && step !== airOpsStep) {
-      for (const tf of Object.keys(RAID_MARKERS)) moveAir(carrierAir(tf)?.cap.map((plane) => plane.key), 'landingCap')
+      for (const tf of raidingTaskForces()) moveAir(carrierAir(tf)?.cap.map((plane) => plane.key), 'landingCap')
       airOpsStep = null
     }
     if (phaseId !== RAID_PHASE || side !== 'ijn' || airOpsStep === step) return
     airOpsStep = step
-    for (const tf of Object.keys(RAID_MARKERS)) {
+    for (const tf of raidingTaskForces()) {
       const air = carrierAir(tf)
       if (!air) continue
       // Un raid jamais terminé compte comme rentré : en Reserve lui aussi.
@@ -1418,7 +1429,7 @@ export function useCoralSea(moduleId, ctx = {}) {
   function drawnLayout(tf) {
     if (displayLayouts.has(tf)) return displayLayouts.get(tf)
     const catalog = new Map((ctx.fleets?.ijn?.ships ?? []).map((ship) => [ship.id, ship]))
-    const ships = (taskForceRoleIn(dummyRoles.value, tf)?.ships ?? [])
+    const ships = (taskForceRole(tf)?.ships ?? [])
       .map((id, index) => {
         const ship = catalog.get(id)
         return ship && { key: ijnShipKey(tf, id, index), id, name: ship.name, type: ship.type, src: ship.intact?.src, reducedSrc: ship.damaged?.src ?? null }
@@ -1694,9 +1705,11 @@ export function useCoralSea(moduleId, ctx = {}) {
     leaders.value = secrets?.leaders ?? {}
     // Le rejeu repart du déploiement : la mémoire des repérages se refait
     // avec ses entrées `search` (cf. `noteSighting`), celle des task forces
-    // alliées connues avec ses entrées `raid` (cf. `noteRaided`).
+    // connues avec ses entrées `raid` (cf. `noteRaided`) et `navalContact`
+    // (cf. `noteRevealed`).
     lastSightings.clear()
     knownAllied.value = new Map()
+    knownIjn.value = new Map()
   }
 
   // Les autres règles : celles du composable inerte (aucune particularité).
@@ -1706,7 +1719,9 @@ export function useCoralSea(moduleId, ctx = {}) {
     reconPhase: RECON_PHASE, reconChecks, reconChoice, noteSighting, reconTargetOf, manualReconSide: 'usn', searchBag, searchBagFull: SEARCH_CHITS, drawSearch, refillSearchBag, restoreSearchBag, searchChitsReturn,
     searchResults: SEARCH_RESULTS, searchOutcome, sightings: SIGHTINGS,
     isReusableDummy: isDummy, dummyReinforcementTurn, planDummyReinforcement, applyDummyReinforcement, playerDummyReinforcement,
-    followTarget, arrangeInitialPositions, movementPlan, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, noteRaided, noteTurn, isKnownTarget, airStrikeOdds, strikeTarget, sightedDefense, sightedStrikeOdds,
+    followTarget, arrangeInitialPositions, movementPlan, barredHexes, movementEndRemovals,
+    navalCombatPhase: navalTable ? NAVAL_COMBAT_PHASE : null, navalContacts, navalBattle, navalFiring, navalPlan,
+    navalRangeProposal, navalAcceptsRange, planNavalBattles, resolveNavalAttacks, noteRevealed, revealedLook, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, raidCandidates, planRaidOptions, noteRaided, noteTurn, isKnownTarget, airStrikeOdds, strikeTarget, sightedDefense, sightedStrikeOdds,
     fleetDisplay, fleetDisplays: FLEET_DISPLAYS, fleetDisplayPhase: FLEET_DISPLAY_PHASE, fleetDisplaySide: 'usn',
     airStrikeReach: alliedAirReach, airStrikeRadius: RAID_RADIUS,
     shipDamages: SHIP_DAMAGE, damageOf, setShipDamage, restoreShipDamage,

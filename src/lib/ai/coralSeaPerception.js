@@ -3,8 +3,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // Faits que lisent les questions des arbres de décision (cf.
-// lib/ai/coralSeaTrees.js, lib/ai/decisionTree.js). Trois sources, et rien
-// d'autre :
+// lib/ai/decisionTree.js) du mouvement et du repérage de chaque scénario
+// (cf. lib/coralSea/scenarios/, ex. scenario-5/movementTree.js et
+// reconTree.js). Trois sources, et rien d'autre :
 //   - la CARTE, telle que la voit le joueur japonais : positions des task
 //     forces alliées (leurres compris, indiscernables) et pions de repérage
 //     ("Sighted Carrier", "Sighted Fleet") posés sur elles ou sur les
@@ -31,8 +32,9 @@ function nearestHex(from, units) {
 /** Faits du mouvement de la task force japonaise `counter`, parmi les pions
  *  de la carte `counters`. `own` : ce que le Japonais sait de ses propres
  *  forces —
- *   - `behavior` : comportement de la task force (cf. useCoralSea.js::
- *     behaviorOfShips), `null` pour un vrai leurre ;
+ *   - `behavior` : comportement de la task force (cf. le moteur `fleets` du
+ *     scénario, ex. lib/coralSea/scenarios/scenario-5/fleets.js), `null`
+ *     pour un vrai leurre ;
  *   - `partners` : les AUTRES task forces japonaises de porte-avions sur la
  *     carte ;
  *   - `allowanceOf(pion)` : MP du tour ;

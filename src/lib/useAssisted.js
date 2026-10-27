@@ -104,8 +104,10 @@
 //   - `moduleRules` : règles PARTICULIÈRES au module joué (cf.
 //     lib/moduleRules.js), dont ce fichier n'utilise que `movementAllowance`
 //     (potentiel de mouvement propre à un pion, ex. l'allure des transports
-//     de la mer de Corail). Elle rend `null` quand elle ne se prononce pas :
-//     la règle générique s'applique alors telle quelle.
+//     de la mer de Corail) et `barredHexes` (hex interdits à un pion, ex. un
+//     leurre à côté d'une task force ennemie). Elles rendent `null` quand
+//     elles ne se prononcent pas : la règle générique s'applique alors telle
+//     quelle.
 import { computed, ref, watch } from 'vue'
 import { hexId } from './calibration.js'
 import { neighborsOf } from './hex.js'
@@ -840,13 +842,17 @@ export function useAssisted(assisted, turnTrackerRef, terrain, counters, sides, 
    *      commence son tour là, `stopOnEntry` s'il vient d'y entrer), refusé
    *      — QUEL QUE SOIT `h` : ce pion est figé sur place ;
    *   2. faux si `h` est physiquement hors d'atteinte (cf. `canEnterTerrain`) ;
-   *   3. sinon vrai si `c` n'a pas de potentiel de mouvement (cf.
+   *   3. faux si la règle du module interdit `h` à `c` (cf.
+   *      `moduleRules.barredHexes` — ex. un leurre de la mer de Corail à
+   *      côté d'une task force ennemie) ;
+   *   4. sinon vrai si `c` n'a pas de potentiel de mouvement (cf.
    *      `remainingMp`), sinon seulement s'il lui reste au moins le coût
    *      d'entrée de `h`. */
   function canEnterHex(counter, hex, from) {
     if (!assisted.value) return true
     if (from && enemyZocSet(counter).has(from.c + ',' + from.r) && zocLocks(counter)) return false
     if (!canEnterTerrain(counter, hex, from)) return false
+    if (moduleRules.barredHexes?.(counter, counters.value)?.has(hex.c + ',' + hex.r)) return false
     const remaining = remainingMp(counter)
     if (remaining == null) return true
     return remaining >= terrainCost(hex, from)

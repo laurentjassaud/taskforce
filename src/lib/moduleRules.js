@@ -90,6 +90,32 @@ export const INERT_RULES = Object.freeze({
   /** Mouvement particulier d'un pion à hex-objectif, qui remplace sa marche (cf. `runAutoMoves`), ou `null`.
    *  Son 5e argument facultatif, `onDecision({ side, action, trace, plan })`, reçoit la décision de l'IA (journal de debug). */
   movementPlan: () => null,
+  /** Hex ("col,row") où ce pion ne peut pas entrer en mouvement (`(pion, pions)`), ou `null` (aucune interdiction). */
+  barredHexes: () => null,
+  /** Pions retirés du jeu une fois les Mouvements de tous les camps joués, une fois par tour (`(pions)`) : leurs ids. */
+  movementEndRemovals: () => [],
+  /** Phase (id de la piste) des combats de surface, ou `null` (pas de combat naval). */
+  navalCombatPhase: null,
+  /** Task forces ennemies au contact (`(pions, ids exclus)`) : `[{ ijn, usn }]`. */
+  navalContacts: () => [],
+  /** Bataille entre ces task forces (`(ids, pions, tour)`) : `{ key, fleetIds, night, ships: { camp: navires }, ranges }`. */
+  navalBattle: () => null,
+  /** Navires d'un camp qui tirent dans une bataille, à une portée (`(bataille, camp, portée)`). */
+  navalFiring: () => [],
+  /** Meilleur plan de tir d'un camp (`(bataille, camp, portée)`) : `{ expectedPoints, attacks: [{ side, shooters, target }] }`. */
+  navalPlan: () => null,
+  /** Portée plus courte que propose le moteur dans une bataille, ou `null`. */
+  navalRangeProposal: () => null,
+  /** Le moteur accepte-t-il cette portée (`(bataille, portée)`) ? */
+  navalAcceptsRange: () => false,
+  /** Organisation des combats décidée par le moteur (`(contacts, pions, tour)`) : `{ battles: [[ids]], arrows: [{ from, to }] }`. */
+  planNavalBattles: () => ({ battles: [], arrows: [] }),
+  /** Résout des attaques (`(bataille, attaques)`), dés compris : une ligne de résultat par attaque. */
+  resolveNavalAttacks: () => [],
+  /** L'unité `unitId` (du camp du moteur) devient connue de l'adversaire, au tour donné. */
+  noteRevealed: () => {},
+  /** Pion qui remplace sur la carte une unité connue de l'adversaire (`{ src, name }`), ou `null`. */
+  revealedLook: () => null,
   /** Phase (id de la piste) où le moteur lance ses raids aériens, ou `null`. */
   raidPhase: null,
   /** Camp qui lance ces raids, ou `null`. */
@@ -99,6 +125,10 @@ export const INERT_RULES = Object.freeze({
   raidPlan: () => [],
   /** L'unité `unitId` vient de subir un raid (en jeu comme au rejeu) : le camp qui l'a frappée la connaît. */
   noteRaided: () => {},
+  /** Debug : task forces que les avions d'un raid pourraient viser, et ce qu'en sait le camp qui frappe (cf. RaidOddsModal.vue). */
+  raidCandidates: () => [],
+  /** Debug : meilleurs plans d'une frappe sur plusieurs task forces, ou `null`. */
+  planRaidOptions: () => null,
   /** Tour en cours, à chaque changement (statut des unités connues, cf. `isKnownTarget`). */
   noteTurn: () => {},
   /** Le camp qui lance les raids connaît-il exactement cette unité (déjà frappée) ? Bordure verte sur la carte. */

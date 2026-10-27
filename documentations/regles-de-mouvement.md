@@ -2,7 +2,7 @@
 
 État des règles de mouvement en place au 14/10/2026, de la plus générale à la plus spécifique, suivi des contradictions relevées dans le modèle. Mis à jour après le retrait du code propre à Arnhem (combat, ponts, véhicules, terrains, aéroportés, points de victoire).
 
-Sources lues : [useAssisted.js](../src/lib/useAssisted.js), [edges.js](../src/lib/edges.js), [passages.js](../src/lib/passages.js), [autoMove.js](../src/lib/autoMove.js), [rules.js](../src/lib/rules.js), [coral-sea.json](../public/modules/coral-sea/coral-sea.json), [useCoralSea.js](../src/lib/useCoralSea.js), [coralSeaTrees.js](../src/lib/ai/coralSeaTrees.js) (arbre de décision des mouvements particuliers), `runAutoMoves` dans [HexMap.vue](../src/components/HexMap.vue).
+Sources lues : [useAssisted.js](../src/lib/useAssisted.js), [edges.js](../src/lib/edges.js), [passages.js](../src/lib/passages.js), [autoMove.js](../src/lib/autoMove.js), [rules.js](../src/lib/rules.js), [coral-sea.json](../public/modules/coral-sea/coral-sea.json), [useCoralSea.js](../src/lib/useCoralSea.js), [movementTree.js](../src/lib/coralSea/scenarios/scenario-5/movementTree.js) (arbre de décision des mouvements particuliers), `runAutoMoves` dans [HexMap.vue](../src/components/HexMap.vue).
 
 ## 1. Règles du moteur, valables pour tous les modules
 

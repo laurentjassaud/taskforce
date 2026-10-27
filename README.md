@@ -69,7 +69,7 @@ Onglet « Journal » du panneau latéral (`JournalPanel.vue`) : chaque évèneme
 montre aussi, sur fond rouge japonais, la décision de l'IA pour chaque task
 force qu'elle déplace et chaque hex qu'elle choisit d'explorer en
 reconnaissance : le chemin suivi dans son arbre de décision (cf.
-`src/lib/ai/coralSeaTrees.js`) et ce qu'elle en conclut. Ces entrées sont
+`src/lib/coralSea/scenarios/scenario-5/movementTree.js` et `reconTree.js`) et ce qu'elle en conclut. Ces entrées sont
 toujours enregistrées (export, rapport de bug), mais cachées hors debug.
 - **Local** : sauvegarde automatique (navigateur) proposée en reprise au
   chargement suivant ; export/import JSON ; lecteur de rejeu (pas à pas ou
@@ -167,8 +167,11 @@ src/
     ├── airStrike.js     frappe aéronavale (module.airStrike) : résolution et probabilités exactes
     ├── moduleRules.js   registre des règles particulières par module
     ├── useCoralSea.js   règles particulières du module Coral Sea (patron pour d'autres modules)
+    ├── coralSea/        moteurs de chaque scénario Coral Sea (scenarios/scenario-N/ : flottes, placement,
+    │                    déplacement, repérage, et leurs arbres de décision), outils communs (shared.js)
+    ├── navalCombat.js   combat de surface (module.navalCombat) : tableau, tireurs, meilleur plan de tir
     ├── ai/              IA symbolique du camp japonais : moteur d'arbre de décision (decisionTree.js),
-    │                    ce que sait le Japonais (coralSeaPerception.js), arbres et réglages (coralSeaTrees.js)
+    │                    ce que sait le Japonais (coralSeaPerception.js)
     ├── rules.js         paramètres des règles génériques (module.rules), structure du tour (module.turnStructure)
     ├── turnTrack.js     piste de tour détaillée (initiative, détail et conditions par tour, mise en place)
     ├── setup.js         notation `setup` des pions (hex, plage, n'importe où)

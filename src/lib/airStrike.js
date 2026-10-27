@@ -5,8 +5,7 @@
 // Les deux tableaux sont une DONNÉE de la boîte de jeu (`module.airStrike`,
 // cf. public/modules/coral-sea/coral-sea.json) ; ce fichier les lit, les
 // vérifie, et fournit la résolution d'une frappe et ses probabilités
-// EXACTES — de quoi régler l'arbre de décision des attaques de l'IA (cf.
-// lib/ai/coralSeaTrees.js).
+// EXACTES — de quoi peser les attaques de l'IA (cf. lib/strikePlanner.js).
 //
 // Une frappe, deux d6 :
 //   1. jet AA sur l'Anti-Air Chart, colonne = défense AA de la cible (la

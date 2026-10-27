@@ -20,6 +20,8 @@
 // lecture seule, chaque navire visé porte le numéro de son attaque, et la
 // colonne de droite montre, attaque par attaque, le navire et les pions des
 // avions japonais qui le frappent (groupe par groupe), puis leur escorte.
+// En mode debug, "Probabilités" (évènement `odds`) ouvre les meilleurs plans
+// d'attaque de ses avions (cf. RaidOddsModal.vue).
 // Elle ne se ferme alors QUE par "Terminer le raid" : ni ×, ni clic hors de
 // la modale, ni Échap — le joueur doit d'abord y reporter ses pertes.
 // Pertes des avions (cf. useCoralSea.js::planeStateOf) : au clic droit sur
@@ -69,9 +71,11 @@ const props = defineProps({
   // Raid japonais à montrer (cf. lib/useCoralSea.js::raidPlan) : `{ planes,
   // attacks, expectedPoints, raiders }` — `raiders`, noms des pions de raid.
   raid: { type: Object, default: null },
+  // Mode debug : bouton "Probabilités" du raid.
+  debug: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['save', 'close', 'damage', 'planeState'])
+const emit = defineEmits(['save', 'close', 'damage', 'planeState', 'odds'])
 const { t, locale } = useI18n()
 
 // Part de la hauteur d'une case qu'occupe un pion, et, sur "Fleet TF", sa
@@ -115,6 +119,23 @@ const airZones = ref(zonesOf(props.cells))
 const selected = ref(null) // clé du pion choisi, ou null
 const warning = ref('')
 const canMovePlanes = computed(() => props.editable || props.airEditable)
+
+// "Retour arrière" (bouton du pied, Ctrl+Z) : le brouillon avant chaque
+// déplacement, le plus récent en dernier — défait un à un, la modale reste
+// ouverte ("Annuler", lui, abandonne tout et la ferme).
+const history = ref([])
+function remember() {
+  history.value = [...history.value, { draft: { ...draft.value }, airZones: { ...airZones.value } }]
+}
+function undo() {
+  const last = history.value.at(-1)
+  if (!last) return
+  history.value = history.value.slice(0, -1)
+  draft.value = last.draft
+  airZones.value = last.airZones
+  selected.value = null
+  warning.value = ''
+}
 
 const placedKeys = computed(() => new Set(Object.values(draft.value)))
 const cellOf = (key) => Object.keys(draft.value).find((cell) => draft.value[cell] === key) ?? null
@@ -316,6 +337,9 @@ function place(key, cell) {
   if (!ship) return
   if (isReadyCell(cell)) { warning.value = t('alliedFleet.readyCell'); return }
   if (!props.fits(ship.type, cell)) { wrongCell(cell); return }
+  // Reposé sur sa propre case : rien ne change, rien à défaire.
+  if (cellOf(key) === cell) { selected.value = null; warning.value = ''; return }
+  remember()
   const next = { ...draft.value }
   const from = cellOf(key)
   const occupant = next[cell]
@@ -333,6 +357,8 @@ function place(key, cell) {
  *  s'il venait d'une autre case Ready, sinon il passe en Reserve. */
 function placePlane(key, cell) {
   if (!isReadyCell(cell)) { warning.value = t('alliedFleet.planeCell'); return }
+  if (cellOf(key) === cell) { selected.value = null; warning.value = ''; return }
+  remember()
   const next = { ...draft.value }
   const from = cellOf(key)
   const occupant = next[cell]
@@ -359,6 +385,8 @@ function setZone(key, zone) {
 /** L'avion `key` va dans la zone `zone` (cf. `ZONES`) : il quitte sa case
  *  Ready s'il en avait une. */
 function moveToZone(key, zone) {
+  if (planeZone(key) === zone) { selected.value = null; warning.value = ''; return }
+  remember()
   const cell = cellOf(key)
   if (cell) {
     const next = { ...draft.value }
@@ -405,6 +433,7 @@ function unplace(key) {
   if (planes.value.has(key)) { moveToZone(key, 'reserve'); return }
   const cell = cellOf(key)
   if (!cell) return
+  remember()
   const next = { ...draft.value }
   delete next[cell]
   draft.value = withAir(next)
@@ -450,6 +479,11 @@ function save() {
 
 const dialog = ref(null)
 function onKey(event) {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && canMovePlanes.value) {
+    event.preventDefault()
+    undo()
+    return
+  }
   if (event.key !== 'Escape') return
   if (damageMenu.value) damageMenu.value = null
   else if (selected.value) selected.value = null
@@ -575,7 +609,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
               </span>
             </div>
           </div>
-          <p class="tc-raid-total">{{ $t('raidView.total', { points: points(raid.expectedPoints) }) }}</p>
+          <p class="tc-raid-total">
+            {{ $t('raidView.total', { points: points(raid.expectedPoints) }) }}
+            <button v-if="debug" type="button" class="tc-odds" @click="emit('odds')">{{ $t('raidView.odds') }}</button>
+          </p>
           <p v-if="damageEditable && damages" class="tc-hint">{{ $t('raidView.damageHint') }}</p>
         </section>
         <div v-else-if="airEditable">
@@ -604,6 +641,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
         <template v-if="editable || airEditable">
           <button v-if="selectedPlane ? planeZone(selected) !== 'reserve' : selectedCell" type="button" class="tc-cancel" @click="unplace(selected)">
             {{ selectedPlane ? $t('alliedFleet.toReserve') : $t('alliedFleet.remove') }}
+          </button>
+          <button type="button" class="tc-cancel" :disabled="!history.length" :title="$t('alliedFleet.undoHint')" @click="undo">
+            {{ $t('alliedFleet.undo') }}
           </button>
           <button type="button" class="tc-cancel" @click="emit('close')">{{ $t('common.cancel') }}</button>
           <button type="button" class="tc-ok" :disabled="!dirty" @click="save">{{ $t('alliedFleet.save') }}</button>
@@ -969,6 +1009,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 .tc-raid-escort .tc-raid-group {
   display: inline-flex;
 }
+.tc-odds {
+  margin-left: 8px;
+  border: 1px solid var(--c-ijn);
+  border-radius: var(--radius-6);
+  background: none;
+  color: var(--c-ijn);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 2px 10px;
+  cursor: pointer;
+}
 .tc-raid-total {
   margin: 10px 0 6px;
   font-size: var(--fs-sm);
@@ -1069,13 +1120,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   color: var(--c-steel);
 }
 .tc-cancel {
-  border: 1px solid color-mix(in srgb, var(--c-white) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-ink) 25%, transparent);
   background: transparent;
   color: var(--c-panel-text);
   font-size: var(--fs-sm);
   padding: 8px 16px;
   border-radius: var(--radius-8);
   cursor: pointer;
+}
+.tc-cancel:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .tc-ok {
   border: none;

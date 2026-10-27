@@ -2,11 +2,13 @@
 // decisionTree — parcours d'un ARBRE DE DÉCISION décrit en données
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Moteur des IA symboliques (cf. lib/ai/coralSeaTrees.js) : l'arbre ne
-// contient que des NOMS de questions et d'actions, les questions vivent dans
-// un dictionnaire `tests` (nom -> `facts => valeur`). Les questions ne font
-// que LIRE les faits (cf. lib/ai/coralSeaPerception.js) : c'est l'appelant
-// qui applique la feuille atteinte.
+// Moteur des IA symboliques (cf. les arbres des scénarios de la mer de
+// Corail, ex. lib/coralSea/scenarios/scenario-5/movementTree.js et
+// reconTree.js) : l'arbre ne contient que des NOMS de questions et
+// d'actions, les questions vivent dans un dictionnaire `tests` (nom ->
+// `facts => valeur`). Les questions ne font que LIRE les faits (cf.
+// lib/ai/coralSeaPerception.js) : c'est l'appelant qui applique la feuille
+// atteinte.
 //
 // Trois sortes de nœuds :
 //   - question oui/non : `{ test: 'nom', yes: nœud, no: nœud }` ;

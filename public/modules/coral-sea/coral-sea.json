@@ -1063,6 +1063,26 @@
       }
     }
   },
+  "navalCombat": {
+    "_comment": [
+      "Combat de surface (cf. src/lib/navalCombat.js) : des task forces ennemies adjacentes à la fin des Mouvements se battent à la phase Combat naval. Chaque attaque (1 ou 2 pions, puissances de feu additionnées) lance un d6 sur le Naval Combat Chart : colonne = puissance de feu (la dernière, 16+, absorbe le reste), ligne = dé + bonus du camp (`bonus`, l'IJN +1 contre des navires) ; le résultat, des dégâts, se lit comme ceux d'une frappe aéronavale.",
+      "results[ligne - 1][puissance - 1] : dégâts, 0 = case vide.",
+      "ranges : classes de portée, de la plus longue à la plus courte. De jour, seuls les navires de portée au moins égale à celle du combat tirent ; de nuit, tous. nightDoubled : types dont la puissance de feu double de nuit, par camp."
+    ],
+    "die": 6,
+    "bonus": { "ijn": 1 },
+    "ranges": ["BB", "CA", "CL", "DD"],
+    "nightDoubled": { "ijn": ["DD"] },
+    "results": [
+      [0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4, 4],
+      [0, 0, 0, 0, 1, 1, 2, 3, 3, 3, 4, 4, 5, 6, 7, 8],
+      [0, 0, 0, 1, 2, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9, 11],
+      [0, 0, 1, 2, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 14],
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 13, 14, 15],
+      [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 14, 16, 17, 18, 19, 20],
+      [2, 3, 6, 8, 9, 11, 13, 13, 14, 15, 16, 17, 18, 19, 20, 20]
+    ]
+  },
   "counters": {
     "ijn": [
       {

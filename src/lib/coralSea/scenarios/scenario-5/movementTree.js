@@ -1,14 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// coralSeaTrees — arbres de décision de l'IA japonaise (mer de Corail)
+// Scénario 5 — arbre de décision du MOUVEMENT japonais (cf. ./movement.js)
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Ce que décide le moteur pour le camp japonais, écrit en données (cf.
-// lib/ai/decisionTree.js) : régler l'IA, c'est modifier ce fichier. Les
-// questions lisent les faits de lib/ai/coralSeaPerception.js ; les feuilles
-// deviennent les plans de mouvement qu'exécute HexMap.vue::planAutoMoves.
-//
-// MOUVEMENT d'une task force japonaise (cf. useCoralSea.js::movementPlan),
-// selon son comportement — il REMPLACE la marche vers son hex-objectif :
+// Ce que décide le moteur pour chaque task force japonaise, écrit en données
+// (cf. lib/ai/decisionTree.js) : régler l'IA de mouvement de ce scénario,
+// c'est modifier ce fichier. Les questions lisent les faits de
+// lib/ai/coralSeaPerception.js::perceiveTaskForce ; les feuilles deviennent
+// les plans de mouvement qu'exécute HexMap.vue::planAutoMoves. Le mouvement,
+// selon le comportement de la task force (cf. ./fleets.js), REMPLACE la
+// marche vers son hex-objectif :
 //
 //   comportement ?
 //   ├─ vrai leurre  → hex-objectif
@@ -24,24 +24,15 @@
 //        └─ non → elle-même repérée, et des alliés sur la carte ?
 //                 oui : s'écarter à > 6 hex de tous | non : hex-objectif
 //   (« non » partout ailleurs : hex-objectif)
-//
-// REPÉRAGE : priorité de chaque hex qu'une source japonaise peut explorer
-// (cf. useCoralSea.js::reconChoice — les règles du jeu, portée et
-// couverture, ont déjà écarté les autres). Le moteur explore l'hex de plus
-// haute priorité ; à égalité, celui de la source qui a le moins de choix,
-// puis au hasard :
-//
-//   TF alliée non repérée sur l'hex ?
-//   ├─ oui → à 5 hex ou moins d'un de nos porte-avions ?       oui : menace (5)
-//   │        └─ non → déjà vue comme porte-avions ?            oui : porte-avions perdu de vue (4)
-//   │                 └─ non → à 6 hex ou moins de nos transports ? oui : escorte (3) | non : éclairage (2)
-//   └─ non → nouvelle vérification (1)
+
+import { RAID_RADIUS } from '../../shared.js'
 
 /** Distances des mouvements : écart gardé par celles qui évitent les Alliés,
- *  rayon d'attaque des porte-avions et leur attente maximale, et distance à
- *  laquelle les autres s'arrêtent de leur cible (adjacentes). */
+ *  rayon d'attaque des porte-avions (la portée des raids du module) et leur
+ *  attente maximale, et distance à laquelle les autres s'arrêtent de leur
+ *  cible (adjacentes). */
 export const AVOID_RANGE = 6
-export const ATTACK_RADIUS = 5
+export const ATTACK_RADIUS = RAID_RADIUS
 export const MAX_WAIT_TURNS = 2
 export const SEEK_RADIUS = 1
 
@@ -134,38 +125,4 @@ export const movementActions = {
   attack: (facts, leaf) => ({ kind: 'attack', target: facts[leaf.target], radius: leaf.radius, hold: false }),
   // Comme `attack`, mais s'arrête à `radius` + 1 hex pour attendre.
   hold: (facts, leaf) => ({ kind: 'attack', target: facts[leaf.target], radius: leaf.radius, hold: true }),
-}
-
-/** Distances du repérage : une TF alliée inconnue à `THREAT_RANGE` hex ou
- *  moins d'un porte-avions japonais peut le frapper (rayon d'attaque) ; à
- *  `ESCORT_RANGE` hex ou moins d'un transport, elle le menace (l'écart que
- *  gardent les transports). */
-export const THREAT_RANGE = ATTACK_RADIUS
-export const ESCORT_RANGE = AVOID_RANGE
-
-export const reconTree = {
-  test: 'unsighted',
-  yes: {
-    test: 'nearOwnCarrier',
-    yes: { do: 'threat', priority: 5 },
-    no: {
-      test: 'rememberedAsCarrier',
-      yes: { do: 'carrierLead', priority: 4 },
-      no: {
-        test: 'nearOwnTransport',
-        yes: { do: 'escort', priority: 3 },
-        no: { do: 'scout', priority: 2 },
-      },
-    },
-  },
-  no: { do: 'recheck', priority: 1 },
-}
-
-/** Questions de `reconTree` (faits : cf. coralSeaPerception.js::
- *  perceiveReconTarget). */
-export const reconTests = {
-  unsighted: (facts) => facts.unsighted,
-  nearOwnCarrier: (facts) => facts.distanceToOwnCarrier <= THREAT_RANGE,
-  rememberedAsCarrier: (facts) => facts.rememberedAsCarrier,
-  nearOwnTransport: (facts) => facts.distanceToOwnTransport <= ESCORT_RANGE,
 }
