@@ -72,19 +72,11 @@ export default {
   settings: {
     scenarioHistorical: 'Historical',
     party: { duel: 'Two players, double blind', assiste: 'Against the AI, with dummies', aveugle: 'Against the AI, blind', libre: 'Free' },
-    timing: { libre: 'Untimed', limite: 'Limited', blitz: 'Blitz' },
-    timingHint: {
-      limite: 'Suggested: 4 to 8 minutes per turn',
-      blitz: 'Suggested: 40 to 60 minutes',
-    },
-    timingLocked: 'The clock runs during the Movement phase: only available in Assisted games.',
   },
 
   summary: {
     scenario: 'Scenario: {name}',
-    weatherOn: 'Weather on',
     party: 'Mode: {name}',
-    timing: 'Timing: {name}',
   },
 
   setup: {
@@ -96,7 +88,6 @@ export default {
       assiste: 'You play against the AI. Its forces are on the map, mixed with dummies. The game runs the phases of the turn and enforces the rules.',
       aveugle: 'You play against the AI without seeing its forces: only your sightings bring them onto the map.',
     },
-    weather: 'Weather',
     moduleLoadError: 'Unable to load the game. Reload the page to try again.',
   },
 
@@ -141,11 +132,6 @@ export default {
     hintDrag: 'Drag a counter onto the map to place it freely, or click it then click one of the entry hexes highlighted in orange.',
     hintClick: 'Click a counter then click one of the entry hexes highlighted in orange on the map.',
     hintDuel: 'Drag a counter onto a hex of your setup zone, marked on the map. You can move it again, or drop it back into this panel.',
-  },
-
-  moveTimer: {
-    label: 'Movement',
-    title: 'Time left for the Movement phase',
   },
 
   turnTracker: {
@@ -469,18 +455,9 @@ export default {
     bravo: 'Congratulations, victory for the {side}!',
     draw: 'Draw: both sides are level on points.',
     byConcession: 'The {side} conceded the game.',
-    byTime: 'The {side} ran out of time.',
     confirmTitle: 'Concede the game',
     confirmMessage: 'The {side} give up the game and hand it to their opponent. This cannot be undone.',
     concede: 'Concede',
-  },
-
-  timeUp: {
-    title: 'Time is up',
-    limited: 'The time allowed for the Movement phase is over: you can no longer move any unit. Go on to the next phase.',
-    blitz: 'The movement time of the “{side}” side is over: this side loses the game.',
-    youLost: 'You lost.',
-    youWon: 'You won!',
   },
 
   unitStack: {
@@ -528,7 +505,6 @@ export default {
     congestion: 'entry hex already used (entry #{rank} this turn): cost ×{rank} = {cost} MP instead of {base}',
     returned: '{unit} put back into the reinforcements',
     eliminated: '{unit} eliminated',
-    timeUp: 'Time is up — {side} loses the game',
     conceded: '{side} concede the game',
   },
 
@@ -586,7 +562,6 @@ export default {
   },
 
   toolbar: {
-    gameOverTag: 'Game over — {side} loses on time',
     concede: 'Concede the game',
     concedeTitle: 'Give up the game: your opponent wins it',
     gameSummary: 'Game summary',
@@ -620,7 +595,6 @@ export default {
       turn: { term: 'Turn track', text: 'The current turn and the side to play. Only the active side can move its units.' },
       phases: { term: 'Phases and "next" button', text: 'Below the track, the phases of the turn. The button moves to the next phase, then to the next side: it is refused while units are still stacked.' },
       next: { term: '"Next" button', text: 'Moves the turn track one step forward once a side has finished playing.' },
-      timer: { term: 'Timer', text: 'Shown only when the game uses Limited or Blitz timing.' },
     },
     map: {
       title: 'The map',

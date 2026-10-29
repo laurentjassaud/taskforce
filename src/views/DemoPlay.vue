@@ -71,9 +71,7 @@ onMounted(async () => {
 <template>
   <div class="app">
     <p v-if="module" class="setup-banner"><span class="version" :title="APP_VERSION">v. {{ APP_RELEASE }}</span>
-      {{ $t('summary.scenario', { name: settingsInfo.scenario }) }}<span v-if="settingsInfo.weather"> · {{ $t('summary.weatherOn') }}</span>
-      · {{ $t('summary.party', { name: settingsInfo.party }) }} · {{ $t('summary.timing', { name: settingsInfo.timing })
-      }}<span v-if="settingsInfo.timingValue"> ({{ settingsInfo.timingValue }} min)</span>
+      {{ $t('summary.scenario', { name: settingsInfo.scenario }) }} · {{ $t('summary.party', { name: settingsInfo.party }) }}
     </p>
     <HexMap v-if="module" :key="mapKey" :module="module" :module-id="moduleId" :assisted="isAssistedParty" :duel="isDuelParty"
       :settings="settings" @restart-with="restartWith" />

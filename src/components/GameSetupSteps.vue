@@ -1,14 +1,12 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { PARTY_OPTIONS } from '../lib/gameSettings.js'
 
 // Étapes de la création d'une partie solo (cf. SoloHome.vue) : 1. scénario,
 // 2. mode de jeu (cf. gameSettings.js::PARTY_OPTIONS — ceux pas encore
 // développés proposés grisés). Le parent gère la navigation (`step`),
 // fournit les scénarios du module (cf. gameSettings.js::scenarioOptions) et
-// reçoit les réglages (format lib/gameSettings.js) via v-model. La météo
-// (pas encore appliquée par le moteur) et le chronomètre ne sont plus
-// proposés : ils gardent leur valeur par défaut.
+// reçoit les réglages (format lib/gameSettings.js) via v-model.
 // À deux joueurs, une case à cocher propose de jouer EN LIGNE (`online`, en
 // v-model) : chacun sur son écran, par le serveur des parties (cf.
 // RoomLobby.vue) — ce n'est pas un réglage de la partie mais la façon de la
@@ -36,18 +34,8 @@ watch(() => props.scenarios, (list) => {
   }
 }, { immediate: true })
 
-// Un scénario peut rendre la météo obligatoire (`weather: 'required'`).
-const weatherRequired = computed(() => props.scenarios.find((option) => option.id === scenario.value)?.weather === 'required')
-
 watch([scenario, party], () => {
-  settings.value = {
-    ...settings.value,
-    scenario: scenario.value,
-    weather: weatherRequired.value ? '1' : '0',
-    party: party.value,
-    timing: 'libre',
-    timingValue: '',
-  }
+  settings.value = { ...settings.value, scenario: scenario.value, party: party.value }
 }, { immediate: true })
 </script>
 

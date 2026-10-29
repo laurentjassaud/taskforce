@@ -8,7 +8,7 @@ tous les camps) ou **en ligne** (une room par partie, un joueur par camp).
   (`HexMap.vue`) et ses composables (`src/lib/`).
 - **Serveur** (parties en ligne) : Node + Express + Socket.IO (`server/`). Il
   ne connaît ni les règles ni les pions : il conserve l'état d'une room
-  (positions, tour, phase, pendules, journal partagé) et le rediffuse.
+  (positions, tour, phase, journal partagé) et le rediffuse.
 - **Modules** : chaque **boîte de jeu** (carte, pions, terrain, camps, tours…)
   est un dossier JSON servi statiquement (`public/modules/<id>/`),
   interchangeable sans toucher au moteur.
@@ -33,9 +33,7 @@ mode de jeu, avec la case « Jouer en ligne » pour deux joueurs) — cf.
 | Réglage | Valeurs | Effet |
 |---|---|---|
 | Scénario | Ceux du module — Coral Sea : Scenario 5 : Bataille de la mer de Corail | Déploiement |
-| Météo | *bientôt disponible* | — (pas encore appliquée par le moteur) |
 | Mode de jeu | **Deux joueurs en double aveugle** / **Contre l'IA, avec leurres** / *Contre l'IA, en aveugle* | Voir ci-dessous |
-| Timing | Libre / **Limité** / **Blitz** | Chronomètre de la phase de Mouvement — partie Assistée uniquement |
 
 **Modes de jeu** (cf. `PARTY_OPTIONS`) :
 - **Deux joueurs en double aveugle** (`duel`) — *en cours* : deux joueurs sur
@@ -107,12 +105,8 @@ sait encore jouer sans garde-fous (`assisted = false`, cf.
   japonais au rôle secret, hex-objectifs du moteur, reconnaissance et
   repérage).
 
-**Timings** (partie Assistée) : *Limité* accorde N minutes à **chaque** phase
-de Mouvement (compte à rebours, clignote sous 20 s ; à zéro, le mouvement
-s'arrête — il ne reste qu'à passer à la phase suivante) ; *Blitz*
-donne à chaque camp un temps total pour toutes ses phases de Mouvement
-(pendule d'échecs, une par camp, toujours visible) — à zéro, le camp **perd
-la partie**.
+**Fin de partie** : un camp peut **concéder** à tout moment (bouton de la
+barre d'outils) ; son adversaire l'emporte.
 
 ## Journal de partie
 
@@ -217,7 +211,7 @@ Champs du JSON (cf. `coral-sea.json`) :
 | `i18n` | Traductions des libellés du module, par langue et indexées par le texte français : `{"en": {"Américains": "Americans"}}` — un libellé absent reste en français (cf. `src/i18n/index.js::mt`) |
 | `map` | `url`, `imageWidth/Height`, `cols`, `rows`, `evenColMinus` (colonnes décalées amputées d'une ligne), `removedHexes`, `calibration` (x0/y0/colStep/a/rowStep, en pixels de l'image) |
 | `fleets` | Catalogues de navires, un fichier par camp (`{ "ijn": ".../fleet-ijn.json", "usn": ".../fleet-usn.json" }`), chargés avec le module (cf. `src/lib/moduleLoader.js`) : chaque navire avec ses faces intacte et endommagée (défense AA, durabilité, puissance de feu, image) ; les ordres de bataille des scénarios y piochent par id. `fleet-usn.json` réunit les marines alliées (`navy` : `usn`, `rn`, `ran`, `rnln`) |
-| `scenarios` | Scénarios proposés : `id`, `label`, `deployment` (`setup` — seul mode appliqué par le moteur ; `free` : bientôt), `weather` (`required` / `optional`) — cf. `src/lib/gameSettings.js` ; `orderOfBattle` (par camp, groupes `{ id, name, ships }` pris dans `fleets` — `{ ship, count }` pour plusieurs pions ; les task forces alliées sont composées par le joueur, pions de l'ordre de bataille posés sur le support de chacune — cf. `src/components/TaskForceComposer.vue`, entrée `alliedFleet` du journal ; le Japonais en estime la défense AA par des moyennes) et `formations` (task forces japonaises tirées au coup d'envoi) ; `duel` (mode deux joueurs : `phases`, ids des phases jouées après la mise en place ; `setup`, par camp, `{ hexes, color }` — zone de mise en place en notation `setup`, cf. `src/lib/setup.js::zoneCells`, et couleur CSS de son dégradé ; `recon`, `{ role, range, zones: { camp: n } }` — chaque task force de rôle `role` sur la carte désigne `n` hex de reco à `range` hex ou moins d'elle) |
+| `scenarios` | Scénarios proposés : `id`, `label`, `deployment` (`setup` — seul mode appliqué par le moteur ; `free` : bientôt) — cf. `src/lib/gameSettings.js` ; `orderOfBattle` (par camp, groupes `{ id, name, ships }` pris dans `fleets` — `{ ship, count }` pour plusieurs pions ; les task forces alliées sont composées par le joueur, pions de l'ordre de bataille posés sur le support de chacune — cf. `src/components/TaskForceComposer.vue`, entrée `alliedFleet` du journal ; le Japonais en estime la défense AA par des moyennes) et `formations` (task forces japonaises tirées au coup d'envoi) ; `duel` (mode deux joueurs : `phases`, ids des phases jouées après la mise en place ; `setup`, par camp, `{ hexes, color }` — zone de mise en place en notation `setup`, cf. `src/lib/setup.js::zoneCells`, et couleur CSS de son dégradé ; `recon`, `{ role, range, zones: { camp: n } }` — chaque task force de rôle `role` sur la carte désigne `n` hex de reco à `range` hex ou moins d'elle) |
 | `turnStructure` | `phases: [{ id, label, kind?, order?, shared? }]` : les phases du tour (`kind: "movement"` pour celle où l'on déplace des pions, sinon simple jalon ; `order: "roll"` pour un ordre des camps tiré au dé ; `shared: true` pour une phase jouée une seule fois pour tous les camps, au camp qui a l'initiative — ex. le Combat naval). Sans liste, une seule phase de Mouvement — cf. `src/lib/rules.js` |
 | `rules` | Paramètres des règles génériques : `stackingLimit` (nombre, ou `"none"` si le jeu n'a pas de règle d'empilement ; ou par camp : `{ "ijn": 1, "usn": "none" }`), `zoc` (`lockIfStarting`, `stopOnEntry`), `entryCongestion` (`multiply` / `none`), et les valeurs des règles particulières du module — cf. `src/lib/rules.js` |
 | `airStrike` | Frappe aéronavale : `die`, `antiAir` (Anti-Air Chart : `[bonus, malus]` par dé et colonne de défense AA — celle de la cible et de ses voisins sur le support de sa task force) et `airToSurface` (Air-to-Surface Chart : dégâts par ligne d6 + bonus + modificateur et colonne de puissance anti-ship diminuée du malus — à gauche de la 1re colonne, pas d'attaque), chacun avec `min` et `columns` (`{ max, label }`) ; `airToSurface.rowModifiers` (`dock`, `landBase` : -2) — cf. `src/lib/airStrike.js` (résolution, probabilités exactes, résultat selon la durabilité du navire) |
@@ -246,7 +240,7 @@ src/
 ├── i18n/         textes de l'interface (fr.js, en.js), langue courante, libellés des modules
 ├── components/   HexMap (plateau et orchestration), TurnTracker, Counter,
 │                 ReinforcementsPanel, EliminatedPanel, SearchBagPanel, JournalPanel, SidePanel,
-│                 PhaseBlockedModal, GameEndModal, MoveTimer, RollModal, Toast, StackPopup,
+│                 PhaseBlockedModal, GameEndModal, RollModal, Toast, StackPopup,
 │                 CalibrationPanel, ContextMenu, GameSetupSteps, LanguageSwitcher
 └── lib/
     ├── useAssisted.js   mode Assisté : phases, MP, arêtes, ZOC, empilement, congestion

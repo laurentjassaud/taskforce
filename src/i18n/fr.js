@@ -74,19 +74,11 @@ export default {
   settings: {
     scenarioHistorical: 'Historique',
     party: { duel: 'Deux joueurs en double aveugle', assiste: 'Contre l’IA, avec leurres', aveugle: 'Contre l’IA, en aveugle', libre: 'Libre' },
-    timing: { libre: 'Libre', limite: 'Limité', blitz: 'Blitz' },
-    timingHint: {
-      limite: 'Conseillé : 4 à 8 minutes / tour',
-      blitz: 'Conseillé : 40 à 60 minutes',
-    },
-    timingLocked: 'Le chronomètre porte sur la phase de Mouvement : disponible en partie Assistée uniquement.',
   },
 
   summary: {
     scenario: 'Scénario : {name}',
-    weatherOn: 'Météo activée',
     party: 'Mode : {name}',
-    timing: 'Timing {name}',
   },
 
   setup: {
@@ -98,7 +90,6 @@ export default {
       assiste: 'Vous jouez contre l’IA. Ses forces sont sur la carte, mêlées à des leurres. Le jeu déroule les phases du tour et applique les règles.',
       aveugle: 'Vous jouez contre l’IA sans voir ses forces : seuls vos repérages les font apparaître sur la carte.',
     },
-    weather: 'Météo',
     moduleLoadError: 'Impossible de charger le jeu. Rechargez la page pour réessayer.',
   },
 
@@ -143,11 +134,6 @@ export default {
     hintDrag: "Glisser un pion sur la carte pour le poser librement, ou cliquer dessus puis cliquer un des hex d'entrée surlignés en orange.",
     hintClick: "Cliquer un pion puis cliquer un des hex d'entrée surlignés en orange sur la carte.",
     hintDuel: 'Glissez un pion sur un hex de votre zone de mise en place, marquée sur la carte. Vous pouvez le déplacer à nouveau, ou le remettre dans ce panneau.',
-  },
-
-  moveTimer: {
-    label: 'Mouvement',
-    title: 'Temps restant pour la phase de Mouvement',
   },
 
   turnTracker: {
@@ -471,18 +457,9 @@ export default {
     bravo: 'Bravo, victoire des {side} !',
     draw: 'Match nul : les deux camps sont à égalité de points.',
     byConcession: '{side} a concédé la partie.',
-    byTime: 'Le temps de {side} est écoulé.',
     confirmTitle: 'Concéder la partie',
     confirmMessage: 'Les {side} abandonnent la partie et la donnent à leur adversaire. Cette décision est définitive.',
     concede: 'Concéder',
-  },
-
-  timeUp: {
-    title: 'Temps imparti terminé',
-    limited: "Le temps accordé pour la phase de Mouvement est écoulé : vous ne pouvez plus déplacer d'unité. Passez à la phase suivante.",
-    blitz: 'Le temps de mouvement du camp « {side} » est écoulé : ce camp perd la partie.',
-    youLost: 'Vous avez perdu.',
-    youWon: 'Vous avez gagné !',
   },
 
   unitStack: {
@@ -530,7 +507,6 @@ export default {
     congestion: "hex d'entrée déjà utilisé ({rank}e entrée ce tour) : coût ×{rank} = {cost} MP au lieu de {base}",
     returned: '{unit} replacé dans les renforts',
     eliminated: '{unit} éliminé',
-    timeUp: 'Temps écoulé — {side} perd la partie',
     conceded: '{side} concède la partie',
   },
 
@@ -588,7 +564,6 @@ export default {
   },
 
   toolbar: {
-    gameOverTag: 'Partie terminée — {side} perd au temps',
     concede: 'Concéder la partie',
     concedeTitle: 'Abandonner la partie : votre adversaire la remporte',
     gameSummary: 'Bilan de la partie',
@@ -622,7 +597,6 @@ export default {
       turn: { term: 'Piste des tours', text: 'Le tour en cours et le camp qui joue. Seul le camp actif peut déplacer ses unités.' },
       phases: { term: 'Phases et bouton « suivant »', text: 'Sous la piste, les phases du tour. Le bouton passe à la phase suivante, puis au camp suivant : il est refusé tant qu’il reste des unités empilées.' },
       next: { term: 'Bouton « suivant »', text: "Fait avancer la piste des tours d'un pas quand un camp a fini de jouer." },
-      timer: { term: 'Chronomètre', text: 'Affiché seulement si la partie a un timing Limité ou Blitz.' },
     },
     map: {
       title: 'La carte',

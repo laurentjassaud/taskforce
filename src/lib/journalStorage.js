@@ -24,7 +24,7 @@ const PENDING_KEY = 'generic-wargame:pending-replay'
 /** Réglages de partie qui comptent pour rejouer un journal (cf.
  *  SoloHome.vue). Normalisés en chaînes, pour comparer sans surprise
  *  une valeur venue de l'URL et une valeur relue d'un fichier. */
-export const SETTING_KEYS = ['scenario', 'weather', 'party', 'timing', 'timingValue']
+export const SETTING_KEYS = ['scenario', 'party']
 
 export function normalizeSettings(settings) {
   if (!settings) return null
@@ -33,7 +33,7 @@ export function normalizeSettings(settings) {
 
 /** Les réglages `a` et `b` donnent-ils la MÊME partie ? Comparés une fois
  *  RÉSOLUS (cf. lib/gameSettings.js::resolveSettings — une option indisponible
- *  ou un chronomètre en partie Libre y sont neutralisés) et seulement sur les
+ *  y est neutralisée) et seulement sur les
  *  clés qui changent les règles (`RULE_SETTING_KEYS`) : une sauvegarde qui
  *  ne diffère que par un réglage sans effet se reprend directement, sans
  *  relancer la partie. Comparer les valeurs brutes relançait la partie pour

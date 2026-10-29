@@ -10,8 +10,8 @@
 // `stackMessage`) quand on veut quitter une unité en overstack pour en
 // sélectionner une autre.
 //
-// Et par HexMap.vue pour le timing "Limité" (cf. MoveTimer.vue) : `title` et
-// un message libre passé dans le slot par défaut, sans liste.
+// Et par HexMap.vue pour un message libre passé dans le slot par défaut,
+// avec `title` et sans liste (ex. contact à deux joueurs).
 //
 // Mode CONFIRMATION (prop `confirmLabel`) : le changement de phase n'est pas
 // refusé mais demandé à nouveau (ex. reconnaissances japonaises restantes,
@@ -84,10 +84,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  background: var(--c-panel);
-  color: var(--c-panel-text);
+  background: var(--c-paper);
+  color: var(--c-brand-ink);
   border-radius: var(--radius-12);
-  border-top: 4px solid var(--c-orange);
+  border-top: 4px solid var(--c-mustard);
   box-shadow: var(--shadow-modal);
   padding: 14px 18px 16px;
 }
@@ -97,7 +97,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   font-size: var(--fs-md);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--c-orange);
+  font-weight: 800;
+  color: var(--c-mustard);
 }
 
 .pb-modal p {
@@ -145,7 +146,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 .pb-cancel {
   border: 1px solid color-mix(in srgb, var(--c-white) 25%, transparent);
   background: transparent;
-  color: var(--c-panel-text);
+  color: var(--c-mustard);
   font-size: var(--fs-sm);
   padding: 8px 16px;
   border-radius: var(--radius-8);
@@ -158,8 +159,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 .pb-ok {
   border: none;
-  background: var(--c-orange);
-  color: var(--c-panel);
+  background: var(--c-mustard);
+  color: var(--c-paper);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;

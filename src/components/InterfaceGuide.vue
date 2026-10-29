@@ -31,7 +31,6 @@ const STEPS = [
     { key: 'turn' },
     { key: 'phases', mode: 'assisted' },
     { key: 'next', mode: 'free' },
-    { key: 'timer' },
   ] },
   { key: 'map', items: [
     { key: 'zoom' },

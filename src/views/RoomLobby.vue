@@ -137,8 +137,8 @@ const handlers = {
   'room:started': (state) => { if (state.id === props.id) room.value = state },
   'game:move': ({ counterId, col, row }) => hexMapRef.value?.applyRemoteMove(counterId, col, row),
   'game:turn': ({ turnStep }) => hexMapRef.value?.applyRemoteTurn(turnStep),
-  'game:phase': ({ phase, step, blitzUsed }) => hexMapRef.value?.applyRemotePhase(phase, step, blitzUsed),
-  'game:over': ({ loser, reason }) => hexMapRef.value?.applyRemoteGameOver(loser, reason),
+  'game:phase': ({ phase, step }) => hexMapRef.value?.applyRemotePhase(phase, step),
+  'game:over': ({ loser }) => hexMapRef.value?.applyRemoteGameOver(loser),
   'game:log': ({ entry }) => hexMapRef.value?.applyRemoteEntry(entry),
   'game:unlog': ({ uid }) => hexMapRef.value?.removeRemoteEntry(uid),
   connect: () => {
@@ -259,10 +259,7 @@ onUnmounted(() => {
       :initial-positions="room.boardState"
       :initial-turn-step="room.turnStep ?? 0"
       :initial-phase="room.phase ?? null"
-      :initial-phase-elapsed-ms="room.phaseElapsedMs ?? 0"
-      :initial-blitz-used-ms="room.blitzUsedMs ?? {}"
-      :initial-blitz-loser="room.blitzLoser ?? null"
-      :initial-game-over-reason="room.gameOverReason ?? null"
+      :initial-loser="room.loser ?? null"
       :local-side="mySide"
       online
       :initial-journal="sharedJournal"

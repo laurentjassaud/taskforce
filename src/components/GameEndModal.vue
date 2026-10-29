@@ -2,11 +2,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // GameEndModal.vue — FIN DE PARTIE : bravo au vainqueur.
 //
-// Ouverte par HexMap.vue dans deux cas :
-//   - un camp CONCÈDE la partie (bouton de la barre d'outils) ;
-//   - Blitz : la pendule d'un camp est tombée à 0.
-// Le composant ne décide de rien : HexMap.vue lui passe le vainqueur et la
-// raison, il ne fait que les AFFICHER.
+// Ouverte par HexMap.vue quand un camp CONCÈDE la partie (bouton de la
+// barre d'outils). Le composant ne décide de rien : HexMap.vue lui passe le
+// vainqueur et le perdant, il ne fait que les AFFICHER.
 //
 // Mode `confirm` : même fenêtre, mais pour DEMANDER la concession avant de
 // l'appliquer (boutons Annuler / Concéder, évènement `confirm`).
@@ -16,8 +14,6 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
-  // 'concede' | 'blitz' — ce qui a mis fin à la partie.
-  reason: { type: String, default: 'concede' },
   // Libellés des camps (cf. HexMap.vue::sideLabel) : vainqueur (`null` s'il
   // n'y en a pas) et perdant.
   winner: { type: String, default: null },
@@ -38,9 +34,6 @@ function onKey(event) {
 onMounted(() => window.addEventListener('keydown', onKey))
 onUnmounted(() => window.removeEventListener('keydown', onKey))
 
-/** Phrase sous le titre : comment la partie s'est terminée. */
-const reasonKey = computed(() => (props.reason === 'blitz' ? 'gameEnd.byTime' : 'gameEnd.byConcession'))
-
 /** Phrase de félicitations (match nul faute de vainqueur). */
 const bravo = computed(() => (props.winner ? t('gameEnd.bravo', { side: props.winner }) : t('gameEnd.draw')))
 </script>
@@ -59,7 +52,7 @@ const bravo = computed(() => (props.winner ? t('gameEnd.bravo', { side: props.wi
       <template v-else>
         <h3 id="ge-title">{{ $t('gameEnd.title') }}</h3>
         <p class="ge-bravo">{{ bravo }}</p>
-        <p class="ge-reason">{{ $t(reasonKey, { side: loser ?? '' }) }}</p>
+        <p class="ge-reason">{{ $t('gameEnd.byConcession', { side: loser ?? '' }) }}</p>
         <footer class="ge-foot">
           <button type="button" class="ge-ok" @click="emit('close')">{{ $t('common.gotIt') }}</button>
         </footer>

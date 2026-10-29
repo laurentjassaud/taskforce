@@ -122,7 +122,7 @@ function onSubmit(event) {
   position: fixed;
   inset: 0;
   z-index: var(--z-bug-report);
-  background: color-mix(in srgb, var(--c-ink) 50%, transparent);
+  background: var(--c-paper);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -134,8 +134,8 @@ function onSubmit(event) {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--c-brand-ink);
-  color: var(--c-panel-text);
+  background: var(--c-paper);
+  color: var(--c-ink);
   border-radius: var(--radius-8);
   box-shadow: var(--shadow-modal);
   padding: 0 12px 12px;
@@ -146,7 +146,6 @@ function onSubmit(event) {
   position: relative;
   margin: 0 -12px;
   padding: 8px 48px;
-  background: var(--c-brand-ink);
   text-align: center;
 }
 

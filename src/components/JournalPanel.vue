@@ -20,8 +20,8 @@ const props = defineProps({
   // "nomDuModule_save_date_turn" pour l'auto-save.
   moduleId: { type: String, default: 'module' },
   turn: { type: Number, default: 1 },
-  // Réglages de la partie ouverte (mode Libre/Assisté, scénario, météo,
-  // timing — cf. lib/journalStorage.js::SETTING_KEYS), ou `null` s'ils ne
+  // Réglages de la partie ouverte (scénario, mode de jeu — cf.
+  // lib/journalStorage.js::SETTING_KEYS), ou `null` s'ils ne
   // sont pas connus (partie multijoueur). Enregistrés avec le journal : il
   // ne se rejoue correctement qu'avec eux.
   settings: { type: Object, default: null },

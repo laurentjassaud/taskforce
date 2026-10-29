@@ -1,4 +1,4 @@
-import { RoomError, getGame, joinGame, recordMove, advanceTurn, recordPhase, recordGameOver, appendJournal, removeJournal, recordDeployment, isPlayersTurn, mayLog, setPlayerConnectionBySocket, toPublic, journalFor, refereeMove, recordRecon } from './rooms.js'
+import { RoomError, getGame, joinGame, recordMove, advanceTurn, recordPhase, recordConcession, appendJournal, removeJournal, recordDeployment, isPlayersTurn, mayLog, setPlayerConnectionBySocket, toPublic, journalFor, refereeMove, recordRecon } from './rooms.js'
 
 // Salons Socket.IO : toute la partie, et chaque camp à part — ce qu'un camp
 // seul doit voir en double aveugle arbitré (cf. duel.js) ne part que dans le
@@ -92,32 +92,32 @@ export function registerSocketHandlers(io) {
       }
     })
 
-    socket.on('game:phase', ({ gameId, phase, step, blitzUsed } = {}) => {
+    socket.on('game:phase', ({ gameId, phase, step } = {}) => {
       // Rediffusé aux AUTRES joueurs seulement : l'émetteur a déjà changé de
       // phase localement.
       if (!hasTurn(gameId)) return
       try {
-        const recorded = recordPhase(gameId, { phase, step, blitzUsed })
-        socket.to(gameRoom(gameId)).emit('game:phase', { phase, step, blitzUsed: recorded.blitzUsed })
+        recordPhase(gameId, { phase, step })
+        socket.to(gameRoom(gameId)).emit('game:phase', { phase, step })
       } catch {
         // Partie pas lancée, phase invalide ou pas déjà dépassé : on ignore.
       }
     })
 
-    socket.on('game:over', ({ gameId, loser, text, t, reason } = {}) => {
-      // Blitz : une pendule est tombée à 0. Diffusé à TOUS (émetteur
+    socket.on('game:over', ({ gameId, loser, text, t } = {}) => {
+      // Un camp concède (même hors de son tour). Diffusé à TOUS (émetteur
       // compris) une seule fois, à la première annonce — avec l'entrée de
       // journal correspondante, inscrite par le serveur.
       if (socket.data.gameId !== gameId) return
       try {
-        const recorded = recordGameOver(gameId, { loser, text, t, reason, playerId: socket.data.playerId })
+        const recorded = recordConcession(gameId, { loser, text, t, playerId: socket.data.playerId })
         if (recorded) {
-          io.to(gameRoom(gameId)).emit('game:over', { loser, reason: recorded.game.gameOverReason })
+          io.to(gameRoom(gameId)).emit('game:over', { loser })
           io.to(gameRoom(gameId)).emit('game:log', { entry: recorded.entry })
         }
       } catch {
-        // Partie pas lancée, pas en Blitz (hors concession), concession
-        // d'un autre camp que le sien, ou annonce invalide : on ignore.
+        // Partie pas lancée, concession d'un autre camp que le sien, ou
+        // annonce invalide : on ignore.
       }
     })
 

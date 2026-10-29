@@ -55,7 +55,6 @@ import PhaseBlockedModal from './PhaseBlockedModal.vue'
 import BugReportModal from './BugReportModal.vue'
 import InterfaceGuide, { guideSeen, markGuideSeen } from './InterfaceGuide.vue'
 import { APP_VERSION, REPORT_ENTRIES } from '../lib/bugReport.js'
-import MoveTimer from './MoveTimer.vue'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 
 const props = defineProps({
@@ -70,21 +69,12 @@ const props = defineProps({
   // server/src/rooms.js::recordPhase), ou `null` : phase de départ du camp
   // actif recalculée localement. Absent en solo/démo.
   initialPhase: { type: Number, default: null },
-  // Temps déjà écoulé (ms) dans cette phase/ce pas côté serveur — reprise du
-  // compteur du timing "Limité" (cf. MoveTimer.vue). 0 en solo/démo.
-  initialPhaseElapsedMs: { type: Number, default: 0 },
-  // Timing "Blitz" : temps de Mouvement déjà consommé par camp (ms) —
-  // `{ [campKey]: ms }`, cf. server/src/rooms.js::recordPhase. {} en solo/démo.
-  initialBlitzUsedMs: { type: Object, default: () => ({}) },
-  // Timing "Blitz" : camp ayant déjà perdu au temps (partie en ligne
-  // terminée, cf. server/src/rooms.js::recordGameOver), ou `null`.
-  initialBlitzLoser: { type: String, default: null },
-  // Ce qui a mis fin à la partie côté serveur : 'blitz' ou 'concede' (cf.
-  // declareLoss).
-  initialGameOverReason: { type: String, default: null },
-  // Camp du joueur sur ce navigateur (multijoueur, cf. RoomLobby.vue) :
-  // l'alerte "Temps imparti terminé" n'est montrée qu'au joueur actif.
-  // Vide en solo/démo (un seul navigateur pour tous les camps).
+  // Camp qui a déjà concédé la partie (partie en ligne terminée, cf.
+  // server/src/rooms.js::recordConcession), ou `null`.
+  initialLoser: { type: String, default: null },
+  // Camp du joueur sur ce navigateur (multijoueur, cf. RoomLobby.vue) : le
+  // seul qu'il joue (cf. `isLocalTurn`). Vide en solo/démo (un seul
+  // navigateur pour tous les camps).
   localSide: { type: String, default: '' },
   // Partie EN LIGNE (cf. RoomLobby.vue) : le journal est PARTAGÉ entre les
   // joueurs et conservé par le serveur (cf. `log`, applyRemoteEntry). Faux
@@ -112,17 +102,16 @@ const props = defineProps({
   // par camp, et chaque joueur ne voit que ses forces (cf. "Double
   // aveugle", `viewSide`).
   duel: { type: Boolean, default: false },
-  // Réglages de la partie (mode, scénario, météo, timing — cf.
+  // Réglages de la partie (mode, scénario — cf.
   // lib/journalStorage.js), enregistrés avec le journal pour qu'une reprise
   // se rejoue dans les mêmes conditions. `null` si inconnus (multijoueur).
   settings: { type: Object, default: null },
 })
 
-// `phase` : `{ phase, step, blitzUsed }` — changement de phase LOCAL sans changement de
+// `phase` : `{ phase, step }` — changement de phase LOCAL sans changement de
 // pas (cf. onPhaseNext), à répercuter aux autres joueurs (multijoueur).
-// `game-over` : `{ loser, text, t, reason }` — un camp a perdu : au temps
-// (Blitz, `reason` 'blitz') ou en concédant ('concede') — cf. declareLoss, à
-// répercuter aux autres joueurs (multijoueur).
+// `game-over` : `{ loser, text, t }` — un camp a concédé la partie (cf.
+// declareLoss), à répercuter aux autres joueurs (multijoueur).
 // En ligne uniquement (journal partagé, cf. `log`) :
 //  - `log` : `{ uid, t, kind, text, data }` — entrée ajoutée localement ;
 //  - `unlog` : uid d'une entrée retirée (retour arrière) ;
@@ -445,8 +434,7 @@ const turnInfo = ref({ step: props.initialTurnStep, turn: 1, activeSideKey: null
 // Est-ce au joueur de CE navigateur de jouer ? Toujours vrai en solo/démo
 // (`localSide` vide : un seul navigateur pour tous les camps). En ligne, les
 // autres joueurs ne peuvent ni changer de phase ni passer au tour suivant
-// (bouton de TurnTracker.vue désactivé, cf. template), et seul le joueur
-// actif reçoit l'alerte "Temps imparti terminé" (cf. onMoveTimeUp).
+// (bouton de TurnTracker.vue désactivé, cf. template).
 const isLocalTurn = computed(() => !props.localSide || props.localSide === turnInfo.value.activeSideKey)
 function onTurnChange(info) {
   turnInfo.value = info
@@ -944,10 +932,8 @@ function nextPhaseMessage() {
  *  à lib/useAssisted.js::advance. */
 function onPhaseNext() {
   // Rejeu, partie terminée ou, en ligne, pas le tour de ce joueur (le
-  // bouton est déjà désactivé dans ces cas, cf. `phaseControlsLocked` — et
-  // NON `inputLocked`, qu'un temps de Mouvement écoulé ferme alors que c'est
-  // précisément ce bouton-là qu'il faut pouvoir cliquer).
-  if (phaseControlsLocked.value) return
+  // bouton est déjà désactivé dans ces cas, cf. `inputLocked`).
+  if (inputLocked.value) return
   // Combat naval du tour pas encore joué (cf. `startNavalCombat`) : il se
   // lance (ou reprend), la phase attend — en ligne, chez l'autre joueur
   // aussi, le temps que ses batailles arrivent (cf. `navalCombatPending`).
@@ -996,13 +982,9 @@ function onPhaseNext() {
   // recalculée d'office (cf. useAssisted.js::startSidePhase, watcher de
   // `currentStep`, synchrone — d'où `phase` déjà à jour ici).
   if (phase.value != null && phase.value !== before) {
-    // `blitzUsed` : pendules du timing "Blitz", déjà mises à jour par
-    // `advance()` (fin de phase Mouvement, cf. syncMoveTimer, synchrone) —
-    // rétablies au rejeu du journal et transmises aux autres joueurs.
-    const blitzUsed = isBlitz.value ? { ...blitzUsedMs.value } : undefined
-    log('phase', t('log.phase', { name: phaseName(phase.value) }), { phase: phase.value, step: turnInfo.value.step, blitzUsed })
+    log('phase', t('log.phase', { name: phaseName(phase.value) }), { phase: phase.value, step: turnInfo.value.step })
     // Multijoueur : les autres joueurs suivent la phase (cf. applyRemotePhase).
-    emit('phase', { phase: phase.value, step: turnInfo.value.step, blitzUsed })
+    emit('phase', { phase: phase.value, step: turnInfo.value.step })
   }
 }
 
@@ -1033,12 +1015,9 @@ function removeAtMovementEnd() {
  *  évènement `game:phase`). Ignoré s'il vise un autre pas que le pas
  *  courant (message arrivé en retard). Pas de journalisation ici : l'entrée
  *  `phase` arrive par le journal partagé (cf. applyRemoteEntry). */
-function applyRemotePhase(newPhase, step, blitzUsed) {
+function applyRemotePhase(newPhase, step) {
   if (step !== turnTrackerRef.value?.currentStep || newPhase === phase.value) return
   setPhase(newPhase)
-  // Pendules "Blitz" : les valeurs du joueur actif font foi (elles
-  // remplacent l'estimation que ce navigateur vient de faire lui-même).
-  if (blitzUsed) blitzUsedMs.value = { ...blitzUsed }
 }
 
 const selectedCounterId = ref(null)
@@ -1071,13 +1050,11 @@ onMounted(() => {
   initPhase()
   if (props.module.turnTrack) initialTurnEntry = turnEntryOf(turnInfo.value)
   if (props.online) startSharedJournal(props.initialJournal)
-  // État de la partie côté serveur — pas, phase, pendules, fin de partie
-  // (cf. applyServerState). En solo/démo, les props valent leurs défauts :
-  // sans effet, hormis le démarrage des pendules.
+  // État de la partie côté serveur — pas, phase, fin de partie (cf.
+  // applyServerState). En solo/démo, les props valent leurs défauts : sans
+  // effet.
   applyServerState({
-    turnStep: props.initialTurnStep, phase: props.initialPhase, phaseElapsedMs: props.initialPhaseElapsedMs,
-    blitzUsedMs: props.initialBlitzUsedMs, blitzLoser: props.initialBlitzLoser, gameOverReason: props.initialGameOverReason,
-    revealed: props.initialRevealed,
+    turnStep: props.initialTurnStep, phase: props.initialPhase, loser: props.initialLoser, revealed: props.initialRevealed,
   })
   // En ligne à deux joueurs, pendant la mise en place : le panneau s'ouvre
   // sur les task forces du joueur (cf. `startOwnTurn`).
@@ -1091,7 +1068,7 @@ onMounted(() => {
 
 /** En ligne : rejoue d'un coup le journal partagé `list` déjà enregistré par
  *  le serveur (rechargement de la page, reconnexion) pour reconstituer la
- *  partie — positions, éliminations, phase, MP, pendules... Le plateau est
+ *  partie — positions, éliminations, phase, MP... Le plateau est
  *  d'abord remis au déploiement (cf. onJournalLoaded), donc tout ce que ce
  *  navigateur aurait de plus que le serveur est abandonné. Partie qui
  *  démarre (journal vide) : propose son déploiement au serveur ; seul le
@@ -2274,7 +2251,7 @@ function logAiRecon({ source, target, side, action, priority, trace, options }) 
 // pions qui attendent leur tour restent affichés à leur hex de départ
 // (`autoMoveHeld`), celui qui bouge à sa position en cours (`autoMovePx`) ;
 // leurs pions de repérage les suivent. Tant que dure l'animation, la saisie
-// et la piste de tour sont fermées (cf. `phaseControlsLocked`). Rien n'est
+// et la piste de tour sont fermées (cf. `inputLocked`). Rien n'est
 // animé au rejeu (cf. `runAutoMoves`).
 const AUTO_MOVE_HEX_MS = 800
 // Pause entre deux pions.
@@ -3842,10 +3819,10 @@ function applyRemoteMove(counterId, col, row, enteredFrom) {
   counters.value.push({ ...reinforcement, col, row })
 }
 
-/** Multijoueur : un camp a perdu, au temps ou en concédant (cf.
- *  RoomLobby.vue, `game:over`). */
-function applyRemoteGameOver(loser, reason) {
-  declareLoss(loser, { remote: true, reason })
+/** Multijoueur : un camp a concédé la partie (cf. RoomLobby.vue,
+ *  `game:over`). */
+function applyRemoteGameOver(loser) {
+  declareLoss(loser, { remote: true })
 }
 
 /** En ligne : entrée du journal partagé reçue d'un autre joueur (ou du
@@ -3880,22 +3857,17 @@ function removeRemoteEntry(uid) {
   journalRef.value?.removeByUid(uid)
 }
 
-/** Aligne pas courant, phase, pendules et fin de partie sur l'état du
+/** Aligne pas courant, phase et fin de partie sur l'état du
  *  serveur (`toPublic`, cf. server/src/rooms.js) — au montage (props) comme
  *  après une reconnexion (cf. resyncFromServer). */
-function applyServerState({ turnStep, phase: serverPhase, phaseElapsedMs, blitzUsedMs: serverBlitz, blitzLoser: serverLoser, gameOverReason: serverReason, revealed }) {
+function applyServerState({ turnStep, phase: serverPhase, loser: serverLoser, revealed }) {
   // Pions adverses encore vus, à leur position actuelle (cf. `initialRevealed`).
   for (const [id, at] of Object.entries(revealed ?? {})) revealCounter(id, at)
   if (turnTrackerRef.value && turnStep != null && turnTrackerRef.value.currentStep !== turnStep) applyRemoteTurn(turnStep)
   // Phase déjà atteinte par le joueur actif (cf. server/src/rooms.js::
   // recordPhase) — `null` : phase de départ du camp, déjà recalculée.
   if (serverPhase != null) setPhase(serverPhase)
-  // Compteurs des timings "Limité"/"Blitz" repris là où ils en étaient (le
-  // temps écoulé depuis le chargement n'est pas décompté deux fois).
-  moveTimerStartedAt.value = null
-  syncMoveTimer(phaseElapsedMs ?? 0)
-  blitzUsedMs.value = { ...(serverBlitz ?? {}) }
-  if (serverLoser) declareLoss(serverLoser, { remote: true, reason: serverReason })
+  if (serverLoser) declareLoss(serverLoser, { remote: true })
 }
 
 /** En ligne, après une RECONNEXION : le serveur fait foi. Le journal partagé
@@ -3905,7 +3877,7 @@ function applyServerState({ turnStep, phase: serverPhase, phaseElapsedMs, blitzU
  *  entrées manquantes laissait ces dernières dans le journal local. Ce que ce
  *  navigateur a pu jouer HORS LIGNE n'a jamais atteint le serveur : c'est
  *  abandonné, pour rester aligné sur les autres joueurs. `room` : l'état
- *  courant renvoyé par le serveur (pas, phase, pendules, fin de partie). */
+ *  courant renvoyé par le serveur (pas, phase, fin de partie). */
 function resyncFromServer(list, room, revealed) {
   startSharedJournal(list ?? [])
   applyServerState({ ...room, revealed })
@@ -3928,11 +3900,9 @@ function onJournalLoaded(list) {
 
 function resetBoardForReplay() {
   isReplaying.value = true
-  // Pendules "Blitz" à zéro et partie en cours : rétablies par les entrées
-  // `phase` et `gameover` rejouées.
-  blitzUsedMs.value = {}
-  blitzLoser.value = null
-  gameOverReason.value = null
+  // Partie en cours : une concession est rétablie par l'entrée `gameover`
+  // rejouée.
+  loserSide.value = null
   showGameEnd.value = false
   counters.value = buildInitialCounters()
   // Tasse de recherche pleine, aucun repérage : rétablis par les entrées
@@ -4026,12 +3996,8 @@ function applyReplayEntry(entry) {
     setSpentMp(entryData.counterId, entryData.mp)
   } else if (entry.kind === 'phase') {
     setPhase(entryData.phase)
-    if (entryData.blitzUsed) blitzUsedMs.value = { ...entryData.blitzUsed }
   } else if (entry.kind === 'gameover') {
-    blitzLoser.value = entryData.loser ?? null
-    // Journaux antérieurs à la concession : seule la pendule mettait fin à
-    // la partie.
-    gameOverReason.value = entryData.reason === 'concede' ? 'concede' : 'blitz'
+    loserSide.value = entryData.loser ?? null
   } else if (entry.kind === 'navalContact') {
     applyNavalContact(entryData.ids ?? [], entryData.turn)
   } else if (entry.kind === 'navalCombat') {
@@ -4144,133 +4110,47 @@ const replayLocked = computed(() => replayEntries.value.length > 0 && replayInde
 // naufrage, et à la fin d'un rejeu (cf. `convertCarrierlessFleets`).
 watch(() => [raidViews.value.length, !!fleetDisplay.value, !!alliedComposer.value, !!navalView.value, !!navalQueue.value,
   isReplaying.value, replayLocked.value], () => nextTick(convertCarrierlessFleets))
-// Camp qui a PERDU la partie — pendule tombée à 0 en Blitz, ou concession
-// (cf. declareLoss, `gameOverReason`) —, `null` tant que la partie continue.
-// Le nom vient du Blitz, premier cas de fin de partie (le serveur le garde).
-const blitzLoser = ref(null)
-// Ce qui a mis fin à la partie quand `blitzLoser` est renseigné : 'blitz' ou
-// 'concede'.
-const gameOverReason = ref(null)
+// Camp qui a PERDU la partie en la concédant (cf. declareLoss), `null` tant
+// qu'elle continue.
+const loserSide = ref(null)
 // La PARTIE est figée pendant un rejeu et une fois terminée : plus aucune
-// action de jeu, et les pendules du timing s'arrêtent (cf. moveTimerRunning).
-const actionsLocked = computed(() => replayLocked.value || blitzLoser.value != null)
+// action de jeu.
+const actionsLocked = computed(() => replayLocked.value || loserSide.value != null)
 // La SAISIE de ce navigateur est bloquée dans ces mêmes cas, PLUS, en ligne,
-// tant que ce n'est pas à son joueur de jouer (cf. `isLocalTurn`) : il ne
-// peut alors ni sélectionner, ni déplacer, ni éliminer, ni replacer un pion,
-// quel qu'en soit le camp — ni faire avancer tour ou phase. C'est la garde
-// de TOUTES les entrées utilisateur (clics, glisser-déposer, menus, boutons,
-// dé). Distincte de `actionsLocked` : chez le joueur qui attend, la partie
-// continue (pendule de l'adversaire, synchro), seule sa saisie est fermée.
-// Le serveur applique la même règle de son côté (cf. server/src/rooms.js::
-// isPlayersTurn) : ce verrou-ci n'est que le confort de l'interface.
-// Temps de la phase de Mouvement écoulé (timing "Limité" seulement, cf.
-// `onMoveTimeUp`) : posé à l'expiration du compte à rebours, levé au
-// changement de phase ou de pas.
-const moveTimeExpired = ref(false)
+// tant que ce n'est pas à son joueur de jouer (cf. `isLocalTurn`), et le
+// temps que les pions du moteur glissent sur la carte (cf.
+// `autoMoveAnimating`) : il ne peut alors ni sélectionner, ni déplacer, ni
+// éliminer, ni replacer un pion, quel qu'en soit le camp — ni faire avancer
+// tour ou phase. C'est la garde de TOUTES les entrées utilisateur (clics,
+// glisser-déposer, menus, boutons, dé, piste de tour). Distincte de
+// `actionsLocked` : chez le joueur qui attend, la partie continue (synchro),
+// seule sa saisie est fermée. Le serveur applique la même règle de son côté
+// (cf. server/src/rooms.js::isPlayersTurn) : ce verrou-ci n'est que le
+// confort de l'interface.
+const inputLocked = computed(() => actionsLocked.value || (props.online && !isLocalTurn.value) || autoMoveAnimating.value)
 
-/** Le mouvement est-il fermé parce que le temps est écoulé ? Seulement
- *  pendant la phase de Mouvement, bien sûr — et seulement une fois les
- *  empilements résolus : `onPhaseNext` refuse de quitter la phase tant que
- *  deux unités amies partagent un hex, si bien qu'un joueur pris par le temps
- *  au milieu d'une pile ne pourrait NI la défaire NI changer de phase. Cette
- *  soupape lui laisse de quoi se dégager ; le verrou retombe dès que c'est
- *  fait. */
-const moveTimeLocked = computed(() => moveTimeExpired.value && phase.value === 0
-  && stackedHexes.value.length === 0)
-
-// Deux verrous, et non un seul, depuis que le timing "Limité" arrête le
-// mouvement (cf. `moveTimeLocked` juste au-dessus) : celui-là interdit de
-// BOUGER mais doit laisser passer à la phase suivante — c'est même tout ce
-// qu'il reste à faire. `phaseControlsLocked` est donc ce qui ferme AUSSI la
-// piste de tour, et `inputLocked`, qui lui ajoute le temps écoulé, reste la
-// garde de toutes les autres entrées.
-const phaseControlsLocked = computed(() => actionsLocked.value || (props.online && !isLocalTurn.value) || autoMoveAnimating.value)
-const inputLocked = computed(() => phaseControlsLocked.value || moveTimeLocked.value)
-
-// --- Timings "Limité" et "Blitz" (cf. lib/gameSettings.js, MoveTimer.vue).
-// Toutes les phases sont conservées : SEULE la phase Mouvement (phase 0) est
-// chronométrée. Sans phases (mode
-// Libre, `phase === null`), il n'y a pas de phase Mouvement : pas de
-// compteur. Jamais pendant un rejeu de journal.
-//  - Limité : la durée saisie (minutes) vaut pour CHAQUE phase de Mouvement,
-//    le compteur repart à plein à chaque fois.
-//  - Blitz (pendule d'échecs) : la durée saisie est le temps TOTAL de chaque
-//    camp pour toutes ses phases de Mouvement. Le temps passé dans chacune
-//    s'additionne dans `blitzUsedMs` ; la pendule d'un camp démarre au début
-//    de sa phase de Mouvement et s'arrête dès le changement de phase.
-const timingMode = computed(() => props.settings?.timing)
-const moveTimerSeconds = computed(() =>
-  timingMode.value === 'limite' || timingMode.value === 'blitz' ? (Number(props.settings.timingValue) || 0) * 60 : 0)
-const isBlitz = computed(() => timingMode.value === 'blitz' && moveTimerSeconds.value > 0)
-const moveTimerRunning = computed(() =>
-  moveTimerSeconds.value > 0 && !actionsLocked.value && phase.value === 0)
-const turnOrder = props.module.turnTrack?.order ?? []
 // Piste de tour complétée de ses créneaux si elle entremêle les phases (cf.
 // lib/turnTrack.js::resolveTrack) — celle que reçoit TurnTracker.vue.
 const trackConfig = resolveTrack(props.module, trackOptions)
-// Camp actif lu directement sur TurnTracker.vue : `turnInfo` n'est mis à
-// jour qu'en différé (évènement `change`), trop tard pour syncMoveTimer.
-// L'initiative peut changer d'un tour à l'autre (cf. lib/turnTrack.js).
-function currentSideKey() {
-  const step = turnTrackerRef.value?.currentStep ?? props.initialTurnStep
-  return sideOfStep(trackConfig, step, turnTrackerRef.value?.rollOrders)
-}
-// Heure de début de la phase de Mouvement en cours (ms) et camp dont la
-// pendule tourne ; `null` hors de cette phase.
-const moveTimerStartedAt = ref(null)
-const moveTimerSide = ref(null)
-// Blitz : temps de Mouvement déjà consommé par camp, `{ [campKey]: ms }`.
-const blitzUsedMs = ref({})
-/** Arrête le compteur en cours (en ajoutant, en Blitz, le temps passé à la
- *  pendule de son camp) puis le relance si une phase de Mouvement est en
- *  cours. `elapsedMs` : temps déjà écoulé dans cette phase (reprise en
- *  ligne, cf. onMounted). */
-function syncMoveTimer(elapsedMs = 0) {
-  const now = Date.now()
-  const side = moveTimerSide.value
-  if (moveTimerStartedAt.value != null && side != null) {
-    blitzUsedMs.value = { ...blitzUsedMs.value, [side]: (blitzUsedMs.value[side] ?? 0) + (now - moveTimerStartedAt.value) }
-  }
-  moveTimerStartedAt.value = moveTimerRunning.value ? now - elapsedMs : null
-  moveTimerSide.value = moveTimerRunning.value ? currentSideKey() : null
-}
-// Synchrone : la pendule doit être à jour dès le retour de `advance()` (cf.
-// onPhaseNext, qui l'envoie aussitôt aux autres joueurs).
-watch([moveTimerRunning, () => turnTrackerRef.value?.currentStep], () => syncMoveTimer(), { flush: 'sync' })
-const showTimeUp = ref(false)
 // Modale de fin de partie (cf. GameEndModal.vue, `gameEnd`) et demande de
 // confirmation d'une concession (cf. `askConcede`).
 const showGameEnd = ref(false)
 const concedeConfirm = ref(false)
 const sideLabel = (side) => mt(props.module.turnTrack?.sides?.[side]?.label) ?? side
-/** Compteur à zéro (cf. MoveTimer.vue, `expired`). Blitz : le camp `side`
- *  PERD la partie. Limité : le MOUVEMENT S'ARRÊTE (cf. `moveTimeLocked`) —
- *  plus de déplacement, d'entrée de renfort ni de retour arrière, il ne reste
- *  qu'à passer à la phase suivante. L'alerte, elle, n'est montrée qu'au
- *  joueur actif : en ligne, chaque navigateur a son compteur, mais seul celui
- *  dont c'est le tour a quelque chose à en faire. */
-function onMoveTimeUp(side) {
-  if (isBlitz.value) { declareLoss(side); return }
-  moveTimeExpired.value = true
-  if (isLocalTurn.value) showTimeUp.value = true
-}
-/** Fin de partie : `loser` a perdu — au temps (Blitz, `reason` 'blitz') ou
- *  en concédant ('concede', cf. `concede`). La modale de fin (cf.
- *  GameEndModal.vue) s'affiche chez TOUS les joueurs.
+/** Fin de partie : le camp `loser` concède (cf. `concede`). La modale de fin
+ *  (cf. GameEndModal.vue) s'affiche chez TOUS les joueurs.
  *  - En local : inscrite au journal.
  *  - En ligne : annoncée au serveur ; seule la PREMIÈRE annonce compte, le
  *    serveur l'inscrit lui-même au journal partagé et la renvoie à tous
- *    (`remote` : annonce du serveur, qui fait foi et peut corriger une
- *    détection locale de la pendule). */
-function declareLoss(loser, { remote = false, reason = 'blitz' } = {}) {
-  if (!loser || blitzLoser.value === loser) return
-  if (blitzLoser.value != null && !remote) return
-  blitzLoser.value = loser
-  gameOverReason.value = reason === 'concede' ? 'concede' : 'blitz'
-  const text = t(gameOverReason.value === 'concede' ? 'log.conceded' : 'log.timeUp', { side: sideLabel(loser) })
+ *    (`remote` : annonce du serveur, qui fait foi). */
+function declareLoss(loser, { remote = false } = {}) {
+  if (!loser || loserSide.value === loser) return
+  if (loserSide.value != null && !remote) return
+  loserSide.value = loser
+  const text = t('log.conceded', { side: sideLabel(loser) })
   if (!remote) {
-    if (props.online) emit('game-over', { loser, text, t: new Date().toLocaleTimeString('fr-FR'), reason: gameOverReason.value })
-    else log('gameover', text, { loser, reason: gameOverReason.value })
+    if (props.online) emit('game-over', { loser, text, t: new Date().toLocaleTimeString('fr-FR') })
+    else log('gameover', text, { loser })
   }
   showGameEnd.value = true
 }
@@ -4284,13 +4164,12 @@ function declareLoss(loser, { remote = false, reason = 'blitz' } = {}) {
 /** Camp qui concéderait depuis ce navigateur (cf. l'en-tête de section). */
 const concedingSide = computed(() => (props.online ? props.localSide : turnInfo.value.activeSideKey) || null)
 
-/** La partie est-elle terminée par une défaite (Blitz, concession) ?
- *  `{ reason, winner, loser }` (libellés de camp), ou `null` si elle
- *  continue. */
+/** La partie est-elle terminée par une concession ? `{ winner, loser }`
+ *  (libellés de camp), ou `null` si elle continue. */
 const gameEnd = computed(() => {
-  if (!blitzLoser.value) return null
-  const winner = turnOrder.find((side) => side !== blitzLoser.value)
-  return { reason: gameOverReason.value ?? 'blitz', winner: winner ? sideLabel(winner) : null, loser: sideLabel(blitzLoser.value) }
+  if (!loserSide.value) return null
+  const winner = (props.module.turnTrack?.order ?? []).find((side) => side !== loserSide.value)
+  return { winner: winner ? sideLabel(winner) : null, loser: sideLabel(loserSide.value) }
 })
 
 /** Bouton "Concéder la partie" : demande d'abord confirmation. */
@@ -4303,15 +4182,8 @@ function askConcede() {
 function concede() {
   concedeConfirm.value = false
   if (actionsLocked.value || !concedingSide.value) return
-  declareLoss(concedingSide.value, { reason: 'concede' })
+  declareLoss(concedingSide.value)
 }
-// Nouvelle phase ou nouveau camp : le compteur repart à plein (cf.
-// `syncMoveTimer`), donc le mouvement se rouvre et la modale du joueur
-// précédent disparaît.
-watch([() => turnInfo.value.step, phase], () => {
-  showTimeUp.value = false
-  moveTimeExpired.value = false
-})
 
 function zoomIn() {
   zoom.value = Math.min(2, +(zoom.value + 0.05).toFixed(2))
@@ -4362,21 +4234,8 @@ function onMapDragEnd() {
 
       <div v-if="module.turnTrack" class="turn-tracker-block">
         <TurnTracker ref="turnTrackerRef" :config="trackConfig" :sides="module.sides"
-          :initial-step="initialTurnStep" :disabled="phaseControlsLocked" :phase="phase" :phase-index="phaseIndex" :phase-labels="phaseLabels" :next-label="nextLabel"
+          :initial-step="initialTurnStep" :disabled="inputLocked" :phase="phase" :phase-index="phaseIndex" :phase-labels="phaseLabels" :next-label="nextLabel"
           @turn="onTurnAdvance" @change="onTurnChange" @phase-next="onPhaseNext" />
-
-        <!-- cf. MoveTimer.vue — Blitz : une pendule par camp, toujours
-             visible ; Limité : un seul compteur, en phase Mouvement. -->
-        <div v-if="moveTimerSeconds > 0" class="move-timers">
-          <template v-if="isBlitz">
-            <MoveTimer v-for="side in turnOrder" :key="side" :duration-seconds="moveTimerSeconds"
-              :started-at="moveTimerSide === side ? moveTimerStartedAt : null" :used-ms="blitzUsedMs[side] ?? 0"
-              :label="sideLabel(side)" always-visible @expired="onMoveTimeUp(side)" />
-            <span v-if="blitzLoser" class="game-over-tag">{{ $t('toolbar.gameOverTag', { side: sideLabel(blitzLoser) }) }}</span>
-          </template>
-          <MoveTimer v-else :duration-seconds="moveTimerSeconds" :started-at="moveTimerStartedAt"
-            @expired="onMoveTimeUp" />
-        </div>
       </div>
 
       <div class="controls">
@@ -4740,16 +4599,11 @@ function onMapDragEnd() {
       <template v-for="warning in phaseConfirm.warnings" :key="warning"><br />⚠ {{ warning }}</template>
     </PhaseBlockedModal>
 
-    <!-- cf. MoveTimer.vue — timing "Limité" : temps de la phase de Mouvement écoulé. -->
-    <PhaseBlockedModal v-if="showTimeUp" :title="$t('timeUp.title')" @close="showTimeUp = false">
-      {{ $t('timeUp.limited') }}
-    </PhaseBlockedModal>
-
-    <!-- cf. `gameEnd` — fin de partie : concession ou pendule Blitz à 0. Et
-         la confirmation d'une concession (cf. `askConcede`). -->
+    <!-- cf. `gameEnd` — fin de partie (concession), et la confirmation d'une
+         concession (cf. `askConcede`). -->
     <GameEndModal v-if="concedeConfirm" :confirm-side="sideLabel(concedingSide)"
       @confirm="concede" @close="concedeConfirm = false" />
-    <GameEndModal v-else-if="showGameEnd && gameEnd" :reason="gameEnd.reason" :winner="gameEnd.winner" :loser="gameEnd.loser"
+    <GameEndModal v-else-if="showGameEnd && gameEnd" :winner="gameEnd.winner" :loser="gameEnd.loser"
       @close="showGameEnd = false" />
 
     <!-- cf. setSelectedCounter — changement de sélection refusé : l'unité
@@ -4794,23 +4648,6 @@ function onMapDragEnd() {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.move-timers {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-}
-
-.game-over-tag {
-  padding: 3px 10px;
-  border-radius: var(--radius-6);
-  background: var(--c-brand);
-  color: var(--c-panel);
-  font-size: var(--fs-sm);
-  font-weight: 700;
 }
 
 .controls {

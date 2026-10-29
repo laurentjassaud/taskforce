@@ -58,7 +58,7 @@ export function startSweeper(intervalMs = SWEEP_INTERVAL_MS) {
 // Réglages de la partie (mêmes clés que la partie en local, cf.
 // src/lib/gameSettings.js) : on ne garde que les clés connues, en chaînes,
 // le client complétant les valeurs manquantes par les défauts.
-const SETTING_KEYS = ['scenario', 'weather', 'party', 'timing', 'timingValue']
+const SETTING_KEYS = ['scenario', 'party']
 
 function sanitizeSettings(settings) {
   const source = settings && typeof settings === 'object' ? settings : {}
@@ -106,19 +106,9 @@ export function createGame({ moduleId, scenarioId, variants, settings, maxPlayer
     // ou `null` quand chaque client doit la recalculer lui-même (début de
     // camp/tour : première phase du pas).
     phase: null,
-    // Début (horloge serveur) de la phase/du pas en cours — sert au timing
-    // "Limité" pour qu'un joueur qui (re)charge la page retrouve le temps
-    // restant de la phase de Mouvement, et non un compteur remis à plein.
-    phaseSince: Date.now(),
-    // Timing "Blitz" : temps de Mouvement consommé par camp (ms), tel que
-    // transmis par le joueur actif à la fin de chacune de ses phases de
-    // Mouvement — `{ [campKey]: ms }`.
-    blitzUsedMs: {},
-    // Timing "Blitz" : camp dont la pendule est tombée à 0 — partie
-    // terminée, plus aucun coup accepté. `null` tant qu'elle continue.
-    blitzLoser: null,
-    // Ce qui a mis fin à la partie : 'blitz' ou 'concede' (cf. recordGameOver).
-    gameOverReason: null,
+    // Camp qui a concédé la partie (cf. recordConcession) : partie terminée,
+    // plus aucun coup accepté. `null` tant qu'elle continue.
+    loser: null,
     // Journal PARTAGÉ de la partie (ordre chronologique) : entrées
     // `{ uid, t, kind, text, data }` envoyées par les joueurs (cf.
     // src/components/HexMap.vue::log). Transmis en entier à chaque joueur
@@ -171,10 +161,7 @@ export function toPublic(game) {
     boardState: game.referee ? {} : Object.fromEntries(game.boardState),
     turnStep: game.turnStep,
     phase: game.phase,
-    phaseElapsedMs: Date.now() - game.phaseSince,
-    blitzUsedMs: game.blitzUsedMs,
-    blitzLoser: game.blitzLoser,
-    gameOverReason: game.gameOverReason ?? null,
+    loser: game.loser,
   }
 }
 
@@ -267,7 +254,7 @@ export function recordMove(id, { counterId, col, row }, side) {
   const game = games.get(id)
   if (!game) throw new RoomError('not-found')
   if (game.status !== 'started') throw new RoomError('not-started')
-  if (game.blitzLoser) throw new RoomError('game-over')
+  if (game.loser) throw new RoomError('game-over')
   // Un coup est rediffusé tel quel à tous les joueurs, qui l'appliquent sans
   // vérification (cf. HexMap.vue::applyRemoteMove) : on exige au moins un
   // identifiant court et des coordonnées entières plausibles — en double
@@ -285,13 +272,12 @@ export function advanceTurn(id) {
   const game = games.get(id)
   if (!game) throw new RoomError('not-found')
   if (game.status !== 'started') throw new RoomError('not-started')
-  if (game.blitzLoser) throw new RoomError('game-over')
+  if (game.loser) throw new RoomError('game-over')
   // Le serveur ne connaît pas la longueur de la piste (données du module,
   // chargées seulement côté client) : il incrémente sans borne, chaque
   // client s'arrête déjà lui-même en fin de piste avant d'émettre.
   game.turnStep += 1
   game.phase = null
-  game.phaseSince = Date.now()
   touch(game)
   return game
 }
@@ -299,21 +285,18 @@ export function advanceTurn(id) {
 /** Changement de phase SANS changement de pas (phase suivante du même camp).
  *  Refusé s'il concerne un pas déjà dépassé (message en retard sur un
  *  `game:turn`). */
-export function recordPhase(id, { phase, step, blitzUsed }) {
+export function recordPhase(id, { phase, step }) {
   const game = games.get(id)
   if (!game) throw new RoomError('not-found')
   if (game.status !== 'started') throw new RoomError('not-started')
-  if (game.blitzLoser) throw new RoomError('game-over')
+  if (game.loser) throw new RoomError('game-over')
   // -2 (mise en place), 0 (Mouvement), puis les phases propres au module
   // (cf. src/lib/rules.js::CUSTOM_PHASE_BASE).
   if (!Number.isInteger(phase) || phase < -2 || phase > 31) throw new RoomError('bad-phase')
   if (step !== game.turnStep) throw new RoomError('stale-step')
   game.phase = phase
-  game.phaseSince = Date.now()
-  const cleanBlitz = sanitizeBlitz(blitzUsed)
-  if (cleanBlitz) game.blitzUsedMs = cleanBlitz
   touch(game)
-  return { game, blitzUsed: cleanBlitz }
+  return game
 }
 
 /** Entrée de journal reçue d'un client, assainie — `null` si invalide. */
@@ -372,7 +355,7 @@ function serverEntry(kind, data, visibleTo = null) {
  *  montre (`visibleTo`) —, ou `null` si elle y est déjà (même `uid`). */
 export function appendJournal(id, entry, side) {
   const game = startedGame(id)
-  if (game.blitzLoser) throw new RoomError('game-over')
+  if (game.loser) throw new RoomError('game-over')
   const clean = sanitizeEntry(entry)
   if (!clean) throw new RoomError('bad-entry')
   if (game.journal.some((existing) => existing.uid === clean.uid)) return null
@@ -420,7 +403,7 @@ export function refereeMove(game, counterId) {
  *  `searcher`, pour le chercheur, et `target`, pour l'adversaire. */
 export function recordRecon(id, side, request) {
   const game = startedGame(id)
-  if (game.blitzLoser) throw new RoomError('game-over')
+  if (game.loser) throw new RoomError('game-over')
   if (!game.referee) throw new RoomError('bad-recon')
   const recon = game.referee.recon(game, side, request)
   const entries = { searcher: serverEntry('duelRecon', recon.searcher, side), target: serverEntry('duelRecon', recon.target, recon.targetSide) }
@@ -449,39 +432,21 @@ export function recordDeployment(id, entry, turnEntry) {
   return { entries, created: true }
 }
 
-/** Fin de partie : `loser` perd — au temps (Blitz : sa pendule est tombée
- *  à 0) ou parce qu'il CONCÈDE (`reason` 'concede', quel que soit le
- *  timing, et seulement pour le camp du joueur `playerId` lui-même). Seule
- *  la PREMIÈRE annonce compte (chaque client détecte la pendule de son
- *  côté) : le serveur l'inscrit alors lui-même au journal partagé et
- *  renvoie `{ game, entry }` ; `null` si la partie était déjà terminée. */
-export function recordGameOver(id, { loser, text, t, reason, playerId: announcer }) {
+/** Fin de partie : le camp `loser` CONCÈDE — seulement celui du joueur
+ *  `playerId` lui-même. Seule la PREMIÈRE annonce compte : le serveur
+ *  l'inscrit alors lui-même au journal partagé et renvoie `{ game, entry }` ;
+ *  `null` si la partie était déjà terminée. */
+export function recordConcession(id, { loser, text, t, playerId: announcer }) {
   const game = games.get(id)
   if (!game) throw new RoomError('not-found')
   if (game.status !== 'started') throw new RoomError('not-started')
   if (typeof loser !== 'string' || !loser || loser.length > 32) throw new RoomError('bad-loser')
-  const conceded = reason === 'concede'
-  if (conceded) {
-    if (game.players.get(announcer)?.side !== loser) throw new RoomError('not-your-side')
-  } else if (game.settings.timing !== 'blitz') {
-    throw new RoomError('not-blitz')
-  }
-  if (game.blitzLoser) return null
-  game.blitzLoser = loser
-  game.gameOverReason = conceded ? 'concede' : 'blitz'
-  const entry = sanitizeEntry({ uid: `srv-${playerId()}`, t, kind: 'gameover', text: text || `Temps écoulé — ${loser}`, data: { loser, reason: game.gameOverReason } })
+  if (game.players.get(announcer)?.side !== loser) throw new RoomError('not-your-side')
+  if (game.loser) return null
+  game.loser = loser
+  const entry = sanitizeEntry({ uid: `srv-${playerId()}`, t, kind: 'gameover', text: text || `Abandon — ${loser}`, data: { loser } })
   pushJournal(game, [entry])
   return { game, entry }
-}
-
-/** Pendules "Blitz" reçues d'un client : quelques camps au plus, temps en
- *  ms positifs. `null` si absentes ou invalides. */
-function sanitizeBlitz(blitzUsed) {
-  if (!blitzUsed || typeof blitzUsed !== 'object') return null
-  const entries = Object.entries(blitzUsed)
-    .filter(([key, ms]) => key.length <= 32 && Number.isFinite(ms) && ms >= 0)
-    .slice(0, 16)
-  return entries.length ? Object.fromEntries(entries) : null
 }
 
 export function setPlayerConnectionBySocket(socketId, connected) {
