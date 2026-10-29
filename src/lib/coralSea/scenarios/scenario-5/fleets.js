@@ -41,8 +41,10 @@ export const legacyTaskForces = [
  *   - 'carrier' : un CV ou un CVL — elle attaque ;
  *   - 'transport' : des AK — allure de transport, à l'écart des Alliés ;
  *   - 'destroyers' : rien que des DD — vers les TF alliées non repérées ;
- *   - 'surface' : les autres — vers les TF alliées repérées. */
-function behaviorOfShips(ships, typeOf) {
+ *   - 'surface' : les autres — vers les TF alliées repérées.
+ *  Refait aussi pour une task force qui a perdu ses porte-avions (cf.
+ *  lib/useCoralSea.js::behaviorOf). */
+export function behaviorOfShips(ships, typeOf) {
   const types = ships.map(typeOf)
   if (types.some((type) => CARRIER_TYPES.has(type))) return 'carrier'
   if (types.includes('AK')) return 'transport'

@@ -16,9 +16,62 @@ export default {
     gotIt: 'Got it',
   },
 
+  // Error codes of the online game server (cf. server/src/rooms.js,
+  // i18n/index.js::errorMessage).
+  errors: {
+    'not-found': 'This game does not exist, or no longer exists: the server may have restarted.',
+    'bad-passcode': 'Wrong access code.',
+    'room-full': 'This game is already full.',
+    'side-taken': 'This side is already taken by the other player.',
+    'already-started': 'This game has already started.',
+    'not-started': 'The game has not started yet.',
+    'bad-name': 'Invalid nickname (1 to 40 characters).',
+    'bad-side': 'Invalid side.',
+    'too-many-games': 'Too many games on the server: please try again later.',
+    'module-unavailable': 'The server could not read the rules of the game. Please try again in a moment.',
+    'no-duel': 'This scenario is not played by two players.',
+    unreachable: 'The online game server is not responding. Please try again in a moment.',
+    'module-missing': 'The game of this match is no longer available.',
+    'unknown-error': 'Unknown server error.',
+  },
+
+  online: {
+    checkbox: 'Play online',
+    hint: 'Each player on their own screen instead of sharing one: you create the game, then send the invitation link to your opponent.',
+    create: 'Create the game',
+    creating: 'Creating…',
+    waitingTurn: '{side} to play: waiting for your opponent…',
+  },
+
+  lobby: {
+    kicker: 'Online game',
+    back: 'Back to the home page',
+    loading: 'Loading the game…',
+    joinTitle: 'Join the game',
+    nickname: 'Your nickname',
+    side: 'Your side',
+    taken: 'taken',
+    passcode: 'Access code',
+    join: 'Join',
+    joining: 'Connecting…',
+    connecting: 'Connecting to the server…',
+    waiting: 'Waiting for your opponent…',
+    inviteText: 'Send them this link: they will pick a nickname and take the remaining side. The game starts as soon as they join you.',
+    inviteLabel: 'Invitation link',
+    copy: 'Copy link',
+    copied: 'Link copied',
+    you: 'you',
+    online: 'online',
+    offline: 'offline',
+    onlineTag: 'Online',
+    disconnected: 'Connection to the server lost: reconnecting…',
+    opponentOffline: '{name} is offline.',
+    replayWarning: 'This save was played with other settings than this online game: it cannot be resumed here.',
+  },
+
   settings: {
     scenarioHistorical: 'Historical',
-    party: { libre: 'Free', assiste: 'Assisted' },
+    party: { duel: 'Two players, double blind', assiste: 'Against the AI, with dummies', aveugle: 'Against the AI, blind', libre: 'Free' },
     timing: { libre: 'Untimed', limite: 'Limited', blitz: 'Blitz' },
     timingHint: {
       limite: 'Suggested: 4 to 8 minutes per turn',
@@ -39,8 +92,9 @@ export default {
     chooseScenario: 'Choose the scenario',
     gameMode: 'Choose the game mode',
     partyHint: {
-      libre: 'A sandbox, just like around a table: move any counter freely, at any time, and apply the rules yourself.',
-      assiste: 'The game runs the phases of the turn and enforces the rules: active side, movement points, zones of control, stacking.',
+      duel: 'Two players on the same screen, taking turns: each side only sees its own forces and what it has sighted of the enemy.',
+      assiste: 'You play against the AI. Its forces are on the map, mixed with dummies. The game runs the phases of the turn and enforces the rules.',
+      aveugle: 'You play against the AI without seeing its forces: only your sightings bring them onto the map.',
     },
     weather: 'Weather',
     moduleLoadError: 'Unable to load the game. Reload the page to try again.',
@@ -86,6 +140,7 @@ export default {
     unlimited: 'Unlimited supply',
     hintDrag: 'Drag a counter onto the map to place it freely, or click it then click one of the entry hexes highlighted in orange.',
     hintClick: 'Click a counter then click one of the entry hexes highlighted in orange on the map.',
+    hintDuel: 'Drag a counter onto a hex of your setup zone, marked on the map. You can move it again, or drop it back into this panel.',
   },
 
   moveTimer: {
@@ -177,8 +232,12 @@ export default {
   },
 
   searchBag: {
+    cupTitle: 'In the cup (debug)',
     total: '{left} of {total} chits in the cup',
     hint: 'Drawn chits only go back in on the "all returned" turns of the track (at night).',
+    removedTitle: 'Removed from play',
+    removedEmpty: 'No search counter removed from play.',
+    removedHint: 'Drawn search counters that left the map: task force now known (raid, naval combat), counter replaced by a new result, unit eliminated. They only go back in the cup on the "all returned" turns of the track (at night). One chit is drawn per explored hex: the task force on top of the stack gets its counter, the others a clone (mustard border), which does not count.',
   },
 
   sighting: {
@@ -210,6 +269,7 @@ export default {
 
   fleetDisplay: {
     title: '{sighting} sighted in {hex}',
+    known: '{unit} known in {hex}',
     composition: 'Composition of {unit} in {hex} (debug)',
     extra: 'Off the display: {ships}',
     outOfRange: 'Out of range: your aircraft only strike within {radius} hexes of one of your carriers.',
@@ -299,8 +359,37 @@ export default {
     setupShort: 'Only {count} task forces (dummies included) out of {total} have been placed.',
     noMove: 'No unit was moved during this movement phase.',
     recons: '{n} Japanese reconnaissance is still to do. | {n} Japanese reconnaissances are still to do.',
+    duelRecon: '{n} recon hex chosen, but your planes have not taken off. | {n} recon hexes chosen, but your planes have not taken off.',
     movementEndRemovals: '{side}: {n} dummy in contact with an enemy task force will be removed from play. | {side}: {n} dummies in contact with an enemy task force will be removed from play.',
     confirm: 'Confirm',
+  },
+
+  duel: {
+    handoverTitle: '{side} to play',
+    handoverText: 'Hand the screen to the player commanding the {side}. The other player must look away.',
+    handoverButton: 'Show my forces',
+    handoverTurn: 'Turn {turn} · {phase}',
+    contactTitle: 'Contact!',
+    contactFound: 'Your {unit} is in contact with {enemies} in {hex}. The enemy counter stays on your map until the next night; you may go on moving.',
+    contactSuffered: 'During the enemy turn, {enemy} came into contact with your {units} in {hex}. It stays on your map until the next night.',
+    scoutedTitle: 'Enemy reconnaissance',
+    scoutedSuffered: 'During the enemy turn, enemy reconnaissance planes flew over your {units}, outlined in yellow on the map.',
+  },
+
+  duelRecon: {
+    title: 'Reconnaissance — {side}',
+    hint: 'Click a recon hex within {range} hexes of one of your carriers ({n} per carrier): it scouts a 7-hex zone, itself and its 6 neighbours. Click it again to cancel it.',
+    count: 'Recon hexes: {n} / {max}',
+    launch: 'Take off',
+    waiting: 'In flight…',
+    continue: 'Continue',
+    noCarrier: 'None of your carriers is on the map: no reconnaissance this phase.',
+    done: 'Your planes are back: no sighting. | Your planes are back: 1 sighting. | Your planes are back: {n} sightings.',
+    zoneLine1: 'RECON',
+    marksTitle: 'Sighted in {hex}',
+    seenAt: 'Turn {turn} · {time}',
+    seenTurn: 'Turn {turn}',
+    zoneLine2: 'ZONE',
   },
 
   naval: {
@@ -417,6 +506,11 @@ export default {
     raidTargets: { carrier: 'carrier', escort: 'escort {n}', ship: 'ship {n}' },
     alliedFleet: '{unit} composition: no ship | {unit} composition: {n} ship | {unit} composition: {n} ships',
     shipDamage: '{ship}: {state}',
+    fleetConversion: '{from} ({hex}) lost its carrier: it becomes {to}, a Fleet TF.',
+    fleetConversionHidden: 'A task force in {hex} lost its carrier: it becomes a Fleet TF.',
+    duelContact: 'Contact: {unit} in contact with {enemies} in {hex}',
+    duelReconChits: 'Chits drawn: {chits}',
+    duelRecon: 'Reconnaissance ({side}) over {hexes}: no sighting | Reconnaissance ({side}) over {hexes}: 1 sighting | Reconnaissance ({side}) over {hexes}: {n} sightings',
     planeState: 'Aircraft {plane}: {state}',
     dummyReinforce: 'Night: {n} Japanese TF undetected joins the map in {hexes} | Night: {n} Japanese TF undetected join the map in {hexes}',
     searchRefill: 'Night: {total} search chit goes back in the cup ({detected} Detected!, {misdirect} Misdirect, {contactLost} Contact Lost) | Night: {total} search chits go back in the cup ({detected} Detected!, {misdirect} Misdirect, {contactLost} Contact Lost)',
@@ -519,7 +613,7 @@ export default {
     stepOf: 'Step {step} / {total}',
     previous: 'Previous',
     finish: 'Done',
-    intro: 'Welcome! This guide walks you through the game screen in a few steps. You are playing in {mode} mode. You can reopen it at any time with the "?" button in the toolbar.',
+    intro: 'Welcome! This guide walks you through the game screen in a few steps. You are playing in "{mode}" mode. You can reopen it at any time with the "?" button in the toolbar.',
     toolbar: {
       title: 'The top bar',
       lead: 'At the top of the screen, everything about where the game stands.',

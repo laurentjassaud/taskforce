@@ -1,4 +1,4 @@
-// Réglages d'une partie (scénario, météo, mode Libre/Assisté, timing),
+// Réglages d'une partie (scénario, météo, mode de jeu, timing),
 // choisis sur la page d'accueil (SoloHome.vue -> DemoPlay.vue). Mêmes clés que
 // lib/journalStorage.js::SETTING_KEYS, toutes en chaînes (format de l'URL).
 // Les libellés sont des getters : lus au moment de l'affichage, ils suivent
@@ -44,9 +44,21 @@ export function scenarioOptions(module) {
 
 // Météo : aucune règle du moteur ne la lit encore — proposée grisée.
 export const WEATHER_AVAILABLE = false
+// Modes de jeu (cf. GameSetupSteps.vue). Un mode pas encore développé
+// (`available: false`) est proposé grisé ("Bientôt disponible") et jamais
+// retenu (cf. `resolveSettings`) :
+//   - 'duel' : deux joueurs en double aveugle, sur le même écran, à tour de
+//     rôle (cf. HexMap.vue, prop `duel`) — en cours : la mise en place ;
+//   - 'assiste' : un joueur contre l'IA, ses forces sur la carte parmi des
+//     leurres — partie Assistée, cf. lib/useAssisted.js ;
+//   - 'aveugle' : un joueur contre l'IA, en aveugle (ses forces hors de la
+//     carte tant qu'elles ne sont pas repérées) — à venir.
+// L'ancien mode 'libre' (bac à sable sans règles) n'est plus proposé : une
+// sauvegarde ou une URL qui le demande retombe sur le mode par défaut.
 export const PARTY_OPTIONS = [
-  { id: 'libre', get label() { return t('settings.party.libre') } },
+  { id: 'duel', get label() { return t('settings.party.duel') } },
   { id: 'assiste', get label() { return t('settings.party.assiste') } },
+  { id: 'aveugle', available: false, get label() { return t('settings.party.aveugle') } },
 ]
 export const TIMING_OPTIONS = [
   { id: 'libre', get label() { return t('settings.timing.libre') } },
@@ -82,13 +94,13 @@ const SCENARIO_ID_RE = /^[\w-]{1,32}$/
  *  par défaut est alors le premier disponible du module. */
 export function defaultSettings(scenarios = null) {
   const scenario = scenarios?.find((option) => option.available)?.id ?? DEFAULT_SCENARIOS[0].id
-  return { scenario, weather: '0', party: 'libre', timing: 'libre', timingValue: '' }
+  return { scenario, weather: '0', party: 'assiste', timing: 'libre', timingValue: '' }
 }
 
 /** Complète/assainit des réglages partiels (URL, réponse serveur, fichier de
  *  sauvegarde) avec les valeurs par défaut — une valeur inconnue OU pas
- *  encore disponible retombe sur le défaut, et un chronomètre demandé en
- *  partie Libre est ignoré (cf. `timingAllowed`). Le résultat est ce que le
+ *  encore disponible retombe sur le défaut, et un chronomètre demandé
+ *  hors partie Assistée est ignoré (cf. `timingAllowed`). Le résultat est ce que le
  *  moteur applique réellement : deux réglages qui se résolvent pareil
  *  donnent la même partie.
  *

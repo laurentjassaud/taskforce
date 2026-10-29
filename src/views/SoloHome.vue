@@ -4,8 +4,9 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import GameSetupSteps from '../components/GameSetupSteps.vue'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
-import { registerModuleTexts } from '../i18n/index.js'
+import { registerModuleTexts, errorMessage } from '../i18n/index.js'
 import { defaultSettings, scenarioOptions } from '../lib/gameSettings.js'
+import { createGame } from '../lib/api.js'
 import logoUrl from '../assets/home/logo-gbh.svg'
 import ambientUrl from '../assets/home/ambient-top.png'
 import carrierUrl from '../assets/home/carrier-band.jpg'
@@ -19,9 +20,12 @@ import enterpriseUrl from '../assets/home/counter-enterprise.png'
 
 // Page d'accueil de la boîte Task Force, jouée uniquement en solo : une
 // présentation (crédits, avertissement), puis la création de la partie en
-// deux étapes (scénario, mode Libre/Assisté — cf. GameSetupSteps.vue) avant
-// de lancer DemoPlay.vue. Le module joué est le premier module actif de
+// deux étapes (scénario, mode de jeu — cf. GameSetupSteps.vue) avant de
+// lancer DemoPlay.vue. Le module joué est le premier module actif de
 // public/modules/index.json : il n'est plus proposé au choix.
+// Deux joueurs EN LIGNE (case cochée à l'étape 2) : la partie est créée sur
+// le serveur, puis on rejoint son salon (RoomLobby.vue), d'où l'on invite
+// l'adversaire.
 
 const router = useRouter()
 const { locale } = useI18n()
@@ -63,7 +67,13 @@ onMounted(async () => {
   }
 })
 
-const canStart = computed(() => !!moduleData.value)
+// Deux joueurs en ligne (cf. GameSetupSteps.vue, v-model `online`).
+const online = ref(false)
+const onlineDuel = computed(() => online.value && settings.value.party === 'duel')
+const creating = ref(false)
+const createError = ref('')
+
+const canStart = computed(() => !!moduleData.value && !creating.value)
 
 function back() {
   if (step.value > 0) step.value -= 1
@@ -71,8 +81,28 @@ function back() {
 function next() {
   if (step.value < 2) step.value += 1
 }
-function start() {
-  router.push({ name: 'demo-play', query: { module: moduleId.value, ...settings.value } })
+async function start() {
+  if (!onlineDuel.value) {
+    router.push({ name: 'demo-play', query: { module: moduleId.value, ...settings.value } })
+    return
+  }
+  creating.value = true
+  createError.value = ''
+  try {
+    // Le serveur arbitre la partie (cf. server/src/duel.js) : il lit lui-même
+    // le module, et en tire l'ordre des camps pas par pas.
+    const game = await createGame({
+      moduleId: moduleId.value,
+      scenarioId: settings.value.scenario,
+      settings: settings.value,
+      maxPlayers: Object.keys(moduleData.value.sides ?? {}).length || 2,
+    })
+    router.push({ name: 'room-lobby', params: { id: game.id }, query: { code: game.passcode } })
+  } catch (error) {
+    createError.value = errorMessage(error.message)
+  } finally {
+    creating.value = false
+  }
 }
 </script>
 
@@ -126,12 +156,15 @@ function start() {
           </section>
 
           <section v-else key="setup" class="stage">
-            <GameSetupSteps v-model:settings="settings" :step="step" :scenarios="scenarios" />
+            <GameSetupSteps v-model:settings="settings" v-model:online="online" :step="step" :scenarios="scenarios" />
             <p v-if="loadError" class="error">{{ $t('setup.moduleLoadError') }}</p>
+            <p v-if="createError && step === 2" class="error" role="alert">{{ createError }}</p>
             <nav class="actions">
               <button type="button" class="ghost" @click="back">{{ $t('common.back') }}</button>
               <button v-if="step < 2" type="button" class="cta small" @click="next">{{ $t('common.next') }}</button>
-              <button v-else type="button" class="cta small" :disabled="!canStart" @click="start">{{ $t('home.play') }}</button>
+              <button v-else type="button" class="cta small" :disabled="!canStart" @click="start">
+                {{ !onlineDuel ? $t('home.play') : creating ? $t('online.creating') : $t('online.create') }}
+              </button>
             </nav>
           </section>
         </Transition>

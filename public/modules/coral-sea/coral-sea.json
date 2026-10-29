@@ -794,6 +794,15 @@
       "id": "scenario-5",
       "label": "Scenario 5 : Bataille de la mer de Corail",
       "deployment": "setup",
+      "duel": {
+        "_comment": "Mode deux joueurs en double aveugle (cf. src/components/HexMap.vue, prop `duel`) : phases jouées après la mise en place (ids de `turnStructure.phases`) ; zone de mise en place de chaque camp — hex \"CCRR\" ou plages \"CCRR-CCRR\", cf. src/lib/setup.js — et couleur (toute valeur CSS) du dégradé qui la marque sur la carte ; reconnaissance — chaque task force de rôle `role` sur la carte désigne `zones[camp]` hex de reco à `range` hex ou moins d'elle, chacun couvrant une zone (lui et ses 6 voisins), cf. HexMap.vue::launchDuelRecon.",
+        "phases": ["navalMovement", "reconnaissance"],
+        "recon": { "role": "carrier", "range": 8, "zones": { "ijn": 2, "usn": 3 } },
+        "setup": {
+          "ijn": { "hexes": ["0601-2801"], "color": "var(--c-ijn)" },
+          "usn": { "hexes": ["3203-3218", "3303-3319", "2818", "2919", "3018", "3119"], "color": "var(--c-zone-usn)" }
+        }
+      },
       "orderOfBattle": {
         "ijn": [
           {
@@ -966,7 +975,8 @@
       },
       {
         "id": "navalCombat",
-        "label": "Combat naval"
+        "label": "Combat naval",
+        "shared": true
       },
       {
         "id": "airOperations",
@@ -1094,7 +1104,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-1.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf2",
@@ -1105,7 +1115,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-2.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf3",
@@ -1116,7 +1126,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-3.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf4",
@@ -1127,7 +1137,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-4.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf5",
@@ -1138,7 +1148,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-5.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf6",
@@ -1149,7 +1159,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-6.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf7",
@@ -1160,7 +1170,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-7.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf8",
@@ -1171,7 +1181,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-8.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf9",
@@ -1182,7 +1192,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-9.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf10",
@@ -1193,7 +1203,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-10.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf11",
@@ -1204,7 +1214,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-11.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf12",
@@ -1215,7 +1225,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-12.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-tf13",
@@ -1226,7 +1236,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_TF-13.png",
         "turn": 1,
-        "setup": "0501-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-1",
@@ -1236,7 +1246,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-2",
@@ -1246,7 +1256,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-3",
@@ -1256,7 +1266,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-4",
@@ -1266,7 +1276,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-5",
@@ -1276,7 +1286,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-6",
@@ -1286,7 +1296,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-7",
@@ -1296,7 +1306,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-8",
@@ -1306,7 +1316,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-9",
@@ -1316,7 +1326,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-10",
@@ -1326,7 +1336,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-11",
@@ -1336,7 +1346,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       },
       {
         "id": "ijn-dummy-12",
@@ -1346,7 +1356,7 @@
         "faction": "ijn",
         "src": "/modules/coral-sea/images/counters/ijn/IJN_Fleet.png",
         "turn": 1,
-        "setup": "0601-2701"
+        "setup": "0601-2801"
       }
     ],
     "usn": [

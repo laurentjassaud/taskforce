@@ -47,7 +47,7 @@ Sources lues : [useAssisted.js](../src/lib/useAssisted.js), [edges.js](../src/li
 - **Potentiel** : 2 hex de nuit, 1 hex de jour, pour tous les camps.
 - **Phases entremêlées** : on joue le Mouvement naval du camp qui a l'initiative, puis celui de l'autre camp. C'est la seule phase où l'on bouge.
 - **Mise en place US** (tour 0) : les task forces se posent n'importe où sur la carte (`setup "*"`), sans aucun déplacement, et peuvent s'y empiler. Il en faut 12, leurres compris : avec moins, une modale demande si l'on commence quand même ; avec plus, une modale refuse de commencer.
-- **Déploiement japonais** : seuls les 12 leurres sont posés au départ, tirés dans la bande 0601-2701.
+- **Déploiement japonais** : seuls les 12 leurres sont posés au départ, tirés dans la bande 0601-2801.
 
 ## 3. Règles particulières de la mer de Corail ([useCoralSea.js](../src/lib/useCoralSea.js))
 
@@ -89,7 +89,7 @@ Sources lues : [useAssisted.js](../src/lib/useAssisted.js), [edges.js](../src/li
 
 3. **Résolu — l'en-tête de useCoralSea ne correspondait plus au code**. Il décrit maintenant les formations : autant de leurres porteurs que de task forces dans la formation tirée, les autres servant d'escortes (porte-avions d'abord), puis de faux groupe s'il en reste.
 
-4. **Une même task force peut exister deux fois sur la carte**. Les vrais pions japonais TF1…TF13 (bande 0501-2701) restent posables depuis le panneau, alors que des leurres les portent déjà en secret. Le pion et son leurre recevraient chacun un objectif et un mouvement particulier. La reconnaissance dédoublonne déjà ce cas, mais pas le mouvement.
+4. **Une même task force peut exister deux fois sur la carte**. Les vrais pions japonais TF1…TF13 (bande 0601-2801) restent posables depuis le panneau, alors que des leurres les portent déjà en secret. Le pion et son leurre recevraient chacun un objectif et un mouvement particulier. La reconnaissance dédoublonne déjà ce cas, mais pas le mouvement.
 
 5. **Résolu — TF10 était un transport sans comportement de fuite**. Le comportement dépend désormais des navires : toute task force qui a des AK reste à l'écart des Alliés repérés.
 

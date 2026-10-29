@@ -114,6 +114,12 @@ export const INERT_RULES = Object.freeze({
   resolveNavalAttacks: () => [],
   /** L'unité `unitId` (du camp du moteur) devient connue de l'adversaire, au tour donné. */
   noteRevealed: () => {},
+  /** Deux pions sont-ils au contact (`(a, b)`) — même hex, ou adjacents sans barrière entre eux ? */
+  inContact: () => false,
+  /** Task force (id) que ce pion EST VRAIMENT — celle que porte un leurre —, ou `null`. */
+  taskForceOf: () => null,
+  /** L'adversaire connaît-il cette unité du camp du moteur (cf. `noteRevealed`) ? */
+  isRevealed: () => false,
   /** Pion qui remplace sur la carte une unité connue de l'adversaire (`{ src, name }`), ou `null`. */
   revealedLook: () => null,
   /** Phase (id de la piste) où le moteur lance ses raids aériens, ou `null`. */
@@ -161,6 +167,12 @@ export const INERT_RULES = Object.freeze({
   setShipDamage: () => {},
   /** Dommages lus dans le journal (`null` : aucun). */
   restoreShipDamage: () => {},
+  /** Cette task force "porte-avions" a-t-elle perdu ses porte-avions, sans avoir encore changé de pion ? */
+  isCarrierless: () => false,
+  /** Pion de task force sans porte-avions libre pour remplacer celui de cette task force (`(tf, pions, ids éliminés)`), ou `null`. */
+  freeFleetTaskForce: () => null,
+  /** La task force `from` devient la task force sans porte-avions `to` (`(from, to)`). */
+  convertFleet: () => {},
   /** Pertes possibles d'un pion avion (`['none', 'reduced', 'eliminated']`), ou `null`. */
   planeStates: null,
   /** Pertes de l'avion de cette clé de pion ('none' : intact). */

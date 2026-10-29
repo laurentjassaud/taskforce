@@ -37,6 +37,8 @@
 //          `movement` et `recon` (ex. 'carrier', 'transport'...).
 //     legacyTaskForces : rôles des task forces d'un journal antérieur aux
 //       formations (sans `behavior`).
+//     behaviorOfShips(ids, typeOf) -> `behavior` d'une task force d'après
+//       ses navires (ex. une task force qui a perdu ses porte-avions).
 //   placement
 //     setupTotal : task forces (leurres compris) de la mise en place US et
 //       des renforts de leurres.

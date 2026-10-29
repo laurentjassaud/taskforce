@@ -3,11 +3,16 @@ import { ref, computed, watch } from 'vue'
 import { PARTY_OPTIONS } from '../lib/gameSettings.js'
 
 // Étapes de la création d'une partie solo (cf. SoloHome.vue) : 1. scénario,
-// 2. mode de jeu (Libre ou Assisté). Le parent gère la navigation (`step`),
+// 2. mode de jeu (cf. gameSettings.js::PARTY_OPTIONS — ceux pas encore
+// développés proposés grisés). Le parent gère la navigation (`step`),
 // fournit les scénarios du module (cf. gameSettings.js::scenarioOptions) et
 // reçoit les réglages (format lib/gameSettings.js) via v-model. La météo
 // (pas encore appliquée par le moteur) et le chronomètre ne sont plus
 // proposés : ils gardent leur valeur par défaut.
+// À deux joueurs, une case à cocher propose de jouer EN LIGNE (`online`, en
+// v-model) : chacun sur son écran, par le serveur des parties (cf.
+// RoomLobby.vue) — ce n'est pas un réglage de la partie mais la façon de la
+// lancer (cf. SoloHome.vue::start).
 
 const props = defineProps({
   step: { type: Number, required: true },
@@ -15,9 +20,13 @@ const props = defineProps({
 })
 
 const settings = defineModel('settings', { type: Object, required: true })
+const online = defineModel('online', { type: Boolean, default: false })
 
 const scenario = ref(settings.value.scenario)
-const party = ref(settings.value.party)
+// Un mode pas encore disponible (ou qui n'existe plus, ex. l'ancien
+// "Libre") est remplacé par le premier mode disponible.
+const isAvailableParty = (id) => PARTY_OPTIONS.some((option) => option.id === id && option.available !== false)
+const party = ref(isAvailableParty(settings.value.party) ? settings.value.party : PARTY_OPTIONS.find((option) => isAvailableParty(option.id)).id)
 
 // Un scénario qui n'existe pas (ou n'est pas disponible) dans le module est
 // remplacé par son premier scénario disponible.
@@ -63,16 +72,28 @@ watch([scenario, party], () => {
     <section v-else-if="step === 2" key="mode" class="step">
       <p class="step-index">{{ $t('setup.stepOf', { step, total: 2 }) }}</p>
       <h2>{{ $t('setup.gameMode') }}</h2>
-      <div class="choices two" role="radiogroup" :aria-label="$t('setup.gameMode')">
-        <label v-for="opt in PARTY_OPTIONS" :key="opt.id" class="choice" :class="{ selected: party === opt.id }">
-          <input v-model="party" type="radio" name="party" :value="opt.id" />
+      <div class="choices" role="radiogroup" :aria-label="$t('setup.gameMode')">
+        <label v-for="opt in PARTY_OPTIONS" :key="opt.id" class="choice"
+          :class="{ selected: party === opt.id, disabled: opt.available === false }">
+          <input v-model="party" type="radio" name="party" :value="opt.id" :disabled="opt.available === false" />
           <span class="choice-mark" aria-hidden="true" />
           <span class="choice-body">
             <span class="choice-title">{{ opt.label }}</span>
             <span class="choice-text">{{ $t(`setup.partyHint.${opt.id}`) }}</span>
+            <span v-if="opt.available === false" class="badge">{{ $t('common.comingSoon') }}</span>
           </span>
         </label>
       </div>
+      <Transition name="online">
+        <label v-if="party === 'duel'" class="online-option" :class="{ checked: online }">
+          <input v-model="online" type="checkbox" />
+          <span class="online-box" aria-hidden="true" />
+          <span class="choice-body">
+            <span class="online-title">{{ $t('online.checkbox') }}</span>
+            <span class="choice-text">{{ $t('online.hint') }}</span>
+          </span>
+        </label>
+      </Transition>
     </section>
   </Transition>
 </template>
@@ -103,15 +124,6 @@ h2 {
   gap: 16px;
   width: min(100%, 560px);
   margin-top: 24px;
-}
-.choices.two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: min(100%, 760px);
-}
-@media (max-width: 640px) {
-  .choices.two {
-    grid-template-columns: 1fr;
-  }
 }
 .choice {
   position: relative;
@@ -209,6 +221,89 @@ h2 {
   border-radius: 999px;
 }
 
+/* Jouer en ligne (deux joueurs seulement) : sous les modes de jeu. */
+.online-option {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: min(100%, 560px);
+  margin-top: 16px;
+  padding: 14px 22px;
+  border: 1px dashed color-mix(in srgb, var(--c-steel) 55%, var(--c-white));
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.online-option.checked {
+  border-style: solid;
+  border-color: var(--c-brand-blue);
+  background: color-mix(in srgb, var(--c-brand-blue) 8%, var(--c-white));
+}
+@media (hover: hover) and (pointer: fine) {
+  .online-option:not(.checked):hover {
+    border-color: var(--c-brand-blue);
+  }
+}
+.online-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.online-option:has(input:focus-visible) {
+  outline: 2px solid var(--c-brand-blue);
+  outline-offset: 3px;
+}
+.online-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1.5px solid color-mix(in srgb, var(--c-steel) 55%, var(--c-white));
+  border-radius: 4px;
+  background: var(--c-white);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.online-box::after {
+  content: '';
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border-left: 2px solid var(--c-white);
+  border-bottom: 2px solid var(--c-white);
+  transform: rotate(-45deg) scale(0.5);
+  opacity: 0;
+  transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+.online-option.checked .online-box {
+  border-color: var(--c-brand-blue);
+  background: var(--c-brand-blue);
+}
+.online-option.checked .online-box::after {
+  transform: rotate(-45deg) scale(1);
+  opacity: 1;
+}
+.online-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--c-brand-ink);
+}
+.online-enter-active {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.online-leave-active {
+  transition: opacity 120ms ease;
+}
+.online-enter-from,
+.online-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 .step-enter-active {
   transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
@@ -225,7 +320,9 @@ h2 {
 }
 @media (prefers-reduced-motion: reduce) {
   .step-enter-from,
-  .step-leave-to {
+  .step-leave-to,
+  .online-enter-from,
+  .online-leave-to {
     transform: none;
   }
 }

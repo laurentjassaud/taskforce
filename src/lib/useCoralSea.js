@@ -115,7 +115,10 @@
 // connaître : la task force américaine l'est du Japonais comme après un raid
 // (bordure verte, cf. `noteRaided`), la japonaise du joueur US (son vrai
 // pion TF remplace le drapeau, cf. `revealedLook`) — jusqu'au premier tour
-// de nuit qui suit. Le camp qui a l'initiative organise les batailles
+// de nuit qui suit. Comme après un raid, leurs pions de reconnaissance
+// quittent la carte (cf. HexMap.vue::forgetRecon) ; le joueur US n'explore
+// plus une task force japonaise connue, et la frappe sans la repérer (cf.
+// `isRevealed`). Le camp qui a l'initiative organise les batailles
 // (flèches de ses task forces vers les task forces ennemies qu'elles
 // attaquent ; une bataille = toutes celles reliées, chaque camp y compte
 // comme une seule flotte) ; le moteur japonais prend l'organisation qui lui
@@ -173,8 +176,8 @@
 import { computed, ref, unref } from 'vue'
 import { INERT_RULES } from './moduleRules.js'
 import { hexDistance, neighborsOf } from './hex.js'
-import { hexId } from './calibration.js'
 import { resolveEdges } from './edges.js'
+import { RECON_PHASE, SEARCH_CHITS, adjacentAcross, inContact as touching } from '../../shared/duelRules.js'
 import { resolveNavalTable, rangeOptions, firingShips, planNavalAttacks, navalDamage, connectedGroups } from './navalCombat.js'
 import { resolveAirStrikeTable, strikeOdds, damageOutcome } from './airStrike.js'
 import { airGroupCounters, chooseReady, deckAircraft, withPlaneStates } from './airGroups.js'
@@ -186,7 +189,6 @@ import { scenarioEngines } from './coralSea/scenarios/index.js'
 export const CORAL_SEA_MODULE_ID = 'coral-sea'
 
 const ENEMY = { ijn: 'usn', usn: 'ijn' }
-const RECON_PHASE = 'reconnaissance'
 /** Raids aériens japonais (cf. `raidPlan`) : phase, et pion "IJN Raid" posé
  *  sur la cible, un par raid, le temps du raid. Leur portée : cf.
  *  coralSea/shared.js::RAID_RADIUS. */
@@ -278,9 +280,8 @@ export const isAirCell = (cell) => /^(ready|reserve|cap|landingMap|landingCap)\d
 /** Clé de pion d'un avion : celle de son porte-avions, '/', son rang. */
 const carrierOfPlane = (key) => key.split('/')[0]
 
-/** Tasse de recherche pleine : nombre de chits par résultat, et pion posé
- *  sur l'hex exploré pour chacun. */
-const SEARCH_CHITS = { detected: 30, misdirect: 12, contactLost: 12 }
+/** Pion posé sur l'hex exploré pour chaque chit de la tasse de recherche
+ *  (cf. shared/duelRules.js::SEARCH_CHITS). */
 export const SEARCH_RESULTS = {
   detected: { name: 'Detected!', src: '/modules/coral-sea/images/counters/markers/Marker_Detected.png' },
   misdirect: { name: 'Misdirect', src: '/modules/coral-sea/images/counters/markers/Marker_Misdirect.png' },
@@ -346,6 +347,8 @@ export function useCoralSea(moduleId, ctx = {}) {
   const active = computed(() => unref(moduleId) === CORAL_SEA_MODULE_ID)
 
   const allCounters = ctx.allCounters?.() ?? []
+  /** Pion déclaré `id` (cf. coral-sea.json), ou `null`. */
+  const counterById = (id) => allCounters.find((counter) => String(counter.id) === String(id)) ?? null
   // Moteurs du scénario joué — constitution des flottes, placement,
   // déplacement (cf. lib/coralSea/scenarios/).
   const engines = active.value ? scenarioEngines(ctx.scenario?.id) : null
@@ -359,6 +362,14 @@ export function useCoralSea(moduleId, ctx = {}) {
     : null
   const formationId = ref(composed?.formationId ?? null)
   const dummyRoles = ref(composed?.roles ?? {})
+  // Task forces japonaises qui ont perdu leurs porte-avions (cf.
+  // `convertFleet`) : task force -> pion "Fleet TF" qu'elle montre
+  // désormais. Elle garde son identité (composition, clés de ses navires,
+  // leurre qui la porte) ; refait au rejeu avec les entrées
+  // `fleetConversion`.
+  const convertedIjn = ref(new Map())
+  /** Pion de task force que montre la task force japonaise `tf`. */
+  const shownTaskForce = (tf) => convertedIjn.value.get(tf) ?? tf
 
   /** Rôle de la task force `tf` parmi les rôles des leurres (`roles`), ou,
    *  pour un journal antérieur aux formations (aucun rôle n'a de
@@ -370,9 +381,17 @@ export function useCoralSea(moduleId, ctx = {}) {
   }
 
   /** Comportement de la task force `tf` (cf. le moteur `fleets` du
-   *  scénario), ou `null` (vrai leurre, task force hors de la formation). */
+   *  scénario), ou `null` (vrai leurre, task force hors de la formation).
+   *  Celle qui a perdu ses porte-avions le reprend d'après ses navires à
+   *  flot. */
   function behaviorOf(tf) {
-    return tf ? taskForceRole(tf)?.behavior ?? null : null
+    if (!tf) return null
+    if (convertedIjn.value.has(tf)) {
+      const types = new Map((ctx.fleets?.ijn?.ships ?? []).map((ship) => [ship.id, ship.type]))
+      const afloat = (taskForceRole(tf)?.ships ?? []).filter((id, index) => !isSunk(ijnShipKey(tf, id, index)))
+      return engines.fleets.behaviorOfShips(afloat, (id) => types.get(id))
+    }
+    return taskForceRole(tf)?.behavior ?? null
   }
 
   // Suiveurs (escortes, second du faux couple, leurres d'un renfort de
@@ -441,7 +460,7 @@ export function useCoralSea(moduleId, ctx = {}) {
   function privateLabel(counter) {
     const role = dummyRole(counter)
     if (!role) return null
-    if (role.code) return role.code
+    if (role.code) return convertedIjn.value.has(role.tf) ? counterById(convertedIjn.value.get(role.tf))?.code : role.code
     return isTransport(counter) ? 'Leurre AK' : 'Leurre'
   }
 
@@ -539,13 +558,17 @@ export function useCoralSea(moduleId, ctx = {}) {
     if (!active.value || unitId == null) return
     knownIjn.value = new Map(knownIjn.value).set(String(unitId), turn ?? currentTurn.value)
   }
+  /** Le joueur US connaît-il la task force japonaise `counter` ? */
+  function isRevealed(counter) {
+    return active.value && isIjnTaskForce(counter) && knownIn(knownIjn.value, counter.id)
+  }
   /** Pion d'une task force japonaise CONNUE du joueur US (`{ src, name }`
    *  de son vrai pion TF, cf. coral-sea.json), qui remplace son drapeau sur
    *  la carte ; `null` sinon. */
   function revealedLook(counter) {
-    if (!active.value || !isIjnTaskForce(counter) || !knownIn(knownIjn.value, counter.id)) return null
+    if (!isRevealed(counter)) return null
     const tf = taskForceOf(counter)
-    const look = tf && allCounters.find((other) => String(other.id) === tf)
+    const look = tf && counterById(shownTaskForce(tf))
     return look?.src ? { src: look.src, name: look.name } : null
   }
   /** Le Japonais connaît-il exactement cette task force alliée ? */
@@ -847,7 +870,8 @@ export function useCoralSea(moduleId, ctx = {}) {
   function roleOf(counter) {
     if (counter?.code !== 'Dummy') return counter?.role ?? declaredRoles.get(String(counter?.id)) ?? 'fleet'
     const tf = dummyRole(counter)?.tf
-    return tf ? declaredRoles.get(tf) ?? 'fleet' : 'dummy'
+    if (!tf) return 'dummy'
+    return convertedIjn.value.has(tf) ? 'fleet' : declaredRoles.get(tf) ?? 'fleet'
   }
 
   /** Sources de reconnaissance du camp `side` : `{ key, base, name,
@@ -872,10 +896,11 @@ export function useCoralSea(moduleId, ctx = {}) {
   }
 
   /** Ce pion est-il une cible de reconnaissance pour le camp `side` ? Une
-   *  task force ou un leurre du camp adverse. */
+   *  task force ou un leurre du camp adverse, que ce camp ne connaît pas
+   *  déjà (raid, contact d'un combat naval). */
   function reconTargetOf(counter, side) {
     return active.value && counter?.faction === ENEMY[side] && counter.type === 'task force'
-      && !(side === 'ijn' && isKnownId(counter.id))
+      && !(side === 'ijn' ? isKnownId(counter.id) : isRevealed(counter))
   }
 
   /** Checks de reconnaissance possibles du camp `side` (japonais par
@@ -1022,12 +1047,10 @@ export function useCoralSea(moduleId, ctx = {}) {
   // Côtés d'hex du module (barrières de corail, cf. lib/edges.js).
   const edges = resolveEdges(ctx.terrain)
   /** Les hex `a` et `b` (`{ col, row }`) sont-ils adjacents : voisins, sans
-   *  barrière entre eux (cf. en-tête) ? */
-  function adjacent(a, b) {
-    return hexDistance(a, b) === 1 && !edges.propsOf(`${hexId(a.col + 1, a.row)}-${hexId(b.col + 1, b.row)}`)?.impassable
-  }
+   *  barrière entre eux (cf. en-tête, shared/duelRules.js) ? */
+  const adjacent = (a, b) => adjacentAcross(a, b, edges)
   /** `a` et `b` sont-ils au contact : même hex, ou adjacents ? */
-  const inContact = (a, b) => (a.col === b.col && a.row === b.row) || adjacent(a, b)
+  const inContact = (a, b) => touching(a, b, edges)
 
   /** Hex ("col,row") où une task force ne peut pas entrer en mouvement (cf.
    *  en-tête) : ceux des task forces ennemies — et, pour un vrai leurre, les
@@ -1399,15 +1422,19 @@ export function useCoralSea(moduleId, ctx = {}) {
    *  : les avions du porte-avions, selon leurs pertes du moment (cf.
    *  `carrierAir`). Les navires coulés n'y sont plus
    *  (`carrier` nul, sans avions, pour un porte-avions coulé) ; `sunk` les
-   *  liste. `null` : pas une task force japonaise, vrai leurre, ou
-   *  composition inconnue (journal antérieur aux formations, catalogue
-   *  manquant). */
+   *  liste. Une task force qui a perdu ses porte-avions est sur "Fleet TF"
+   *  (cf. `convertFleet`). `null` : pas une task force japonaise, vrai
+   *  leurre, ou composition inconnue (journal antérieur aux formations,
+   *  catalogue manquant). */
   function fleetDisplay(counter) {
     if (!active.value || !isIjnTaskForce(counter)) return null
     const tf = taskForceOf(counter)
     if (!tf) return null
-    const layout = drawnLayout(tf)
-    if (!layout) return null
+    const drawn = drawnLayout(tf)
+    if (!drawn) return null
+    // Plus de porte-avions à flot : "Fleet TF" tout de suite, sans attendre
+    // que la task force change de pion (cf. `convertFleet`).
+    const layout = convertedIjn.value.has(tf) || !carrierCounters(tf) ? asFleetLayout(drawn) : drawn
     const afloat = (ship) => !isSunk(ship.key)
     const sunk = [layout.carrier, ...(layout.escorts ?? []).map((entry) => entry.ship), ...(layout.slots ?? []).map((entry) => entry.ship), ...layout.extra]
       .filter((ship) => ship && !afloat(ship))
@@ -1455,6 +1482,20 @@ export function useCoralSea(moduleId, ctx = {}) {
     }
     displayLayouts.set(tf, layout)
     return layout
+  }
+
+  /** Disposition "Fleet TF" d'une task force qui a perdu ses porte-avions
+   *  (cf. `convertFleet`), tirée de sa disposition `layout` : ses navires à
+   *  flot dans les cases 1 à 9, dans l'ordre des cases de "Carrier TF"
+   *  (escortes, puis navires de trop) ; les coulés en `extra` (cf.
+   *  `fleetDisplay`, qui les en sort). */
+  function asFleetLayout(layout) {
+    if (layout.kind !== 'carrier') return layout
+    const ships = [layout.carrier, ...[...layout.escorts].sort((a, b) => a.cell - b.cell).map((entry) => entry.ship), ...layout.extra]
+    const afloat = ships.filter((ship) => !isSunk(ship.key))
+    const slots = FLEET_DISPLAYS.fleet.slots.length
+    return { kind: 'fleet', slots: afloat.slice(0, slots).map((ship, slot) => ({ ship, slot })),
+      extra: [...afloat.slice(slots), ...ships.filter((ship) => isSunk(ship.key))] }
   }
 
   /** Cible `shipKey` (clé d'un navire du support, cf. `fleetDisplay` et,
@@ -1512,6 +1553,7 @@ export function useCoralSea(moduleId, ctx = {}) {
     if (SHIP_DAMAGE[state].sunk) {
       const fleets = {}
       for (const [tf, cells] of Object.entries(alliedFleets.value)) {
+        if (cells.carrier === key && declaredRoles.get(tf) === 'carrier') carrierLost.add(tf)
         const kept = Object.fromEntries(Object.entries(cells).filter(([cell, shipKey]) => (isAirCell(cell) ? carrierOfPlane(shipKey) : shipKey) !== key))
         if (Object.keys(kept).length) fleets[tf] = kept
       }
@@ -1519,9 +1561,14 @@ export function useCoralSea(moduleId, ctx = {}) {
     }
   }
   const isSunk = (key) => !!SHIP_DAMAGE[damageOf(key)]?.sunk
+  // "Carrier TF" alliées dont le porte-avions a coulé (cf. `isCarrierless`) :
+  // refaites au rejeu avec les entrées `shipDamage`.
+  const carrierLost = new Set()
   /** Dommages lus dans le journal ; `null` les efface (nouveau rejeu). */
   function restoreShipDamage(damage) {
-    if (active.value) shipDamage.value = damage ? { ...damage } : {}
+    if (!active.value) return
+    shipDamage.value = damage ? { ...damage } : {}
+    carrierLost.clear()
   }
 
   // --- Pertes des avions, des deux camps (cf. `PLANE_STATES`) : clé de pion
@@ -1686,6 +1733,72 @@ export function useCoralSea(moduleId, ctx = {}) {
     if (active.value) alliedFleets.value = fleets ? { ...fleets } : {}
   }
 
+  // --- CARRIER TF SANS PORTE-AVIONS (cf. HexMap.vue::
+  // convertCarrierlessFleets) : une "Carrier TF", d'un camp comme de
+  // l'autre, dont le dernier porte-avions coule devient une "Fleet TF" —
+  // elle prend le pion "Fleet TF" libre de plus petit numéro et la
+  // disposition "Fleet TF" (cf. `convertFleet`) ; son ancien pion redevient
+  // disponible.
+
+  /** La "Carrier TF" `tf` a-t-elle perdu ses porte-avions — aucun à flot —,
+   *  sans avoir encore changé de pion ? */
+  function isCarrierless(tf) {
+    if (!active.value || declaredRoles.get(tf) !== 'carrier' || convertedIjn.value.has(tf)) return false
+    // Une task force alliée peut être composée sans porte-avions : seule
+    // celle dont le porte-avions a coulé l'a perdu.
+    return counterById(tf)?.faction === 'ijn' ? !carrierCounters(tf) : carrierLost.has(tf) && !alliedFleets.value[tf]?.carrier
+  }
+
+  /** Pion "Fleet TF" libre de plus petit numéro du camp de la task force
+   *  `tf` — ni sur la carte (`counters`), ni éliminé (`eliminated`, ids),
+   *  ni montré par une task force japonaise (formation, conversion) —, ou
+   *  `null`. */
+  function freeFleetTaskForce(tf, counters, eliminated = new Set()) {
+    if (!active.value) return null
+    const side = counterById(tf)?.faction
+    const used = new Set([...counters.map((counter) => String(counter.id)), ...eliminated,
+      ...Object.values(dummyRoles.value).map((role) => role.tf).filter(Boolean), ...convertedIjn.value.values()])
+    const number = (counter) => Number(String(counter.code ?? '').replace(/\D/g, '')) || 0
+    const free = allCounters
+      .filter((counter) => counter.faction === side && counter.type === 'task force' && counter.role === 'fleet' && !used.has(String(counter.id)))
+      .sort((a, b) => number(a) - number(b))
+    return free.length ? String(free[0].id) : null
+  }
+
+  /** La "Carrier TF" `from` devient la "Fleet TF" `to` — en jeu comme au
+   *  rejeu (entrée `fleetConversion`). Japonaise : elle garde son identité
+   *  et montre désormais le pion `to` (cf. `shownTaskForce`), sur "Fleet
+   *  TF" (cf. `asFleetLayout`), au comportement de ses navires à flot (cf.
+   *  `behaviorOf`). Alliée : sa composition passe à `to` — ses escortes
+   *  dans les premières cases de "Fleet TF", dans l'ordre —, et ce que le
+   *  Japonais savait d'elle aussi ; HexMap.vue remplace son pion sur la
+   *  carte. */
+  function convertFleet(from, to) {
+    if (!active.value || !from || !to) return
+    if (counterById(from)?.faction === 'ijn') {
+      convertedIjn.value = new Map(convertedIjn.value).set(from, to)
+      return
+    }
+    const cells = alliedFleets.value[from] ?? {}
+    const escorts = displayCells('carrier').filter((cell) => cell !== 'carrier').map((cell) => cells[cell]).filter(Boolean)
+    carrierLost.delete(from)
+    const next = { ...alliedFleets.value }
+    delete next[from]
+    delete next[to]
+    if (escorts.length) next[to] = Object.fromEntries(escorts.map((key, slot) => [`slot${slot}`, key]))
+    alliedFleets.value = next
+    if (knownAllied.value.has(from)) {
+      const known = new Map(knownAllied.value)
+      known.set(to, known.get(from))
+      known.delete(from)
+      knownAllied.value = known
+    }
+    if (lastSightings.has(from)) {
+      lastSightings.set(to, lastSightings.get(from))
+      lastSightings.delete(from)
+    }
+  }
+
   /** Tirage secret à inscrire au journal avec le déploiement. */
   function setupSecrets() {
     return active.value
@@ -1710,6 +1823,8 @@ export function useCoralSea(moduleId, ctx = {}) {
     lastSightings.clear()
     knownAllied.value = new Map()
     knownIjn.value = new Map()
+    // Les task forces sans porte-avions, avec ses entrées `fleetConversion`.
+    convertedIjn.value = new Map()
   }
 
   // Les autres règles : celles du composable inerte (aucune particularité).
@@ -1721,12 +1836,32 @@ export function useCoralSea(moduleId, ctx = {}) {
     isReusableDummy: isDummy, dummyReinforcementTurn, planDummyReinforcement, applyDummyReinforcement, playerDummyReinforcement,
     followTarget, arrangeInitialPositions, movementPlan, barredHexes, movementEndRemovals,
     navalCombatPhase: navalTable ? NAVAL_COMBAT_PHASE : null, navalContacts, navalBattle, navalFiring, navalPlan,
-    navalRangeProposal, navalAcceptsRange, planNavalBattles, resolveNavalAttacks, noteRevealed, revealedLook, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, raidCandidates, planRaidOptions, noteRaided, noteTurn, isKnownTarget, airStrikeOdds, strikeTarget, sightedDefense, sightedStrikeOdds,
+    navalRangeProposal, navalAcceptsRange, planNavalBattles, resolveNavalAttacks, noteRevealed, isRevealed, revealedLook, raidPhase: RAID_PHASE, raidSide: 'ijn', raidPlan, raidCandidates, planRaidOptions, noteRaided, noteTurn, isKnownTarget, airStrikeOdds, strikeTarget, sightedDefense, sightedStrikeOdds,
     fleetDisplay, fleetDisplays: FLEET_DISPLAYS, fleetDisplayPhase: FLEET_DISPLAY_PHASE, fleetDisplaySide: 'usn',
     airStrikeReach: alliedAirReach, airStrikeRadius: RAID_RADIUS,
     shipDamages: SHIP_DAMAGE, damageOf, setShipDamage, restoreShipDamage,
     planeStates: PLANE_STATES, planeStateOf, setPlaneState, restorePlaneDamage, launchRaid, landFromRaid, airCycle, restoreAirZones,
     alliedFleet, alliedFleetDisplays: ALLIED_FLEET_DISPLAYS, alliedDeck, alliedGroups, alliedAssignments, alliedShipFits, setAlliedFleet, restoreAlliedFleets,
+    isCarrierless, freeFleetTaskForce, convertFleet, taskForceOf, inContact,
     alliedFleetSide: 'usn', alliedFleetPhase: ALLIED_FLEET_PHASE, alliedAirPhase: RAID_PHASE, isAirCell,
+    // Deux joueurs (`ctx.duel`, cf. HexMap.vue, prop `duel`) : pas de moteur
+    // japonais — ni leurres posés au coup d'envoi, ni mouvements, raids ou
+    // reconnaissances de l'IA, ni renfort de leurres —, une mise en place
+    // camp par camp que compte HexMap.vue, un mouvement sans contrainte —
+    // l'allure de la piste pour tous, aucun hex interdit par l'ennemi (les
+    // côtes et récifs de la carte restent), aucun pion retiré
+    // à la fin des Mouvements —, et aucune composition de flotte : on ne fait
+    // que déplacer et rechercher les task forces — la reconnaissance par
+    // zones de HexMap.vue (cf. shared/duelRules.js::resolveRecon), à la place
+    // de celle du joueur contre l'IA.
+    ...(ctx.duel && {
+      autoPlacesAtLoad: () => false, autoMoveSide: null, raidPhase: null, raidSide: null, privateLabelSide: null, manualReconSide: null,
+      setupCount: () => null, dummyReinforcementTurn: () => false,
+      // Pas de tirage secret (formation japonaise, rôles des leurres) : il
+      // ne sert qu'au moteur, et le journal le montrerait aux deux joueurs.
+      setupSecrets: () => null,
+      movementAllowance: () => null, barredHexes: () => null, movementEndRemovals: () => [],
+      alliedFleetSide: null, fleetDisplay: () => null,
+    }),
   }
 }

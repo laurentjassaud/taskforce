@@ -30,6 +30,11 @@ const props = defineProps({
   // PHASE EN COURS (mise en place : pions de tour 0 seulement ; renfort de
   // leurres du joueur...) ? Absent : aucune restriction de phase.
   canPlace: { type: Function, default: null },
+  // Aide sous les pions, à la place de celle du mode (glisser ou cliquer).
+  hint: { type: String, default: null },
+  // Hex d'entrée sous chaque pion — faux quand la carte montre déjà la zone
+  // (mise en place à deux joueurs, cf. HexMap.vue::setupZoneGlow).
+  hexLabels: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['dragstart', 'select'])
@@ -84,12 +89,12 @@ const groups = computed(() => {
           <!-- Pion en nombre illimité (`multiple`) : il reste dans le panneau
                après chaque pose. "*" (pose n'importe où) n'a rien à indiquer. -->
           <figcaption v-if="counter.multiple" class="rf-hex rf-unlimited" :title="t('reinforcements.unlimited')">∞</figcaption>
-          <figcaption v-else-if="counter.setup !== '*'" class="rf-hex">{{ counter.setup }}</figcaption>
+          <figcaption v-else-if="hexLabels && counter.setup !== '*'" class="rf-hex">{{ counter.setup }}</figcaption>
         </figure>
       </div>
     </section>
     <p class="rf-hint">
-      {{ draggable ? t('reinforcements.hintDrag') : t('reinforcements.hintClick') }}
+      {{ hint ?? (draggable ? t('reinforcements.hintDrag') : t('reinforcements.hintClick')) }}
     </p>
   </div>
 </template>

@@ -17,7 +17,9 @@ import { ref, watch, nextTick } from 'vue'
 const props = defineProps({
   // Pions de la pile, du dessus vers le dessous — [{ id, src, name, detail? }]
   // (`detail` : ligne de plus sous le nom, ex. tour de pose d'un repérage ;
-  // `fullName` : nom affiché en entier, sur plusieurs lignes au besoin).
+  // `fullName` : nom affiché en entier, sur plusieurs lignes au besoin ;
+  // `clone` : clone d'un pion de recherche, bordé de moutarde comme sur la
+  // carte, cf. Counter.vue).
   counters: { type: Array, required: true },
   // Rectangle écran du pion survolé — { left, top, right, bottom }.
   anchor: { type: Object, required: true },
@@ -50,7 +52,7 @@ watch(() => [props.anchor, props.counters.length], () => nextTick(place), { imme
       <div v-if="title" class="sp-title">{{ title }}</div>
       <div class="sp-counters">
         <figure v-for="counter in counters" :key="counter.id" class="sp-counter">
-          <img :src="counter.src" :alt="counter.name" class="sp-img" />
+          <img :src="counter.src" :alt="counter.name" class="sp-img" :class="{ 'sp-img-clone': counter.clone }" />
           <figcaption class="sp-name" :class="{ 'sp-name-full': counter.fullName }">{{ counter.name }}</figcaption>
           <figcaption v-if="counter.detail" class="sp-detail">{{ counter.detail }}</figcaption>
         </figure>
@@ -96,6 +98,10 @@ watch(() => [props.anchor, props.counters.length], () => nextTick(place), { imme
   width: 64px;
   height: 64px;
   border-radius: var(--radius-4);
+}
+
+.sp-img-clone {
+  outline: 2px solid var(--c-mustard);
 }
 
 .sp-name {

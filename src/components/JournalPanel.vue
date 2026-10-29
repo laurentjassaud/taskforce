@@ -35,6 +35,14 @@ const props = defineProps({
   // aussi les décisions de l'IA (entrées `ai`, cf. HexMap.vue::
   // logAiDecision), toujours enregistrées mais cachées sinon.
   debug: { type: Boolean, default: false },
+  // Filtre d'affichage (`entrée -> booléen`), ex. double aveugle : les
+  // entrées de l'adversaire cachées (cf. HexMap.vue::journalEntryVisible).
+  // Elles restent enregistrées.
+  entryVisible: { type: Function, default: null },
+  // Complément d'une entrée montré en mode debug seulement (`entrée ->
+  // texte | null`), ex. chits tirés par une reconnaissance à deux joueurs
+  // (cf. HexMap.vue::journalDebugNote).
+  debugNote: { type: Function, default: null },
 })
 
 // `loaded` : journal à rejouer sur la carte (cf. HexMap.vue::onJournalLoaded).
@@ -74,7 +82,8 @@ function saveLabel(isAutosave) {
 // HexMap.vue::undo qui vise une entrée par id). 'desc' = position courante
 // (comme avant) ; 'asc' = lecture depuis le début (plus ancien en tête).
 const order = ref('desc')
-const visibleEntries = computed(() => (props.debug ? entries.value : entries.value.filter((entry) => entry.kind !== 'ai')))
+const visibleEntries = computed(() => entries.value
+  .filter((entry) => (props.debug || entry.kind !== 'ai') && (props.entryVisible?.(entry) ?? true)))
 const displayEntries = computed(() => (order.value === 'asc' ? [...visibleEntries.value].reverse() : visibleEntries.value))
 
 /** Retourne l'id de l'entrée ajoutée — permet à l'appelant (cf.
@@ -356,7 +365,8 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
 
     <p v-if="!entries.length" class="jn-empty">{{ t('journal.empty') }}</p>
     <div v-for="entry in displayEntries" :key="entry.id" class="jn-row" :class="'jn-' + entry.kind">
-      <span class="jn-t">{{ entry.t }}</span><span class="jn-txt">{{ entry.text }}</span>
+      <span class="jn-t">{{ entry.t }}</span>
+      <span class="jn-txt">{{ entry.text }}<template v-if="debug && debugNote?.(entry)"><br /><span class="jn-debug">{{ debugNote(entry) }}</span></template></span>
     </div>
     <button v-if="entries.length && !shared" class="jn-clear" @click="clear">{{ t('journal.clear') }}</button>
 
@@ -494,6 +504,12 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
 
 .jn-txt {
   flex: 1;
+}
+
+/* Complément réservé au mode debug (cf. `debugNote`). */
+.jn-debug {
+  color: var(--c-red);
+  font-style: italic;
 }
 
 .jn-clear {

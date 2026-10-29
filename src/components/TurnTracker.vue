@@ -38,7 +38,7 @@
 
 import { ref, computed, watch } from 'vue'
 import { mt } from '../i18n/index.js'
-import { turnInfoOf, sideOfStep, sidesOfTurn, periodOf, setupSteps, turnOfStep, slotOfStep, totalStepsOf } from '../lib/turnTrack.js'
+import { turnInfoOf, sideOfStep, sidesOfTurn, periodOf, setupSteps, setupSidesOf, turnOfStep, slotOfStep, totalStepsOf } from '../lib/turnTrack.js'
 
 const props = defineProps({
   config: { type: Object, default: null },
@@ -114,8 +114,9 @@ const isLastStep = computed(() => currentStep.value >= totalSteps.value - 1)
 // camp actif au même tour ("Autre joueur").
 const isLastSideOfTurn = computed(() => {
   if (!props.config) return true
-  // La mise en place est un "tour" à elle seule : la suite est le tour 1.
-  if (isSetupStep.value) return true
+  // La mise en place est un "tour" à elle seule : après l'étape de son
+  // dernier camp, la suite est le tour 1.
+  if (isSetupStep.value) return currentStep.value === offset.value - 1
   if (props.config.slots) return !nextSlot.value || nextSlot.value.turn !== currentSlot.value?.turn
   return ((currentStep.value - offset.value) % props.config.order.length) === props.config.order.length - 1
 })
@@ -222,12 +223,13 @@ const conditionRows = computed(() => {
     <div class="tt-row">
       <!-- Piste détaillée : bandeaux de périodes, heure et initiative par tour. -->
       <div v-if="detailed" class="tt-track tt-track-detailed">
-        <!-- Étape de mise en place (tour 0), avant le tour 1. -->
+        <!-- Étape(s) de mise en place (tour 0), avant le tour 1 : une par camp. -->
         <div v-if="config.setup" class="tt-period setup">
           <span class="tt-period-label">{{ mt(config.setup.label) }}</span>
           <div class="tt-period-cells">
-            <span class="tt-cell tt-cell-detailed tt-cell-setup" :class="{ active: isSetupStep, past: !isSetupStep }"
-              :style="{ '--initiative': sideColor(config.setup.side) }" :title="mt(config.setup.label)">
+            <span v-for="(side, index) in setupSidesOf(config)" :key="side" class="tt-cell tt-cell-detailed tt-cell-setup"
+              :class="{ active: currentStep === index, past: currentStep > index }"
+              :style="{ '--initiative': sideColor(side) }" :title="mt(config.setup.label)">
               <span class="tt-cell-number">{{ config.setup.short ?? '0' }}</span>
             </span>
           </div>

@@ -25,10 +25,14 @@ const moduleId = ref('')
 const scenarios = computed(() => (module.value ? scenarioOptions(module.value) : null))
 const settings = computed(() => resolveSettings(route.query, scenarios.value))
 const settingsInfo = computed(() => describeSettings(settings.value, scenarios.value))
-// "Assisté" est le seul mode qui active les garde-fous (grille, sélection au
-// clic, restriction de tour — cf. lib/useAssisted.js) ; toute autre valeur
-// (dont l'absence) reste "Libre", le comportement par défaut de HexMap.vue.
-const isAssistedParty = computed(() => settings.value.party === 'assiste')
+// Les modes de jeu (cf. lib/gameSettings.js::PARTY_OPTIONS) activent les
+// garde-fous de la partie Assistée (grille, sélection au clic, restriction
+// de tour — cf. lib/useAssisted.js) ; toute autre valeur reste "Libre", le
+// comportement par défaut de HexMap.vue. Deux joueurs en double aveugle
+// (`duel`) : sans IA, chacun ne voit que ses forces (cf. HexMap.vue, prop
+// `duel`).
+const isAssistedParty = computed(() => ['assiste', 'duel'].includes(settings.value.party))
+const isDuelParty = computed(() => settings.value.party === 'duel')
 
 // Clé de la carte : change avec les réglages, ce qui la REMONTE à neuf —
 // une partie ne change jamais de mode en cours de route (les règles du mode
@@ -71,7 +75,7 @@ onMounted(async () => {
       · {{ $t('summary.party', { name: settingsInfo.party }) }} · {{ $t('summary.timing', { name: settingsInfo.timing })
       }}<span v-if="settingsInfo.timingValue"> ({{ settingsInfo.timingValue }} min)</span>
     </p>
-    <HexMap v-if="module" :key="mapKey" :module="module" :module-id="moduleId" :assisted="isAssistedParty"
+    <HexMap v-if="module" :key="mapKey" :module="module" :module-id="moduleId" :assisted="isAssistedParty" :duel="isDuelParty"
       :settings="settings" @restart-with="restartWith" />
   </div>
 </template>

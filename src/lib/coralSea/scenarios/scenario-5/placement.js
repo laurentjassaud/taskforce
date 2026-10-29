@@ -4,7 +4,7 @@
 //
 // DÉPLOIEMENT : seuls les 12 leurres (Dummy) japonais sont sur la carte au
 // coup d'envoi, tirés au hasard dans leur plage `setup` (bord haut,
-// 0601-2701, cf. coral-sea.json). Tous les autres pions partent du panneau
+// 0601-2801, cf. coral-sea.json). Tous les autres pions partent du panneau
 // latéral.
 //
 // GROUPES : chaque leurre porteur d'une task force reçoit un leurre

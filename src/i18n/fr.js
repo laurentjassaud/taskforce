@@ -18,9 +18,62 @@ export default {
     gotIt: 'Compris',
   },
 
+  // Codes d'erreur du serveur des parties en ligne (cf. server/src/rooms.js,
+  // i18n/index.js::errorMessage).
+  errors: {
+    'not-found': 'Cette partie n’existe pas, ou plus : le serveur a pu redémarrer.',
+    'bad-passcode': 'Code d’accès incorrect.',
+    'room-full': 'Cette partie est déjà complète.',
+    'side-taken': 'Ce camp est déjà pris par l’autre joueur.',
+    'already-started': 'Cette partie a déjà commencé.',
+    'not-started': 'La partie n’a pas encore commencé.',
+    'bad-name': 'Pseudo invalide (1 à 40 caractères).',
+    'bad-side': 'Camp invalide.',
+    'too-many-games': 'Trop de parties en cours sur le serveur : réessayez plus tard.',
+    'module-unavailable': 'Le serveur n’a pas pu lire les règles du jeu. Réessayez dans un instant.',
+    'no-duel': 'Ce scénario ne se joue pas à deux joueurs.',
+    unreachable: 'Le serveur des parties en ligne ne répond pas. Réessayez dans un instant.',
+    'module-missing': 'Le jeu de cette partie n’est plus disponible.',
+    'unknown-error': 'Erreur inconnue du serveur.',
+  },
+
+  online: {
+    checkbox: 'Jouer en ligne',
+    hint: 'Chacun sur son écran, au lieu du même écran : vous créez la partie, puis envoyez le lien d’invitation à votre adversaire.',
+    create: 'Créer la partie',
+    creating: 'Création…',
+    waitingTurn: 'Au tour des {side} : en attente de votre adversaire…',
+  },
+
+  lobby: {
+    kicker: 'Partie en ligne',
+    back: 'Retour à l’accueil',
+    loading: 'Chargement de la partie…',
+    joinTitle: 'Rejoindre la partie',
+    nickname: 'Votre pseudo',
+    side: 'Votre camp',
+    taken: 'pris',
+    passcode: 'Code d’accès',
+    join: 'Rejoindre',
+    joining: 'Connexion…',
+    connecting: 'Connexion au serveur…',
+    waiting: 'En attente de votre adversaire…',
+    inviteText: 'Envoyez-lui ce lien : il y choisira son pseudo et prendra le camp restant. La partie commence dès qu’il vous a rejoint.',
+    inviteLabel: 'Lien d’invitation',
+    copy: 'Copier le lien',
+    copied: 'Lien copié',
+    you: 'vous',
+    online: 'en ligne',
+    offline: 'hors ligne',
+    onlineTag: 'En ligne',
+    disconnected: 'Connexion au serveur perdue : reconnexion en cours…',
+    opponentOffline: '{name} est hors ligne.',
+    replayWarning: 'Cette sauvegarde a été jouée avec d’autres réglages que cette partie en ligne : impossible de la reprendre ici.',
+  },
+
   settings: {
     scenarioHistorical: 'Historique',
-    party: { libre: 'Libre', assiste: 'Assisté' },
+    party: { duel: 'Deux joueurs en double aveugle', assiste: 'Contre l’IA, avec leurres', aveugle: 'Contre l’IA, en aveugle', libre: 'Libre' },
     timing: { libre: 'Libre', limite: 'Limité', blitz: 'Blitz' },
     timingHint: {
       limite: 'Conseillé : 4 à 8 minutes / tour',
@@ -32,7 +85,7 @@ export default {
   summary: {
     scenario: 'Scénario : {name}',
     weatherOn: 'Météo activée',
-    party: 'Partie {name}',
+    party: 'Mode : {name}',
     timing: 'Timing {name}',
   },
 
@@ -41,8 +94,9 @@ export default {
     chooseScenario: 'Choisir le scénario',
     gameMode: 'Choisir le mode de jeu',
     partyHint: {
-      libre: "Un bac à sable, comme autour d'une table : vous déplacez librement n'importe quel pion, à tout moment, et appliquez vous-même les règles.",
-      assiste: 'Le jeu déroule les phases du tour et applique les règles : tour du camp actif, points de mouvement, zones de contrôle, empilement.',
+      duel: 'Deux joueurs sur le même écran, chacun à son tour : chaque camp ne voit que ses forces et ce qu’il a repéré de l’adversaire.',
+      assiste: 'Vous jouez contre l’IA. Ses forces sont sur la carte, mêlées à des leurres. Le jeu déroule les phases du tour et applique les règles.',
+      aveugle: 'Vous jouez contre l’IA sans voir ses forces : seuls vos repérages les font apparaître sur la carte.',
     },
     weather: 'Météo',
     moduleLoadError: 'Impossible de charger le jeu. Rechargez la page pour réessayer.',
@@ -88,6 +142,7 @@ export default {
     unlimited: 'En nombre illimité',
     hintDrag: "Glisser un pion sur la carte pour le poser librement, ou cliquer dessus puis cliquer un des hex d'entrée surlignés en orange.",
     hintClick: "Cliquer un pion puis cliquer un des hex d'entrée surlignés en orange sur la carte.",
+    hintDuel: 'Glissez un pion sur un hex de votre zone de mise en place, marquée sur la carte. Vous pouvez le déplacer à nouveau, ou le remettre dans ce panneau.',
   },
 
   moveTimer: {
@@ -179,8 +234,12 @@ export default {
   },
 
   searchBag: {
+    cupTitle: 'Dans la tasse (debug)',
     total: '{left} chits sur {total} dans la tasse',
     hint: "Les chits tirés n'y retournent qu'aux tours « Tous rendus » de la piste (la nuit).",
+    removedTitle: 'Retirés du jeu',
+    removedEmpty: 'Aucun pion de recherche retiré du jeu.',
+    removedHint: "Pions de recherche tirés qui ont quitté la carte : task force devenue connue (raid, combat naval), pion remplacé par un nouveau résultat, unité éliminée. Ils ne retournent dans la tasse qu'aux tours « Tous rendus » de la piste (la nuit). Un chit est tiré par hex exploré : la task force du dessus de la pile reçoit son pion, les autres un clone (bordure moutarde), qui ne compte pas.",
   },
 
   sighting: {
@@ -212,6 +271,7 @@ export default {
 
   fleetDisplay: {
     title: '{sighting} repérée en {hex}',
+    known: '{unit} connue en {hex}',
     composition: 'Composition de {unit} en {hex} (debug)',
     extra: 'Hors du support : {ships}',
     outOfRange: 'Hors de portée : vos avions ne frappent qu’à {radius} hex ou moins d’un de vos porte-avions.',
@@ -301,8 +361,37 @@ export default {
     setupShort: 'Seulement {count} task forces (leurres compris) sur {total} sont posées.',
     noMove: "Aucune unité n'a été déplacée pendant cette phase de mouvement.",
     recons: 'Il reste {n} reconnaissance japonaise à faire. | Il reste {n} reconnaissances japonaises à faire.',
+    duelRecon: "{n} hex de reco désigné, mais vos avions n'ont pas décollé. | {n} hex de reco désignés, mais vos avions n'ont pas décollé.",
     movementEndRemovals: "{side} : {n} leurre au contact d'une task force ennemie sera retiré du jeu. | {side} : {n} leurres au contact d'une task force ennemie seront retirés du jeu.",
     confirm: 'Confirmer',
+  },
+
+  duel: {
+    handoverTitle: 'Au tour des {side}',
+    handoverText: "Passez l'écran au joueur qui commande les {side}. L'autre joueur ne doit plus regarder.",
+    handoverButton: 'Afficher mes forces',
+    handoverTurn: 'Tour {turn} · {phase}',
+    contactTitle: 'Contact !',
+    contactFound: "Votre {unit} est au contact de {enemies} en {hex}. Le pion ennemi reste sur votre carte jusqu'à la prochaine nuit ; vous pouvez poursuivre votre mouvement.",
+    contactSuffered: "Pendant le tour adverse, {enemy} est venue au contact de votre {units} en {hex}. Elle reste sur votre carte jusqu'à la prochaine nuit.",
+    scoutedTitle: 'Reconnaissance ennemie',
+    scoutedSuffered: 'Pendant le tour adverse, des avions de reconnaissance ennemis ont survolé votre {units}, bordée de jaune sur la carte. | Pendant le tour adverse, des avions de reconnaissance ennemis ont survolé vos {units}, bordées de jaune sur la carte.',
+  },
+
+  duelRecon: {
+    title: 'Reconnaissance — {side}',
+    hint: "Cliquez un hex de reco à {range} hex ou moins d'un de vos porte-avions ({n} par porte-avions) : il explore une zone de 7 hex, lui et ses 6 voisins. Cliquez-le à nouveau pour l'annuler.",
+    count: 'Hex de reco : {n} / {max}',
+    launch: 'Décollage',
+    waiting: 'En vol…',
+    continue: 'Continuer',
+    noCarrier: "Aucun de vos porte-avions n'est sur la carte : pas de reconnaissance cette phase.",
+    done: 'Vos avions sont rentrés : aucun repérage. | Vos avions sont rentrés : 1 repérage. | Vos avions sont rentrés : {n} repérages.',
+    zoneLine1: 'ZONE',
+    marksTitle: 'Repéré en {hex}',
+    seenAt: 'Tour {turn} · {time}',
+    seenTurn: 'Tour {turn}',
+    zoneLine2: 'RECO',
   },
 
   naval: {
@@ -419,6 +508,11 @@ export default {
     raidTargets: { carrier: 'porte-avions', escort: 'escorteur {n}', ship: 'navire {n}' },
     alliedFleet: 'Composition de {unit} : aucun navire | Composition de {unit} : {n} navire | Composition de {unit} : {n} navires',
     shipDamage: '{ship} : {state}',
+    fleetConversion: '{from} ({hex}) a perdu son porte-avions : elle devient {to}, une Fleet TF.',
+    fleetConversionHidden: 'Une task force en {hex} a perdu son porte-avions : elle devient une Fleet TF.',
+    duelContact: 'Contact : {unit} au contact de {enemies} en {hex}',
+    duelReconChits: 'Chits tirés : {chits}',
+    duelRecon: 'Reconnaissance ({side}) sur {hexes} : aucun repérage | Reconnaissance ({side}) sur {hexes} : 1 repérage | Reconnaissance ({side}) sur {hexes} : {n} repérages',
     planeState: 'Avion {plane} : {state}',
     dummyReinforce: 'Nuit : {n} TF undetected japonaise rejoint la carte en {hexes} | Nuit : {n} TF undetected japonaises rejoignent la carte en {hexes}',
     searchRefill: 'Nuit : {total} chit de recherche retourne dans la tasse ({detected} Detected!, {misdirect} Misdirect, {contactLost} Contact Lost) | Nuit : {total} chits de recherche retournent dans la tasse ({detected} Detected!, {misdirect} Misdirect, {contactLost} Contact Lost)',
@@ -521,7 +615,7 @@ export default {
     stepOf: 'Étape {step} / {total}',
     previous: 'Précédent',
     finish: 'Terminer',
-    intro: "Bienvenue ! Ce guide présente l'écran de jeu en quelques étapes. Vous jouez en mode {mode}. Vous pourrez le rouvrir à tout moment avec le bouton « ? » de la barre d'outils.",
+    intro: "Bienvenue ! Ce guide présente l'écran de jeu en quelques étapes. Vous jouez en mode « {mode} ». Vous pourrez le rouvrir à tout moment avec le bouton « ? » de la barre d'outils.",
     toolbar: {
       title: 'La barre du haut',
       lead: "En haut de l'écran, tout ce qui décrit où en est la partie.",

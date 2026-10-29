@@ -228,10 +228,11 @@ export function useAssisted(assisted, turnTrackerRef, terrain, counters, sides, 
 
   // --- Mise en place (avant le tour 1) ---------------------------------------
   // Étape de la piste de tour déclarée par `turnTrack.setup` (cf.
-  // lib/turnTrack.js) : un seul camp, une seule phase, où il pose ses pions
-  // de tour 0 depuis le panneau, n'importe où sur la carte (`setup` "*").
-  // Aucun déplacement (le Mouvement est la phase 0). Le bouton "suivant"
-  // ouvre directement le tour 1.
+  // lib/turnTrack.js) : une seule phase, où le camp de l'étape pose ses
+  // pions de tour 0 depuis le panneau, n'importe où sur la carte (`setup`
+  // "*"). Aucun déplacement (le Mouvement est la phase 0). Le bouton
+  // "suivant" passe à l'étape du camp suivant s'il y en a une (mise en
+  // place camp par camp), sinon ouvre directement le tour 1.
   const PHASE_SETUP = -2
 
   const phases = structure.phases
@@ -395,7 +396,7 @@ export function useAssisted(assisted, turnTrackerRef, terrain, counters, sides, 
   // de l'interface (cf. src/i18n, section `phaseButton`).
   const nextLabel = computed(() => {
     if (!assisted.value) return null
-    if (phaseStep.value === PHASE_SETUP) return t('phaseButton.newTurn')
+    if (phaseStep.value === PHASE_SETUP) return t(turnTrackerRef.value?.isLastSideOfTurn ? 'phaseButton.newTurn' : 'phaseButton.otherPlayer')
     // Phases entremêlées : même phase pour l'autre camp, phase suivante, ou
     // nouveau tour (cf. lib/turnTrack.js).
     const slot = turnTrackerRef.value?.currentSlot
@@ -437,6 +438,8 @@ export function useAssisted(assisted, turnTrackerRef, terrain, counters, sides, 
    *  Mouvement, jamais retiré). */
   function nextPhaseOf() {
     const tracker = turnTrackerRef.value
+    // Mise en place camp par camp : l'étape du camp suivant.
+    if (phaseStep.value === PHASE_SETUP && !tracker?.isLastSideOfTurn) return { phaseStep: PHASE_SETUP, nextStep: true }
     if (phaseStep.value !== PHASE_SETUP && !tracker?.currentSlot) {
       const active = activePhases()
       const index = active.findIndex((entry) => entry.step === phaseStep.value)

@@ -38,6 +38,14 @@ const props = defineProps({
   // `moduleRules.isKnownTarget` — task force déjà frappée par un raid) :
   // bordure verte 2px.
   known: { type: Boolean, default: false },
+  // Vrai pour le clone d'un pion de recherche (cf. HexMap.vue::
+  // performSearch — posé sur une autre unité de l'hex exploré, il ne compte
+  // pas parmi les chits en jeu) : bordure jaune moutarde 2px.
+  clone: { type: Boolean, default: false },
+  // Vrai pour une task force survolée par la dernière reconnaissance
+  // ennemie (deux joueurs, cf. HexMap.vue::isScouted), quel qu'en soit le
+  // résultat : bordure jaune 3px.
+  scouted: { type: Boolean, default: false },
   // Étiquette secrète sous le pion (cf. HexMap.vue::privateLabelOf — ex.
   // vraie identité d'un leurre à la mer de Corail), ou `null`.
   label: { type: String, default: null },
@@ -81,9 +89,13 @@ function onMouseDown(ev) {
       @mousedown="onMouseDown" @click.stop="onClick"
       @contextmenu.prevent.stop="emit('contextmenu', id, $event)"
       @mouseenter="emit('hover', id, $event)" @mouseleave="emit('unhover', id)" />
+    <rect v-if="scouted" class="counter-scouted-ring" :x="center.x - counterSizePx / 2 - 2" :y="center.y - counterSizePx / 2 - 2" :width="counterSizePx + 4"
+      :height="counterSizePx + 4" rx="5" ry="5" />
     <rect v-if="selected" class="counter-ring" :x="center.x - counterSizePx / 2 - 3" :y="center.y - counterSizePx / 2 - 3" :width="counterSizePx + 6"
       :height="counterSizePx + 6" rx="5" ry="5" />
     <rect v-if="known" class="counter-known-ring" :x="center.x - counterSizePx / 2 - 1" :y="center.y - counterSizePx / 2 - 1" :width="counterSizePx + 2"
+      :height="counterSizePx + 2" rx="4" ry="4" />
+    <rect v-if="clone" class="counter-clone-ring" :x="center.x - counterSizePx / 2 - 1" :y="center.y - counterSizePx / 2 - 1" :width="counterSizePx + 2"
       :height="counterSizePx + 2" rx="4" ry="4" />
     <rect v-if="moved" class="counter-moved-ring" :x="center.x - counterSizePx / 2" :y="center.y - counterSizePx / 2" :width="counterSizePx" :height="counterSizePx"
       rx="3" ry="3" />
@@ -121,6 +133,22 @@ function onMouseDown(ev) {
   fill: none;
   stroke: var(--c-green);
   stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.counter-clone-ring {
+  fill: none;
+  stroke: var(--c-mustard);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.counter-scouted-ring {
+  fill: none;
+  stroke: var(--c-yellow);
+  stroke-width: 3;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }

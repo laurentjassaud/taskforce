@@ -16,6 +16,9 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const props = defineProps({
   assisted: { type: Boolean, default: false },
+  // Nom du mode de jeu, cité dans l'introduction (cf. lib/gameSettings.js::
+  // PARTY_OPTIONS) ; à défaut, Assisté ou Libre.
+  modeLabel: { type: String, default: null },
 })
 
 const emit = defineEmits(['close'])
@@ -115,7 +118,7 @@ export function markGuideSeen() {
       </header>
 
       <p v-if="index === 0" class="ig-intro">
-        {{ $t('guide.intro', { mode: assisted ? $t('settings.party.assiste') : $t('settings.party.libre') }) }}
+        {{ $t('guide.intro', { mode: modeLabel ?? (assisted ? $t('settings.party.assiste') : $t('settings.party.libre')) }) }}
       </p>
       <p class="ig-lead">{{ $t(`guide.${step.key}.lead`) }}</p>
 

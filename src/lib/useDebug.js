@@ -102,6 +102,35 @@
 //     à hex-objectif sur la carte, `{ id, target: { col, row } }`.
 import { computed, ref } from 'vue'
 
+/** Centre (`{ x, y }`) d'un hex `{ col, row }` parmi `hexes` (cf.
+ *  HexMap.vue::hexes), ou `undefined`. */
+export function hexCenters(hexes) {
+  const centers = new Map(hexes.map((hex) => [hex.c + ',' + hex.r, { x: hex.cx, y: hex.cy }]))
+  return (point) => centers.get(point.col + ',' + point.row)
+}
+
+/** Couleur de la trace n° `index` sur `count` : des teintes réparties sur le
+ *  cercle chromatique. */
+export function trailColor(index, count) {
+  return `hsl(${Math.round((index * 360) / Math.max(count, 1))}, 85%, 45%)`
+}
+
+/** Dessin d'une trace (segments `{ step, points }`, cf. HexMap.vue::
+ *  noteAutoMoveTrail) : `points`, "x,y x,y..." des centres des hex
+ *  parcourus, tous tours confondus ; `dots`, centres des hex de début et de
+ *  fin de chaque segment — un rond entre deux tours. */
+export function trailShape(trail, centerOf) {
+  const path = trail.flatMap((segment, rank) => (rank === 0 ? segment.points : segment.points.slice(1)))
+  const ends = new Map()
+  for (const segment of trail) {
+    for (const point of [segment.points[0], segment.points[segment.points.length - 1]]) ends.set(point.col + ',' + point.row, point)
+  }
+  return {
+    points: path.map(centerOf).filter(Boolean).map((center) => center.x + ',' + center.y).join(' '),
+    dots: [...ends.values()].map(centerOf).filter(Boolean),
+  }
+}
+
 /** Tous les hex atteignables par `unit` depuis `{ col, row }` avec au plus
  *  `budget` MP à dépenser, chaque hex traversé coûtant `terrainCost(hex,
  *  from)` — plus court chemin (Dijkstra), PAS un simple calcul "distance ×
@@ -246,24 +275,14 @@ export function useDebug(
   // `objective` = centre de son hex-objectif. Une couleur par pion.
   const autoMoveTrailLines = computed(() => {
     if (!debug.value) return []
-    const centers = new Map(hexes.value.map((hex) => [hex.c + ',' + hex.r, { x: hex.cx, y: hex.cy }]))
-    const centerOf = (point) => centers.get(point.col + ',' + point.row)
+    const centerOf = hexCenters(hexes.value)
     const movers = autoMovers.value
-    return movers.map((mover, index) => {
-      const trail = autoMoveTrails.value.get(String(mover.id)) ?? []
-      const path = trail.flatMap((segment, rank) => (rank === 0 ? segment.points : segment.points.slice(1)))
-      const ends = new Map()
-      for (const segment of trail) {
-        for (const point of [segment.points[0], segment.points[segment.points.length - 1]]) ends.set(point.col + ',' + point.row, point)
-      }
-      return {
-        id: mover.id,
-        color: `hsl(${Math.round((index * 360) / Math.max(movers.length, 1))}, 85%, 45%)`,
-        points: path.map(centerOf).filter(Boolean).map((center) => center.x + ',' + center.y).join(' '),
-        dots: [...ends.values()].map(centerOf).filter(Boolean),
-        objective: centerOf(mover.target) ?? null,
-      }
-    })
+    return movers.map((mover, index) => ({
+      id: mover.id,
+      color: trailColor(index, movers.length),
+      ...trailShape(autoMoveTrails.value.get(String(mover.id)) ?? [], centerOf),
+      objective: centerOf(mover.target) ?? null,
+    }))
   })
 
   return { debug, adjacentCotLabels, isInRange, entrySurchargeLabels, autoMoveTrailLines }

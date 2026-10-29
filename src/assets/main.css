@@ -63,12 +63,16 @@ body {
   --c-steel: #748ea5;            /* texte discret et contrôles sur fond sombre */
   /* Jeu */
   --c-gold: #e8c468;             /* titres, piste de tour, cibles de reconnaissance */
+  --c-mustard: #d4a017;          /* bordure des clones de pions de recherche */
+  --c-yellow: #ffd60a;           /* task force survolée par une reconnaissance ennemie (deux joueurs) */
   --c-orange: #ff8c00;           /* hex d'entrée, liseré de mouvement */
   --c-green: #2ecc71;            /* sélection, hex accessibles */
   --c-red: #c0392b;              /* ZOC, erreurs, unités éliminées */
   /* Camps (onglets du panneau latéral, piste de tour — cf. coral-sea.json) */
   --c-ijn: #b75f4a;
   --c-usn: #6f94b2;
+  --c-zone-usn: #8fd3fe;         /* zone de mise en place américaine (deux joueurs) */
+  --c-recon: #3cc4f0;            /* zones de reconnaissance (deux joueurs) */
   /* Marque Task Force (accueil, maquette Figma) */
   --c-brand: #f6512b;            /* bouton principal, liens, alertes */
   --c-brand-blue: #6d9fb6;       /* titre "Task Force" */
@@ -118,6 +122,7 @@ body {
   --z-overlay: 1000;             /* menu contextuel, changement de phase refusé */
   --z-guide: 1050;               /* guide de l'interface */
   --z-bug-report: 1100;
+  --z-handover: 1500;            /* double aveugle : écran de passage entre joueurs */
   --z-journal-modal: 2000;
 }
 

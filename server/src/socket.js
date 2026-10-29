@@ -1,4 +1,13 @@
-import { RoomError, getGame, joinGame, recordMove, advanceTurn, recordPhase, recordGameOver, appendJournal, removeJournal, recordDeployment, isPlayersTurn, mayLog, setPlayerConnectionBySocket, toPublic } from './rooms.js'
+import { RoomError, getGame, joinGame, recordMove, advanceTurn, recordPhase, recordGameOver, appendJournal, removeJournal, recordDeployment, isPlayersTurn, mayLog, setPlayerConnectionBySocket, toPublic, journalFor, refereeMove, recordRecon } from './rooms.js'
+
+// Salons Socket.IO : toute la partie, et chaque camp à part — ce qu'un camp
+// seul doit voir en double aveugle arbitré (cf. duel.js) ne part que dans le
+// sien.
+const gameRoom = (gameId) => `game:${gameId}`
+const sideRoom = (gameId, side) => `game:${gameId}:side:${side}`
+/** Salon d'une entrée du journal : son camp si elle n'est visible que de
+ *  lui (cf. rooms.js, `visibleTo`), sinon toute la partie. */
+const roomOfEntry = (gameId, entry) => (entry.visibleTo ? sideRoom(gameId, entry.visibleTo) : gameRoom(gameId))
 
 export function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
@@ -11,18 +20,25 @@ export function registerSocketHandlers(io) {
           side,
           socketId: socket.id,
         })
+        const player = game.players.get(resolvedPlayerId)
 
-        socket.join(`game:${gameId}`)
+        socket.join(gameRoom(gameId))
+        socket.join(sideRoom(gameId, player.side))
         socket.data.gameId = gameId
         socket.data.playerId = resolvedPlayerId
 
         const publicRoom = toPublic(game)
-        // Journal partagé complet : seulement pour le joueur qui (re)joint
-        // (trop volumineux pour les `room:update` diffusés à tous).
-        ack?.({ ok: true, playerId: resolvedPlayerId, room: publicRoom, journal: game.journal })
-        io.to(`game:${gameId}`).emit('room:update', publicRoom)
+        // Journal partagé : seulement pour le joueur qui (re)joint (trop
+        // volumineux pour les `room:update` diffusés à tous) — en double
+        // aveugle arbitré, ce que son camp en voit, et les pions adverses
+        // qu'il voit encore (cf. duel.js::revealedFor).
+        ack?.({
+          ok: true, playerId: resolvedPlayerId, room: publicRoom, journal: journalFor(game, player.side),
+          revealed: game.referee ? game.referee.revealedFor(game, player.side) : {},
+        })
+        io.to(gameRoom(gameId)).emit('room:update', publicRoom)
         if (game.status === 'started') {
-          io.to(`game:${gameId}`).emit('room:started', publicRoom)
+          io.to(gameRoom(gameId)).emit('room:started', publicRoom)
         }
       } catch (err) {
         const code = err instanceof RoomError ? err.code : 'unknown-error'
@@ -40,13 +56,29 @@ export function registerSocketHandlers(io) {
       return !!game && isPlayersTurn(game, socket.data.playerId)
     }
 
+    /** Camp du joueur de ce socket dans la partie qu'il a rejointe. */
+    function ownSide() {
+      return getGame(socket.data.gameId)?.players.get(socket.data.playerId)?.side ?? null
+    }
+
     socket.on('game:move', ({ gameId, counterId, col, row } = {}) => {
       if (!hasTurn(gameId)) return
       try {
-        recordMove(gameId, { counterId, col, row })
-        io.to(`game:${gameId}`).emit('game:move', { counterId, col, row })
+        const game = recordMove(gameId, { counterId, col, row }, ownSide())
+        if (!game.referee) {
+          io.to(gameRoom(gameId)).emit('game:move', { counterId, col, row })
+          return
+        }
+        // Double aveugle arbitré : le coup ne part qu'aux camps qui voient ce
+        // pion — le sien, et l'adversaire qui l'a découvert —, puis l'arbitre
+        // cherche un contact, annoncé aux deux camps.
+        for (const side of game.referee.audienceOf(game, String(counterId))) {
+          io.to(sideRoom(gameId, side)).emit('game:move', { counterId, col, row })
+        }
+        const contact = refereeMove(game, counterId)
+        if (contact) io.to(gameRoom(gameId)).emit('game:log', { entry: contact })
       } catch {
-        // Partie pas encore lancée ou déjà supprimée : on ignore silencieusement.
+        // Partie pas encore lancée ou déjà supprimée, coup invalide : on ignore.
       }
     })
 
@@ -54,7 +86,7 @@ export function registerSocketHandlers(io) {
       if (!hasTurn(gameId)) return
       try {
         const game = advanceTurn(gameId)
-        io.to(`game:${gameId}`).emit('game:turn', { turnStep: game.turnStep })
+        io.to(gameRoom(gameId)).emit('game:turn', { turnStep: game.turnStep })
       } catch {
         // Partie pas encore lancée ou déjà supprimée : on ignore silencieusement.
       }
@@ -66,7 +98,7 @@ export function registerSocketHandlers(io) {
       if (!hasTurn(gameId)) return
       try {
         const recorded = recordPhase(gameId, { phase, step, blitzUsed })
-        socket.to(`game:${gameId}`).emit('game:phase', { phase, step, blitzUsed: recorded.blitzUsed })
+        socket.to(gameRoom(gameId)).emit('game:phase', { phase, step, blitzUsed: recorded.blitzUsed })
       } catch {
         // Partie pas lancée, phase invalide ou pas déjà dépassé : on ignore.
       }
@@ -80,8 +112,8 @@ export function registerSocketHandlers(io) {
       try {
         const recorded = recordGameOver(gameId, { loser, text, t, reason, playerId: socket.data.playerId })
         if (recorded) {
-          io.to(`game:${gameId}`).emit('game:over', { loser, reason: recorded.game.gameOverReason })
-          io.to(`game:${gameId}`).emit('game:log', { entry: recorded.entry })
+          io.to(gameRoom(gameId)).emit('game:over', { loser, reason: recorded.game.gameOverReason })
+          io.to(gameRoom(gameId)).emit('game:log', { entry: recorded.entry })
         }
       } catch {
         // Partie pas lancée, pas en Blitz (hors concession), concession
@@ -90,15 +122,15 @@ export function registerSocketHandlers(io) {
     })
 
     socket.on('game:log', ({ gameId, entry } = {}) => {
-      // Journal partagé : conservé puis transmis aux AUTRES joueurs
-      // (l'émetteur l'a déjà dans son journal). Réservé au joueur qui a la
-      // main — à une exception près, cf. rooms.js::mayLog.
+      // Journal partagé : conservé puis transmis aux AUTRES joueurs qui
+      // peuvent le voir (l'émetteur l'a déjà dans son journal). Réservé au
+      // joueur qui a la main — à une exception près, cf. rooms.js::mayLog.
       if (socket.data.gameId !== gameId) return
       const game = getGame(gameId)
       if (!game || !mayLog(game, socket.data.playerId, entry)) return
       try {
-        const clean = appendJournal(gameId, entry)
-        if (clean) socket.to(`game:${gameId}`).emit('game:log', { entry: clean })
+        const clean = appendJournal(gameId, entry, ownSide())
+        if (clean) socket.to(roomOfEntry(gameId, clean)).emit('game:log', { entry: clean })
       } catch {
         // Partie pas lancée ou terminée, entrée invalide : on ignore.
       }
@@ -107,7 +139,8 @@ export function registerSocketHandlers(io) {
     socket.on('game:unlog', ({ gameId, uid } = {}) => {
       if (!hasTurn(gameId)) return
       try {
-        if (removeJournal(gameId, uid)) socket.to(`game:${gameId}`).emit('game:unlog', { uid })
+        const removed = removeJournal(gameId, uid, ownSide())
+        if (removed) socket.to(roomOfEntry(gameId, removed)).emit('game:unlog', { uid })
       } catch {
         // Partie pas lancée : on ignore.
       }
@@ -121,7 +154,7 @@ export function registerSocketHandlers(io) {
       try {
         const recorded = recordDeployment(gameId, entry, turnEntry)
         if (recorded.created) {
-          for (const logged of recorded.entries) socket.to(`game:${gameId}`).emit('game:log', { entry: logged })
+          for (const logged of recorded.entries) socket.to(gameRoom(gameId)).emit('game:log', { entry: logged })
         }
         ack?.({ ok: true, entries: recorded.entries })
       } catch {
@@ -129,10 +162,25 @@ export function registerSocketHandlers(io) {
       }
     })
 
+    // --- Reconnaissance en double aveugle arbitré (cf. duel.js::recon) : le
+    // joueur actif envoie ses hex de reco ; l'arbitre tire les chits et
+    // envoie à chaque camp sa propre entrée du journal.
+    socket.on('game:recon', ({ gameId, step, centers } = {}, ack) => {
+      if (!hasTurn(gameId)) return ack?.({ ok: false, error: 'not-your-turn' })
+      try {
+        const { searcher, target } = recordRecon(gameId, ownSide(), { step, centers })
+        io.to(roomOfEntry(gameId, searcher)).emit('game:log', { entry: searcher })
+        io.to(roomOfEntry(gameId, target)).emit('game:log', { entry: target })
+        ack?.({ ok: true })
+      } catch (err) {
+        ack?.({ ok: false, error: err instanceof RoomError ? err.code : 'unknown-error' })
+      }
+    })
+
     socket.on('disconnect', () => {
       const game = setPlayerConnectionBySocket(socket.id, false)
       if (game) {
-        io.to(`game:${game.id}`).emit('room:update', toPublic(game))
+        io.to(gameRoom(game.id)).emit('room:update', toPublic(game))
       }
     })
   })

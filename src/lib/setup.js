@@ -74,3 +74,17 @@ export function rangeCells(parsed, hexOnMap) {
   }
   return cells.length ? cells : [from]
 }
+
+/** Hex d'une ZONE : une liste de notations "CCRR" ou "CCRR-CCRR" (ex. zone
+ *  de mise en place d'un camp dans un scénario), sur la carte, sans
+ *  doublon. */
+export function zoneCells(list, hexOnMap) {
+  const seen = new Set()
+  return (list ?? []).flatMap((setup) => rangeCells(parseSetup(setup), hexOnMap))
+    .filter((cell) => {
+      const key = cell.col + ',' + cell.row
+      if (!hexOnMap(cell.col, cell.row) || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}

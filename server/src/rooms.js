@@ -1,4 +1,7 @@
 import { customAlphabet } from 'nanoid'
+import { RoomError } from './errors.js'
+
+export { RoomError }
 
 const gameId = customAlphabet('23456789ABCDEFGHJKLMNPQRSTUVWXYZ', 6)
 const passcode = customAlphabet('23456789ABCDEFGHJKLMNPQRSTUVWXYZ', 6)
@@ -51,12 +54,6 @@ export function startSweeper(intervalMs = SWEEP_INTERVAL_MS) {
   return timer
 }
 
-export class RoomError extends Error {
-  constructor(code) {
-    super(code)
-    this.code = code
-  }
-}
 
 // Réglages de la partie (mêmes clés que la partie en local, cf.
 // src/lib/gameSettings.js) : on ne garde que les clés connues, en chaînes,
@@ -70,9 +67,9 @@ function sanitizeSettings(settings) {
   )
 }
 
-/** Ordre des camps reçu du client (cf. src/views/CreateGame.vue,
- *  `module.turnTrack.order`, ou la séquence dépliée pas par pas quand
- *  l'initiative change d'un tour à l'autre — src/lib/turnTrack.js::
+/** Ordre des camps reçu du client hors double aveugle arbitré
+ *  (`module.turnTrack.order`, ou la séquence dépliée pas par pas quand
+ *  l'initiative change d'un tour à l'autre — shared/turnTrack.js::
  *  stepSequence) : des clés courtes, quelques centaines au plus. Vide si
  *  absent — le contrôle de tour (cf. `isPlayersTurn`) est alors inactif. */
 function sanitizeTurnOrder(turnOrder) {
@@ -80,7 +77,11 @@ function sanitizeTurnOrder(turnOrder) {
   return turnOrder.filter((side) => typeof side === 'string' && side && side.length <= 32).slice(0, 512)
 }
 
-export function createGame({ moduleId, scenarioId, variants, settings, maxPlayers, turnOrder }) {
+/** Crée une room. `referee` : arbitre d'une partie à deux joueurs en double
+ *  aveugle (cf. duel.js) — il donne alors lui-même l'ordre des camps, et le
+ *  serveur ne transmet plus à chaque joueur que ce que son camp voit (cf.
+ *  `journalFor`, `appendJournal`, socket.js). */
+export function createGame({ moduleId, scenarioId, variants, settings, maxPlayers, turnOrder, referee = null }) {
   if (games.size >= MAX_GAMES) sweepGames()
   if (games.size >= MAX_GAMES) throw new RoomError('too-many-games')
   const id = gameId()
@@ -92,7 +93,7 @@ export function createGame({ moduleId, scenarioId, variants, settings, maxPlayer
     settings: sanitizeSettings({ scenario: scenarioId, ...settings }),
     // Camps dans l'ordre où ils jouent chaque tour (cf. sanitizeTurnOrder) :
     // `turnOrder[turnStep % turnOrder.length]` est le camp qui a la main.
-    turnOrder: sanitizeTurnOrder(turnOrder),
+    turnOrder: referee ? referee.turnOrder : sanitizeTurnOrder(turnOrder),
     maxPlayers,
     passcode: passcode(),
     status: 'lobby', // 'lobby' | 'started'
@@ -124,6 +125,11 @@ export function createGame({ moduleId, scenarioId, variants, settings, maxPlayer
     // qui (re)joint la partie, pour qu'il la reconstitue.
     journal: [],
     journalBytes: 0, // taille JSON cumulée de `journal` (cf. MAX_JOURNAL_BYTES)
+    // Double aveugle arbitré (cf. duel.js) : l'arbitre, et ce que chaque camp
+    // a découvert de l'autre. Chaque entrée du journal porte alors à qui elle
+    // se montre (`visibleTo` : un camp, ou `null` pour tous).
+    referee,
+    duel: referee ? { seen: {}, reconSteps: new Set() } : null,
   }
   games.set(id, game)
   return game
@@ -160,7 +166,9 @@ export function toPublic(game) {
       side: player.side,
       connected: player.connected,
     })),
-    boardState: Object.fromEntries(game.boardState),
+    // Double aveugle arbitré : les positions ne sont jamais diffusées à tous
+    // (cf. duel.js::revealedFor pour ce qu'un joueur voit de l'adversaire).
+    boardState: game.referee ? {} : Object.fromEntries(game.boardState),
     turnStep: game.turnStep,
     phase: game.phase,
     phaseElapsedMs: Date.now() - game.phaseSince,
@@ -255,17 +263,19 @@ export function mayLog(game, playerId, entry) {
   return false
 }
 
-export function recordMove(id, { counterId, col, row }) {
+export function recordMove(id, { counterId, col, row }, side) {
   const game = games.get(id)
   if (!game) throw new RoomError('not-found')
   if (game.status !== 'started') throw new RoomError('not-started')
   if (game.blitzLoser) throw new RoomError('game-over')
   // Un coup est rediffusé tel quel à tous les joueurs, qui l'appliquent sans
   // vérification (cf. HexMap.vue::applyRemoteMove) : on exige au moins un
-  // identifiant court et des coordonnées entières plausibles.
+  // identifiant court et des coordonnées entières plausibles — en double
+  // aveugle arbitré, une task force du camp `side` du joueur, sur la carte.
   const validId = (typeof counterId === 'string' || typeof counterId === 'number') && String(counterId).length <= 64
   const validCell = Number.isInteger(col) && Number.isInteger(row) && col >= 0 && row >= 0 && col < 1000 && row < 1000
   if (!validId || !validCell) throw new RoomError('bad-move')
+  if (game.referee && (game.referee.ownerOf(counterId) !== side || !game.referee.onMap(col, row))) throw new RoomError('bad-move')
   game.boardState.set(String(counterId), { col, row })
   touch(game)
   return game
@@ -336,27 +346,86 @@ function pushJournal(game, entries) {
   touch(game)
 }
 
-/** Ajoute une entrée au journal partagé. Renvoie l'entrée assainie, ou
- *  `null` si elle y est déjà (même `uid`). */
-export function appendJournal(id, entry) {
+// --- Journal en double aveugle arbitré (cf. duel.js) ---------------------------
+// Une entrée d'un joueur ne se montre qu'à son camp — elle dit où sont ses
+// pions —, sauf celles qui rythment la partie pour tous. Contact et
+// reconnaissance, eux, ne s'écrivent que par l'arbitre (cf. `refereeMove`,
+// `recordRecon`).
+const PUBLIC_KINDS = new Set(['setup', 'turn', 'phase', 'gameover'])
+const REFEREE_KINDS = new Set(['contact', 'duelRecon'])
+// Fuseau de l'heure des entrées écrites par le serveur.
+const TIME_ZONE = 'Europe/Paris'
+
+/** Journal de `game` tel que le voit le camp `side` (cf. `visibleTo`). */
+export function journalFor(game, side) {
+  return game.journal.filter((entry) => entry.visibleTo == null || entry.visibleTo === side)
+}
+
+/** Entrée du journal écrite par le serveur, sans texte : chaque joueur la
+ *  rédige dans sa langue (cf. HexMap.vue::withText). */
+function serverEntry(kind, data, visibleTo = null) {
+  return { uid: `srv-${playerId()}`, t: new Date().toLocaleTimeString('fr-FR', { timeZone: TIME_ZONE }), kind, text: '', data, visibleTo }
+}
+
+/** Ajoute une entrée du joueur du camp `side` au journal partagé. Renvoie
+ *  l'entrée assainie — avec, en double aveugle arbitré, à qui elle se
+ *  montre (`visibleTo`) —, ou `null` si elle y est déjà (même `uid`). */
+export function appendJournal(id, entry, side) {
   const game = startedGame(id)
   if (game.blitzLoser) throw new RoomError('game-over')
   const clean = sanitizeEntry(entry)
   if (!clean) throw new RoomError('bad-entry')
   if (game.journal.some((existing) => existing.uid === clean.uid)) return null
+  if (game.referee) {
+    if (REFEREE_KINDS.has(clean.kind)) throw new RoomError('bad-entry')
+    clean.visibleTo = PUBLIC_KINDS.has(clean.kind) ? null : side
+  }
   pushJournal(game, [clean])
+  // Task force rendue aux renforts ou éliminée : elle quitte la carte de
+  // l'arbitre (contact, reconnaissance).
+  const counterId = clean.data?.counterId
+  if (game.referee && (clean.kind === 'return' || clean.kind === 'eliminate') && game.referee.ownerOf(counterId) === side) {
+    game.boardState.delete(String(counterId))
+  }
   return clean
 }
 
-/** Retire une entrée du journal partagé (retour arrière). `true` si retirée. */
-export function removeJournal(id, uid) {
+/** Retire une entrée du journal partagé (retour arrière) — en double aveugle
+ *  arbitré, une entrée du camp `side` lui-même. Renvoie l'entrée retirée,
+ *  ou `null`. */
+export function removeJournal(id, uid, side) {
   const game = startedGame(id)
-  const index = game.journal.findIndex((entry) => entry.uid === uid)
-  if (index === -1) return false
+  const index = game.journal.findIndex((entry) => entry.uid === uid && (!game.referee || entry.visibleTo === side))
+  if (index === -1) return null
   const [removed] = game.journal.splice(index, 1)
   game.journalBytes -= JSON.stringify(removed).length
   touch(game)
-  return true
+  return removed
+}
+
+/** Double aveugle arbitré : la task force `counterId` vient de bouger (cf.
+ *  `recordMove`). Contact avec des task forces adverses (cf. duel.js::
+ *  contactAfterMove) ? Renvoie l'entrée `contact` inscrite au journal, pour
+ *  les deux camps, ou `null`. */
+export function refereeMove(game, counterId) {
+  const contact = game.referee?.contactAfterMove(game, String(counterId))
+  if (!contact) return null
+  const entry = serverEntry('contact', contact)
+  pushJournal(game, [entry])
+  return entry
+}
+
+/** Double aveugle arbitré : reconnaissance du camp `side` (cf. duel.js::
+ *  recon). Renvoie ses deux entrées `duelRecon`, inscrites au journal :
+ *  `searcher`, pour le chercheur, et `target`, pour l'adversaire. */
+export function recordRecon(id, side, request) {
+  const game = startedGame(id)
+  if (game.blitzLoser) throw new RoomError('game-over')
+  if (!game.referee) throw new RoomError('bad-recon')
+  const recon = game.referee.recon(game, side, request)
+  const entries = { searcher: serverEntry('duelRecon', recon.searcher, side), target: serverEntry('duelRecon', recon.target, recon.targetSide) }
+  pushJournal(game, [entries.searcher, entries.target])
+  return entries
 }
 
 /** Déploiement initial (et, optionnellement, entrée `turn` du tour de

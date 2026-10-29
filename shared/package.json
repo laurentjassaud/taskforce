@@ -1,0 +1,5 @@
+{
+  "name": "taskforce-shared",
+  "private": true,
+  "type": "module"
+}
