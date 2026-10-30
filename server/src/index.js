@@ -5,6 +5,7 @@ import { Server } from 'socket.io'
 import { gamesRouter } from './routes/games.js'
 import { registerSocketHandlers } from './socket.js'
 import { startSweeper } from './rooms.js'
+import { startPersistence } from './persistence.js'
 
 const PORT = process.env.PORT ?? 3001
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173'
@@ -16,6 +17,10 @@ app.use(express.json())
 app.get('/', (req, res) => res.json({ name: 'generic-wargame-server', api: '/api/games' }))
 app.get('/api/health', (req, res) => res.json({ ok: true }))
 app.use('/api/games', gamesRouter)
+
+// Parties sauvegardées sur le disque (cf. persistence.js) : relues avant
+// d'accepter le moindre joueur.
+await startPersistence()
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, { cors: { origin: CLIENT_ORIGIN } })

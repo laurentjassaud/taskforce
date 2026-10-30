@@ -125,7 +125,13 @@ toujours enregistrées (export, rapport de bug), mais cachées hors debug.
 - **En ligne** : journal **partagé**, conservé par le serveur et identique
   chez tous les joueurs (déploiement tiré une seule fois, éliminations,
   retours arrière…) ; un joueur qui recharge la page ou se reconnecte est
-  réaligné sur le serveur. Export JSON toujours possible.
+  réaligné sur le serveur. Export JSON toujours possible. Le serveur
+  sauvegarde chaque partie sur son disque ; le bandeau de la partie donne à
+  chaque joueur son **lien de reprise** personnel (`?seat=`, sa place depuis
+  un autre navigateur ou appareil) et une **sauvegarde** à télécharger
+  (`.tfsave`, chiffrée par le serveur : ni lisible ni modifiable), à
+  reprendre depuis l'accueil ou le salon d'une partie introuvable
+  (`RestoreSaveButton.vue`).
 
 **Signaler un bug** (bouton de la barre d'outils du plateau,
 `BugReportModal.vue`, `src/lib/bugReport.js`) : ouvre la création d'un ticket
@@ -269,11 +275,12 @@ shared/           code commun au jeu et au serveur — JavaScript pur, ni Vue ni
 server/src/
 ├── index.js      Express + Socket.IO, purge périodique des parties
 ├── rooms.js      état des rooms (en mémoire), contrôle de tour, journal partagé et sa visibilité
-├── socket.js     évènements temps réel (join, move, turn, phase, log, deploy, over, recon)
+├── persistence.js  sauvegarde chiffrée des parties : disque, reprise, fichiers des joueurs
+├── socket.js     évènements temps réel (join, move, turn, phase, log, deploy, over, recon, save)
 ├── duel.js       arbitre du double aveugle en ligne
 ├── modules.js    lecture des modules sur le site du jeu
 ├── errors.js     erreurs renvoyées au client
-└── routes/games.js   API REST : créer / lister / lire une partie
+└── routes/games.js   API REST : créer / lister / lire une partie, reprendre une sauvegarde
 ```
 
 ## Développement
@@ -292,9 +299,12 @@ npm run preview
 Variables d'environnement : `VITE_API_URL` (front → URL du serveur, défaut
 `http://localhost:3001`) ; `PORT`, `CLIENT_ORIGIN` et `MODULES_URL`
 (serveur : port, origine autorisée du front, adresse du site où lire les
-modules — défauts `3001`, `http://localhost:5173` et `CLIENT_ORIGIN`). Le
-serveur lit les modules sur le site : en local, le front doit tourner pour
-créer une partie en ligne.
+modules — défauts `3001`, `http://localhost:5173` et `CLIENT_ORIGIN`) ;
+`DATA_DIR` et `SAVE_KEY` (dossier des parties sauvegardées, défaut `data/`
+à côté de `server/` ; clé de chiffrement, 32 octets en base64, défaut le
+fichier `data/save.key` créé au premier démarrage). Le serveur lit les
+modules sur le site : en local, le front doit tourner pour créer une partie
+en ligne, ou en reprendre une en double aveugle.
 
 ## Mise en production
 
@@ -355,9 +365,14 @@ Contrôles : sur le VPS, `curl http://127.0.0.1:8081/api/health` →
 
 Prérequis : Node `^22.18.0` ou `>=24.12.0` (voir `engines`).
 
-Le serveur garde tout **en mémoire** : les parties disparaissent à son
-redémarrage, et les rooms abandonnées sont purgées (6 h sans joueur pour une
-room jamais lancée, 72 h pour une partie lancée).
+Le serveur joue les parties **en mémoire**, mais les écrit aussi, chiffrées,
+dans `data/games/` (à côté de `server/` : `~/node/taskforce/data/`), et les
+relit à son redémarrage. Une room jamais lancée est supprimée après 6 h sans
+joueur ; une partie lancée quitte la mémoire après 72 h sans joueur, mais
+reste sur le disque et revient au premier joueur qui rouvre son lien, jusqu'à
+30 jours sans activité. **Sauvegarder `data/save.key`** : sans elle, ni les
+parties du disque ni les sauvegardes téléchargées par les joueurs ne se
+relisent.
 
 ## Scripts
 

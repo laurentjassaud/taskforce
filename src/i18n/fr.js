@@ -21,7 +21,7 @@ export default {
   // Codes d'erreur du serveur des parties en ligne (cf. server/src/rooms.js,
   // i18n/index.js::errorMessage).
   errors: {
-    'not-found': 'Cette partie n’existe pas, ou plus : le serveur a pu redémarrer.',
+    'not-found': 'Cette partie n’existe pas, ou plus. Si vous en avez une sauvegarde, reprenez-la ci-dessous.',
     'bad-passcode': 'Code d’accès incorrect.',
     'room-full': 'Cette partie est déjà complète.',
     'side-taken': 'Ce camp est déjà pris par l’autre joueur.',
@@ -32,6 +32,8 @@ export default {
     'too-many-games': 'Trop de parties en cours sur le serveur : réessayez plus tard.',
     'module-unavailable': 'Le serveur n’a pas pu lire les règles du jeu. Réessayez dans un instant.',
     'no-duel': 'Ce scénario ne se joue pas à deux joueurs.',
+    'bad-seat': 'Ce lien de reprise ne correspond à aucun joueur de cette partie.',
+    'bad-save': 'Ce fichier n’est pas une sauvegarde de partie en ligne de ce serveur, ou il a été modifié.',
     unreachable: 'Le serveur des parties en ligne ne répond pas. Réessayez dans un instant.',
     'module-missing': 'Le jeu de cette partie n’est plus disponible.',
     'unknown-error': 'Erreur inconnue du serveur.',
@@ -43,6 +45,9 @@ export default {
     create: 'Créer la partie',
     creating: 'Création…',
     waitingTurn: 'Au tour des {side} : en attente de votre adversaire…',
+    restoreQuestion: 'Vous avez une sauvegarde de partie en ligne ?',
+    restore: 'Reprendre la partie',
+    restoring: 'Reprise…',
   },
 
   lobby: {
@@ -69,6 +74,13 @@ export default {
     disconnected: 'Connexion au serveur perdue : reconnexion en cours…',
     opponentOffline: '{name} est hors ligne.',
     replayWarning: 'Cette sauvegarde a été jouée avec d’autres réglages que cette partie en ligne : impossible de la reprendre ici.',
+    save: 'Sauvegarder',
+    saving: 'Sauvegarde…',
+    saveHint: 'Télécharge la partie dans un fichier chiffré, illisible pour vous comme pour votre adversaire. Si le serveur la perdait, ce fichier permettrait de la reprendre.',
+    saveFailed: 'Sauvegarde impossible : connexion au serveur perdue.',
+    resumeLink: 'Mon lien de reprise',
+    resumeHint: 'Lien personnel pour reprendre votre place depuis un autre navigateur ou un autre appareil. Ne le donnez à personne : il permet de jouer à votre place.',
+    resumePrompt: 'Votre lien de reprise personnel (ne le partagez pas) :',
   },
 
   settings: {

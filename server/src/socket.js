@@ -1,4 +1,5 @@
 import { RoomError, getGame, joinGame, recordMove, advanceTurn, recordPhase, recordConcession, appendJournal, removeJournal, recordDeployment, isPlayersTurn, mayLog, setPlayerConnectionBySocket, toPublic, journalFor, refereeMove, recordRecon } from './rooms.js'
+import { findGame, saveFor } from './persistence.js'
 
 // Salons Socket.IO : toute la partie, et chaque camp à part — ce qu'un camp
 // seul doit voir en double aveugle arbitré (cf. duel.js) ne part que dans le
@@ -11,8 +12,10 @@ const roomOfEntry = (gameId, entry) => (entry.visibleTo ? sideRoom(gameId, entry
 
 export function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
-    socket.on('game:join', ({ gameId, passcode, playerId, name, side } = {}, ack) => {
+    socket.on('game:join', async ({ gameId, passcode, playerId, name, side } = {}, ack) => {
       try {
+        // Partie sortie de la mémoire (redémarrage, abandon) : relue du disque.
+        await findGame(gameId)
         const { game, playerId: resolvedPlayerId } = joinGame(gameId, {
           passcode,
           playerId,
@@ -44,6 +47,15 @@ export function registerSocketHandlers(io) {
         const code = err instanceof RoomError ? err.code : 'unknown-error'
         ack?.({ ok: false, error: code })
       }
+    })
+
+    // Sauvegarde de la partie pour le joueur de ce socket (cf. persistence.js::
+    // saveFor) : chiffrée, il la garde sans pouvoir la lire, et la rendra au
+    // serveur si celui-ci a perdu la partie.
+    socket.on('game:save', ({ gameId } = {}, ack) => {
+      const game = socket.data.gameId === gameId ? getGame(gameId) : null
+      if (!game) return ack?.({ ok: false, error: 'not-found' })
+      ack?.({ ok: true, save: saveFor(game, socket.data.playerId) })
     })
 
     /** Le joueur de ce socket a-t-il rejoint `gameId` ET la main dans

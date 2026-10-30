@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import GameSetupSteps from '../components/GameSetupSteps.vue'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
+import RestoreSaveButton from '../components/RestoreSaveButton.vue'
 import { registerModuleTexts, errorMessage } from '../i18n/index.js'
 import { defaultSettings, scenarioOptions } from '../lib/gameSettings.js'
 import { createGame } from '../lib/api.js'
@@ -25,7 +26,7 @@ import enterpriseUrl from '../assets/home/counter-enterprise.png'
 // public/modules/index.json : il n'est plus proposé au choix.
 // Deux joueurs EN LIGNE (case cochée à l'étape 2) : la partie est créée sur
 // le serveur, puis on rejoint son salon (RoomLobby.vue), d'où l'on invite
-// l'adversaire.
+// l'adversaire — ou l'on reprend une partie sauvegardée (RestoreSaveButton.vue).
 
 const router = useRouter()
 const { locale } = useI18n()
@@ -166,6 +167,7 @@ async function start() {
                 {{ !onlineDuel ? $t('home.play') : creating ? $t('online.creating') : $t('online.create') }}
               </button>
             </nav>
+            <RestoreSaveButton v-if="step === 2 && onlineDuel" class="restore-online" />
           </section>
         </Transition>
       </main>
@@ -406,6 +408,9 @@ async function start() {
 .error {
   margin-top: 16px;
   color: var(--c-red);
+}
+.restore-online {
+  margin-top: 20px;
 }
 
 .stage-enter-active {

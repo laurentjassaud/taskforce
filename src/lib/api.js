@@ -33,3 +33,14 @@ export function createGame({ moduleId, scenarioId, variants, settings, maxPlayer
 export function getGame(id) {
   return request(`/api/games/${encodeURIComponent(id)}`)
 }
+
+/** Rend au serveur une partie sauvegardée (fichier téléchargé en cours de
+ *  partie, cf. RoomLobby.vue::downloadSave), telle quelle. Renvoie de quoi
+ *  la rejoindre : `{ id, passcode, playerId }`. */
+export function restoreGame(save) {
+  return request('/api/games/restore', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: save,
+  })
+}

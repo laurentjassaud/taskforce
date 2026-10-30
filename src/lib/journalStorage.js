@@ -51,7 +51,13 @@ export function sameSettings(settingsA, settingsB) {
 /** Télécharge `content` en fichier JSON nommé `name` (export du journal,
  *  partie complète jointe à un rapport de bug). */
 export function downloadJson(name, content) {
-  const blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' })
+  downloadText(name, JSON.stringify(content, null, 2), 'application/json')
+}
+
+/** Télécharge le texte `text` en fichier nommé `name` (sauvegarde chiffrée
+ *  d'une partie en ligne, cf. RoomLobby.vue::downloadSave). */
+export function downloadText(name, text, type = 'application/octet-stream') {
+  const blob = new Blob([text], { type })
   const url = URL.createObjectURL(blob)
   const downloadLink = document.createElement('a')
   downloadLink.href = url

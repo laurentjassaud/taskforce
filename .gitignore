@@ -41,3 +41,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Parties sauvegardées du serveur et sa clé de chiffrement (cf. server/src/persistence.js)
+/data/

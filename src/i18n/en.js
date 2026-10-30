@@ -19,7 +19,7 @@ export default {
   // Error codes of the online game server (cf. server/src/rooms.js,
   // i18n/index.js::errorMessage).
   errors: {
-    'not-found': 'This game does not exist, or no longer exists: the server may have restarted.',
+    'not-found': 'This game does not exist, or no longer exists. If you have a save of it, resume it below.',
     'bad-passcode': 'Wrong access code.',
     'room-full': 'This game is already full.',
     'side-taken': 'This side is already taken by the other player.',
@@ -30,6 +30,8 @@ export default {
     'too-many-games': 'Too many games on the server: please try again later.',
     'module-unavailable': 'The server could not read the rules of the game. Please try again in a moment.',
     'no-duel': 'This scenario is not played by two players.',
+    'bad-seat': 'This resume link does not match any player of this game.',
+    'bad-save': 'This file is not an online game save from this server, or it has been modified.',
     unreachable: 'The online game server is not responding. Please try again in a moment.',
     'module-missing': 'The game of this match is no longer available.',
     'unknown-error': 'Unknown server error.',
@@ -41,6 +43,9 @@ export default {
     create: 'Create the game',
     creating: 'Creating…',
     waitingTurn: '{side} to play: waiting for your opponent…',
+    restoreQuestion: 'Do you have a save of an online game?',
+    restore: 'Resume the game',
+    restoring: 'Resuming…',
   },
 
   lobby: {
@@ -67,6 +72,13 @@ export default {
     disconnected: 'Connection to the server lost: reconnecting…',
     opponentOffline: '{name} is offline.',
     replayWarning: 'This save was played with other settings than this online game: it cannot be resumed here.',
+    save: 'Save',
+    saving: 'Saving…',
+    saveHint: 'Downloads the game as an encrypted file that neither you nor your opponent can read. Should the server lose the game, this file would let you resume it.',
+    saveFailed: 'Cannot save: connection to the server lost.',
+    resumeLink: 'My resume link',
+    resumeHint: 'Personal link to take your seat back from another browser or device. Do not give it to anyone: it lets them play in your place.',
+    resumePrompt: 'Your personal resume link (do not share it):',
   },
 
   settings: {

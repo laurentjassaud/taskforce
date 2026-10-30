@@ -9,7 +9,22 @@ const playerId = customAlphabet('23456789abcdefghjkmnpqrstuvwxyz', 12)
 
 // In-memory store. One process only for now — swap for Redis if we need
 // to scale across multiple server instances (see roadmap phase 0 notes).
+// Chaque partie est aussi écrite sur le disque (cf. persistence.js, abonnée
+// par `onGameChange`) : un redémarrage du serveur ne la perd plus.
 const games = new Map()
+
+/** Format des parties de `game:id` (cf. `gameId`) — seul nom de fichier
+ *  accepté par la persistance. */
+export const GAME_ID_PATTERN = /^[2-9A-HJ-NP-Z]{6}$/
+
+// Écouteur des changements de parties (cf. persistence.js) : `change` à
+// chaque modification, `unload` quand une partie lancée quitte la mémoire
+// (abandonnée, mais reprenable), `delete` quand une room jamais lancée
+// disparaît pour de bon.
+let changeListener = null
+export function onGameChange(listener) {
+  changeListener = listener
+}
 
 // --- Bornes mémoire ------------------------------------------------------------
 // Tout vit en mémoire et rien ne l'écrivait jamais : sans ces limites, un
@@ -20,19 +35,23 @@ const MAX_JOURNAL_ENTRIES = 20000              // entrées par journal partagé
 const MAX_ENTRY_DATA_LENGTH = 50000            // taille (JSON) du `data` d'une entrée
 const MAX_JOURNAL_BYTES = 8 * 1024 * 1024      // taille (JSON) cumulée d'un journal
 const LOBBY_TTL_MS = 6 * 60 * 60 * 1000        // room jamais lancée, sans joueur connecté
-const GAME_TTL_MS = 72 * 60 * 60 * 1000        // partie lancée, tous les joueurs déconnectés
+export const GAME_TTL_MS = 72 * 60 * 60 * 1000 // partie lancée, tous les joueurs déconnectés
 const SWEEP_INTERVAL_MS = 15 * 60 * 1000
 
-/** Toute activité (coup, tour, journal, connexion) repousse la purge. */
+/** Toute activité (coup, tour, journal, connexion) repousse la purge — et
+ *  fait réécrire la partie sur le disque. */
 function touch(game) {
   game.lastActivity = Date.now()
+  changeListener?.(game, 'change')
 }
 
 /** Purge les parties abandonnées : aucun joueur connecté ET aucune activité
  *  depuis plus de `LOBBY_TTL_MS` (room jamais lancée) ou `GAME_TTL_MS`
- *  (partie lancée). Renvoie le nombre de parties retirées. Appelée
- *  périodiquement (cf. startSweeper) et avant de refuser une création faute
- *  de place (cf. createGame). */
+ *  (partie lancée). Une partie lancée ne quitte que la mémoire : sa copie
+ *  sur le disque la rendra au premier joueur qui revient (cf.
+ *  persistence.js::findGame). Renvoie le nombre de parties retirées.
+ *  Appelée périodiquement (cf. startSweeper) et avant de refuser une
+ *  création faute de place (cf. createGame). */
 export function sweepGames(now = Date.now()) {
   let removed = 0
   for (const game of games.values()) {
@@ -40,6 +59,7 @@ export function sweepGames(now = Date.now()) {
     const ttl = game.status === 'started' ? GAME_TTL_MS : LOBBY_TTL_MS
     if (now - game.lastActivity > ttl) {
       games.delete(game.id)
+      changeListener?.(game, game.status === 'started' ? 'unload' : 'delete')
       removed += 1
     }
   }
@@ -133,6 +153,75 @@ export function getGame(id) {
   return games.get(id)
 }
 
+// --- Sauvegarde ----------------------------------------------------------------
+// Instantané d'une partie, en JSON simple — tout ce qu'il faut pour la
+// reconstituer, sauf l'arbitre (des fonctions, recréées depuis le module,
+// cf. persistence.js) et les connexions. Écrit chiffré sur le disque et dans
+// les fichiers de sauvegarde des joueurs (cf. persistence.js::seal).
+const SNAPSHOT_VERSION = 1
+
+export function serializeGame(game) {
+  return {
+    v: SNAPSHOT_VERSION,
+    id: game.id,
+    moduleId: game.moduleId,
+    scenarioId: game.scenarioId,
+    variants: game.variants,
+    settings: game.settings,
+    turnOrder: game.turnOrder,
+    maxPlayers: game.maxPlayers,
+    passcode: game.passcode,
+    status: game.status,
+    createdAt: game.createdAt,
+    lastActivity: game.lastActivity,
+    players: [...game.players.values()].map(({ id, name, side }) => ({ id, name, side })),
+    boardState: [...game.boardState],
+    turnStep: game.turnStep,
+    phase: game.phase,
+    loser: game.loser,
+    journal: game.journal,
+    duel: game.duel ? { seen: game.duel.seen, reconSteps: [...game.duel.reconSteps] } : null,
+  }
+}
+
+/** Remet en mémoire la partie de l'instantané `snapshot` (cf.
+ *  `serializeGame`), tous ses joueurs déconnectés — ou renvoie celle qui y
+ *  est déjà sous le même id. `referee` : son arbitre, recréé depuis le
+ *  module ; obligatoire en double aveugle, sans quoi `toPublic` livrerait
+ *  les positions des deux camps. */
+export function adoptGame(snapshot, referee = null) {
+  if (snapshot?.v !== SNAPSHOT_VERSION || !GAME_ID_PATTERN.test(snapshot.id ?? '')) throw new RoomError('bad-save')
+  if (games.has(snapshot.id)) return games.get(snapshot.id)
+  if (snapshot.duel && !referee) throw new RoomError('module-unavailable')
+  if (games.size >= MAX_GAMES) sweepGames()
+  if (games.size >= MAX_GAMES) throw new RoomError('too-many-games')
+  const journal = Array.isArray(snapshot.journal) ? snapshot.journal : []
+  const game = {
+    id: snapshot.id,
+    moduleId: snapshot.moduleId,
+    scenarioId: snapshot.scenarioId,
+    variants: snapshot.variants ?? [],
+    settings: sanitizeSettings(snapshot.settings),
+    turnOrder: snapshot.turnOrder ?? [],
+    maxPlayers: snapshot.maxPlayers,
+    passcode: snapshot.passcode,
+    status: snapshot.status === 'started' ? 'started' : 'lobby',
+    createdAt: snapshot.createdAt,
+    lastActivity: snapshot.lastActivity ?? Date.now(),
+    players: new Map((snapshot.players ?? []).map((player) => [player.id, { ...player, connected: false, socketId: null }])),
+    boardState: new Map(snapshot.boardState ?? []),
+    turnStep: snapshot.turnStep ?? 0,
+    phase: snapshot.phase ?? null,
+    loser: snapshot.loser ?? null,
+    journal,
+    journalBytes: journal.reduce((sum, entry) => sum + JSON.stringify(entry).length, 0),
+    referee,
+    duel: snapshot.duel ? { seen: snapshot.duel.seen ?? {}, reconSteps: new Set(snapshot.duel.reconSteps ?? []) } : null,
+  }
+  games.set(game.id, game)
+  return game
+}
+
 export function toSummary(game) {
   return {
     id: game.id,
@@ -178,6 +267,9 @@ export function joinGame(id, { passcode: code, playerId: existingPlayerId, name,
   const cleanSide = typeof side === 'string' ? side.trim().slice(0, 32) : ''
 
   if (!reconnecting) {
+    // Lien de reprise personnel (`?seat=`) ou sauvegarde d'un autre joueur
+    // que ceux de la partie : pas un nouveau venu, un siège introuvable.
+    if (existingPlayerId && game.status !== 'lobby') throw new RoomError('bad-seat')
     if (game.status !== 'lobby') throw new RoomError('already-started')
     if (game.players.size >= game.maxPlayers) throw new RoomError('room-full')
     if (!cleanName) throw new RoomError('bad-name')

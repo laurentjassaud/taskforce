@@ -5,7 +5,9 @@ import { getGame } from '../lib/api.js'
 import { getSocket } from '../lib/socket.js'
 import HexMap from '../components/HexMap.vue'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
+import RestoreSaveButton from '../components/RestoreSaveButton.vue'
 import { fetchModule } from '../lib/moduleLoader.js'
+import { downloadText } from '../lib/journalStorage.js'
 import { resolveSettings, describeSettings, scenarioOptions } from '../lib/gameSettings.js'
 import { t, mt, errorMessage, registerModuleTexts } from '../i18n/index.js'
 import { APP_RELEASE, APP_VERSION } from '../lib/bugReport.js'
@@ -21,6 +23,8 @@ import ambientUrl from '../assets/home/ambient-top.png'
 // le serveur ne laisse jouer que le camp qui a la main. Les identifiants du
 // joueur restent dans ce navigateur : une page rechargée ou une connexion
 // coupée le remet à sa place, la partie reconstituée par le journal partagé.
+// Ailleurs, son lien de reprise personnel (`?seat=`) ou sa sauvegarde (cf.
+// RestoreSaveButton.vue) lui rendent son siège.
 
 const props = defineProps({ id: { type: String, required: true } })
 const route = useRoute()
@@ -50,6 +54,7 @@ const loadingGame = ref(true)
 const gameSummary = ref(null) // GET /api/games/:id (moduleId, settings, players...)
 const moduleData = ref(null) // module JSON complet, pour le plateau
 const loadError = ref('')
+const notFound = ref(false) // partie inconnue du serveur : reprise d'une sauvegarde proposée
 const hexMapRef = ref(null)
 
 const joined = ref(false)
@@ -64,6 +69,10 @@ const passcode = ref(String(route.query.code ?? '').trim().toUpperCase() || read
 const form = ref({ name: readStored(NICKNAME_KEY) ?? '', side: '', passcode: '' })
 // Camp du joueur sur CE navigateur : le seul qu'il voit et qu'il joue.
 const mySide = ref('')
+const myPlayerId = ref('')
+// Siège à reprendre, d'un lien de reprise personnel (cf. `resumeUrl`) ou
+// d'une sauvegarde reprise (cf. RestoreSaveButton.vue).
+const seat = String(route.query.seat ?? '')
 // Journal partagé reçu en (re)joignant la partie (cf. HexMap.vue, prop
 // `initialJournal`) — à deux joueurs, ce que son camp en voit —, et pions
 // adverses qu'il voit encore (prop `initialRevealed`).
@@ -111,6 +120,47 @@ async function copyInvite() {
   }
 }
 
+// Lien de reprise personnel : celui d'invitation, plus le siège du joueur —
+// de quoi le retrouver depuis un autre navigateur ou un autre appareil.
+const resumeUrl = computed(() => new URL(router.resolve({ name: 'room-lobby', params: { id: props.id }, query: { code: passcode.value, seat: myPlayerId.value } }).href,
+  window.location.origin).href)
+const resumeCopied = ref(false)
+let resumeTimer = null
+async function copyResume() {
+  try {
+    await navigator.clipboard.writeText(resumeUrl.value)
+    resumeCopied.value = true
+    clearTimeout(resumeTimer)
+    resumeTimer = setTimeout(() => { resumeCopied.value = false }, 2000)
+  } catch {
+    // Presse-papiers refusé : le lien s'affiche, à copier à la main.
+    window.prompt(t('lobby.resumePrompt'), resumeUrl.value)
+  }
+}
+
+// Sauvegarde de la partie (cf. server/src/persistence.js::saveFor) : chiffrée
+// par le serveur, illisible pour le joueur, à lui rendre s'il perdait la
+// partie (cf. RestoreSaveButton.vue).
+const saving = ref(false)
+const saveError = ref('')
+function downloadSave() {
+  saveError.value = ''
+  if (!connected.value) {
+    saveError.value = t('lobby.saveFailed')
+    return
+  }
+  saving.value = true
+  getSocket().timeout(15000).emit('game:save', { gameId: props.id }, (err, ack) => {
+    saving.value = false
+    if (err || !ack?.ok) {
+      saveError.value = t('lobby.saveFailed')
+      return
+    }
+    const date = new Date().toISOString().slice(0, 10)
+    downloadText(`${gameSummary.value.moduleId}_online_${props.id}_${date}.tfsave`, ack.save)
+  })
+}
+
 async function loadGame() {
   loadingGame.value = true
   loadError.value = ''
@@ -126,6 +176,7 @@ async function loadGame() {
     form.value.side = sides.value.find((side) => !takenSides.value.has(side)) ?? ''
   } catch (error) {
     loadError.value = errorMessage(error.message)
+    notFound.value = error.message === 'not-found'
   } finally {
     loadingGame.value = false
   }
@@ -165,6 +216,7 @@ function doJoin({ passcode: code, name, side, playerId }, { silent = false } = {
         // Le serveur fait foi sur le siège repris : pseudo et camp d'origine.
         const me = ack.room.players.find((player) => player.id === ack.playerId)
         mySide.value = me?.side ?? side
+        myPlayerId.value = ack.playerId
         passcode.value = code
         // Plateau déjà affiché (reconnexion) : il se réaligne entièrement sur
         // le serveur (cf. HexMap.vue::resyncFromServer). Sinon, le journal
@@ -221,9 +273,15 @@ onMounted(async () => {
   for (const [event, handler] of Object.entries(handlers)) socket.on(event, handler)
   await loadGame()
   if (loadError.value) return
+  if (seat) {
+    // Siège retenu comme si ce navigateur avait rejoint la partie, puis
+    // retiré de l'adresse : il ne doit pas rester en vue.
+    writeStored(storageKey, { passcode: passcode.value, playerId: seat })
+    router.replace({ query: { code: passcode.value } })
+  }
   const saved = readStored(storageKey)
   if (!saved?.playerId) return
-  const ack = await doJoin(saved, { silent: true })
+  const ack = await doJoin(saved, { silent: !seat })
   // Identifiants qui ne fonctionnent plus (partie recréée...) : oubliés, le
   // formulaire prend le relais.
   if (!ack.ok) writeStored(storageKey, { passcode: passcode.value })
@@ -233,6 +291,7 @@ onUnmounted(() => {
   const socket = getSocket()
   for (const [event, handler] of Object.entries(handlers)) socket.off(event, handler)
   clearTimeout(copiedTimer)
+  clearTimeout(resumeTimer)
 })
 </script>
 
@@ -241,6 +300,15 @@ onUnmounted(() => {
     <p class="game-banner">
       <span class="version" :title="APP_VERSION">v. {{ APP_RELEASE }}</span>
       {{ $t('summary.scenario', { name: settingsInfo.scenario }) }} · {{ $t('summary.party', { name: settingsInfo.party }) }} · {{ $t('lobby.onlineTag') }}
+      <!-- À gauche : le bord droit passe sous les panneaux latéraux ouverts. -->
+      <span class="banner-actions">
+        <button type="button" class="banner-button" :title="$t('lobby.resumeHint')" @click="copyResume">
+          {{ resumeCopied ? $t('lobby.copied') : $t('lobby.resumeLink') }}
+        </button>
+        <button type="button" class="banner-button" :title="$t('lobby.saveHint')" :disabled="saving" @click="downloadSave">
+          {{ saving ? $t('lobby.saving') : $t('lobby.save') }}
+        </button>
+      </span>
       <span class="banner-players">
         <span v-for="player in room.players" :key="player.id" class="banner-player" :style="{ '--side': sideColor(player.side) }">
           <span class="presence-dot" :class="{ off: !player.connected }"
@@ -248,6 +316,7 @@ onUnmounted(() => {
           {{ player.name }} ({{ sideLabel(player.side) }}<template v-if="player.side === mySide">, {{ $t('lobby.you') }}</template>)
         </span>
       </span>
+      <span v-if="saveError" class="banner-alert" role="alert">{{ saveError }}</span>
       <span v-if="!connected" class="banner-alert" role="alert">{{ $t('lobby.disconnected') }}</span>
       <span v-else-if="opponent && !opponent.connected" class="banner-alert">{{ $t('lobby.opponentOffline', { name: opponent.name }) }}</span>
       <span v-if="replayWarning" class="banner-alert">{{ replayWarning }}</span>
@@ -299,6 +368,7 @@ onUnmounted(() => {
 
         <template v-else-if="loadError">
           <p class="error" role="alert">{{ loadError }}</p>
+          <RestoreSaveButton v-if="notFound" />
           <router-link to="/" class="ghost">{{ $t('lobby.back') }}</router-link>
         </template>
 
@@ -394,6 +464,38 @@ onUnmounted(() => {
   flex-basis: 100%;
   color: var(--c-red);
   font-weight: 600;
+}
+.banner-actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+}
+.banner-button {
+  padding: 3px 10px;
+  border: 1px solid var(--c-line);
+  border-radius: 6px;
+  background: var(--c-white);
+  color: var(--c-brand-ink);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .banner-button:not(:disabled):hover {
+    border-color: var(--c-brand-ink);
+  }
+}
+.banner-button:not(:disabled):active {
+  transform: scale(0.97);
+}
+.banner-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.banner-button:focus-visible {
+  outline: 2px solid var(--c-brand-blue);
+  outline-offset: 2px;
 }
 
 /* Salon : même fond et mêmes titres que l'accueil (SoloHome.vue). */
