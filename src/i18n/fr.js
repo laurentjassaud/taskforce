@@ -359,6 +359,7 @@ export default {
     nextSide: 'Passer au joueur {side} ?',
     endTurn: 'Passer au tour suivant ?',
     turn: 'Tour {turn}',
+    keepHand: 'Tour {turn} — vous gardez la main : {phase}.',
     setupShort: 'Seulement {count} task forces (leurres compris) sur {total} sont posées.',
     noMove: "Aucune unité n'a été déplacée pendant cette phase de mouvement.",
     recons: 'Il reste {n} reconnaissance japonaise à faire. | Il reste {n} reconnaissances japonaises à faire.',

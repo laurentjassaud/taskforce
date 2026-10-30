@@ -357,6 +357,7 @@ export default {
     nextSide: 'Go to the {side} player?',
     endTurn: 'Go to the next turn?',
     turn: 'Turn {turn}',
+    keepHand: 'Turn {turn} — still your move: {phase}.',
     setupShort: 'Only {count} task forces (dummies included) out of {total} have been placed.',
     noMove: 'No unit was moved during this movement phase.',
     recons: '{n} Japanese reconnaissance is still to do. | {n} Japanese reconnaissances are still to do.',

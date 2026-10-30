@@ -926,6 +926,25 @@ function nextPhaseMessage() {
   return turn != null && turn !== turnInfo.value.turn ? `${t('phaseConfirm.turn', { turn })} — ${question}` : question
 }
 
+/** Le "suivant" en cours laisse-t-il la main au même camp ? À deux joueurs,
+ *  l'initiative change à chaque tour : le camp qui finit un tour commence
+ *  souvent le suivant (cf. lib/turnTrack.js, ordre des créneaux). */
+function keepsHand() {
+  const next = phase.value != null ? nextPhaseOf() : { nextStep: true }
+  if (!next.nextStep) return true
+  const step = turnTrackerRef.value?.currentStep ?? 0
+  const side = sideOfStep(trackConfig, step + 1, turnTrackerRef.value?.rollOrders)
+  return !!side && side === turnInfo.value.activeSideKey
+}
+/** Bandeau du joueur qui garde la main (cf. `keepsHand`) : le tour et la
+ *  phase où mène le "suivant". */
+function keepHandNotice() {
+  const step = turnTrackerRef.value?.currentStep ?? 0
+  const next = phase.value != null ? nextPhaseOf() : { phaseStep: null, nextStep: true }
+  const turn = next.nextStep ? turnOfStep(trackConfig, step + 1) : turnInfo.value.turn
+  return t('phaseConfirm.keepHand', { turn, phase: phaseName(next.phaseStep) })
+}
+
 /** Clic sur le bouton "suivant" de la ligne des phases (cf. TurnTracker.vue,
  *  évènement `phase-next`). Le changement de phase est refusé, et la modale
  *  d'avertissement ouverte, en phase Mouvement s'il reste des unités amies
@@ -960,10 +979,16 @@ function onPhaseNext() {
     showPhaseBlocked.value = true
     return
   }
-  // Tout changement de phase ou de tour se confirme (cf. `phaseConfirm`).
+  // Tout changement de phase ou de tour se confirme (cf. `phaseConfirm`) — à
+  // deux joueurs, sauf quand le joueur garde la main (cf. `keepsHand`) sans
+  // rien laisser derrière lui : un bandeau le lui dit.
   if (!confirmed) {
-    phaseConfirm.value = phaseChangeConfirmation()
-    return
+    const confirmation = phaseChangeConfirmation()
+    if (!props.duel || !keepsHand() || confirmation.warnings.length) {
+      phaseConfirm.value = confirmation
+      return
+    }
+    reconToast.value = { id: newUid(), text: keepHandNotice() }
   }
   // Fin des Mouvements de tous les camps : la règle du module retire
   // certains pions du jeu (cf. `removeAtMovementEnd`), avant que la piste
