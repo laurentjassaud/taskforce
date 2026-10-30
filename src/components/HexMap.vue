@@ -936,14 +936,17 @@ function keepsHand() {
   const side = sideOfStep(trackConfig, step + 1, turnTrackerRef.value?.rollOrders)
   return !!side && side === turnInfo.value.activeSideKey
 }
-/** Bandeau du joueur qui garde la main (cf. `keepsHand`) : le tour et la
- *  phase où mène le "suivant". */
-function keepHandNotice() {
-  const step = turnTrackerRef.value?.currentStep ?? 0
-  const next = phase.value != null ? nextPhaseOf() : { phaseStep: null, nextStep: true }
-  const turn = next.nextStep ? turnOfStep(trackConfig, step + 1) : turnInfo.value.turn
-  return t('phaseConfirm.keepHand', { turn, phase: phaseName(next.phaseStep) })
-}
+/** À deux joueurs, pas joué par le même camp que le précédent — à un
+ *  nouveau tour, celui qui finissait l'autre a l'initiative et joue en
+ *  premier (cf. `keepsHand`) : `{ newTurn }`, ou `null`. Un bandeau le dit
+ *  au joueur toute la phase : sinon, rien ne change à l'écran et il croit
+ *  son clic perdu. */
+const handKept = computed(() => {
+  const step = turnInfo.value.step
+  if (!props.duel || !(step > 0) || !isLocalTurn.value || handoverSide.value || isReplaying.value || replayLocked.value || gameEnd.value) return null
+  if (sideOfStep(trackConfig, step - 1, turnTrackerRef.value?.rollOrders) !== turnInfo.value.activeSideKey) return null
+  return { newTurn: turnOfStep(trackConfig, step) !== turnOfStep(trackConfig, step - 1) }
+})
 
 /** Clic sur le bouton "suivant" de la ligne des phases (cf. TurnTracker.vue,
  *  évènement `phase-next`). Le changement de phase est refusé, et la modale
@@ -981,14 +984,13 @@ function onPhaseNext() {
   }
   // Tout changement de phase ou de tour se confirme (cf. `phaseConfirm`) — à
   // deux joueurs, sauf quand le joueur garde la main (cf. `keepsHand`) sans
-  // rien laisser derrière lui : un bandeau le lui dit.
+  // rien laisser derrière lui : un bandeau le lui dit (cf. `handKept`).
   if (!confirmed) {
     const confirmation = phaseChangeConfirmation()
     if (!props.duel || !keepsHand() || confirmation.warnings.length) {
       phaseConfirm.value = confirmation
       return
     }
-    reconToast.value = { id: newUid(), text: keepHandNotice() }
   }
   // Fin des Mouvements de tous les camps : la règle du module retire
   // certains pions du jeu (cf. `removeAtMovementEnd`), avant que la piste
@@ -2992,7 +2994,11 @@ function launchDuelRecon() {
     && !eliminatedIds.value.has(String(counter.id)))
     .map((counter) => ({ id: counter.id, col: counter.col, row: counter.row, faction: counter.faction,
       role: counter.role ?? counterDefinition(counter.id)?.role }))
-  const zones = resolveRecon({ centers, enemies, enemyFaction: props.module.sides?.[enemySide]?.[0] ?? enemySide, onMap: hexOnMap })
+  // Task forces du chercheur : pas de faux pion à côté d'elles (cf.
+  // shared/duelRules.js, règle 7).
+  const friends = counters.value.filter((counter) => isDuelPiece(counter) && sideOfCounter(counter) === side
+    && !eliminatedIds.value.has(String(counter.id))).map(({ col, row }) => ({ col, row }))
+  const zones = resolveRecon({ centers, enemies, friends, enemyFaction: props.module.sides?.[enemySide]?.[0] ?? enemySide, onMap: hexOnMap })
   // Hex des task forces survolées, comme le serveur les donne à la cible en
   // ligne (cf. server/src/duel.js::recon).
   const fleets = scoutedFleetsOf({ zones })
@@ -4472,6 +4478,7 @@ function onMapDragEnd() {
       </div>
     </header>
 
+    <div class="map-area">
     <main class="map-wrap" ref="mapWrapRef" :class="{ dragging: !!mapDrag }" @mousedown.right.prevent="onMapDragStart"
       @mousemove="onMapDragMove" @mouseup="onMapDragEnd" @mouseleave="onMapDragEnd" @contextmenu.prevent
       @wheel.prevent="onMapWheel" @scroll="hoveredCounter = null; sightingTip = null">
@@ -4647,6 +4654,14 @@ function onMapDragEnd() {
       </svg>
       </div>
     </main>
+    <!-- À deux joueurs : le joueur garde la main (cf. `handKept`), en haut
+         de la carte toute la phase. -->
+    <p v-if="handKept" class="hand-kept" role="status" :style="{ '--side': sideColor(turnInfo.activeSideKey) }">
+      {{ handKept.newTurn
+        ? $t('duel.initiativeBanner', { turn: turnInfo.turn, phase: phaseName(phase) })
+        : $t('duel.keepHandBanner', { phase: phaseName(phase) }) }}
+    </p>
+    </div>
 
     <CalibrationPanel v-if="showCalib" :calibration="calibration" :grid-style="gridStyle" :map-config="mapConfig"
       :default-calibration="moduleCalibration" :image-width="map.imageWidth" :image-height="map.imageHeight" />
@@ -4926,11 +4941,51 @@ function onMapDragEnd() {
   cursor: pointer;
 }
 
+/* Cadre de la carte : porte ce qui flotte en haut d'elle (cf. `.hand-kept`). */
+.map-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .map-wrap {
   overflow: hidden;
   flex: 1;
   min-height: 0;
   background: var(--c-paper);
+}
+
+/* Le joueur garde la main (cf. `handKept`) : centré sur la partie visible de
+   la carte, à côté du panneau latéral. */
+.hand-kept {
+  position: absolute;
+  top: 12px;
+  left: calc((100% - 22vw - 36px) / 2);
+  transform: translateX(-50%);
+  z-index: var(--z-floating);
+  max-width: calc(100% - 22vw - 68px);
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: var(--radius-8);
+  border-left: 6px solid var(--side);
+  background: color-mix(in srgb, var(--side) 16%, var(--c-paper));
+  color: var(--c-brand-ink);
+  box-shadow: var(--shadow-widget);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+  animation: hand-kept-in 240ms var(--ease-out);
+}
+@keyframes hand-kept-in {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hand-kept {
+    animation: none;
+  }
 }
 
 .map-wrap.dragging {

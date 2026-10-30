@@ -139,6 +139,7 @@ export function createDuelReferee(module, scenarioId) {
       const zones = resolveRecon({
         centers: cells.map(({ col, row }) => ({ col, row })),
         enemies: piecesOf(game, targetSide),
+        friends: piecesOf(game, side),
         enemyFaction: module.sides?.[targetSide]?.[0] ?? targetSide,
         onMap,
       })

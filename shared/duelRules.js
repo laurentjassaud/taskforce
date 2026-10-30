@@ -37,7 +37,10 @@
 //  7. Zone vide. Un Misdirect y fait tirer un second chit : s'il est encore
 //     Misdirect, un faux pion — porte-avions ou flotte, à pile ou face — est
 //     posé sur un hex de la zone tiré au hasard ; sinon, rien (cf.
-//     `resolveRecon`).
+//     `resolveRecon`). Jamais sur une task force ni à côté d'une task force,
+//     de l'un ou l'autre camp : deux task forces adverses voisines sont au
+//     contact (cf. `inContact`), un faux pion là serait aussitôt démasqué.
+//     Aucun hex possible dans la zone : pas de faux pion.
 //  8. Ce que voit chacun. Le chercheur ne voit que ses pions "Sighted" — ni
 //     les chits, ni les task forces de ses zones. La cible apprend lesquelles
 //     de ses task forces ont été survolées, et où (cf. server/src/duel.js::
@@ -136,14 +139,18 @@ export function reconFits(centers, carriers, quota, range) {
  *  Detected : chaque task force vue pour ce qu'elle est ; Misdirect, pour
  *  ce qu'elle n'est pas — dans une zone vide, un second chit, et s'il est
  *  encore Misdirect, un faux pion porte-avions ou flotte à pile ou face,
- *  sur un hex de la zone (aux couleurs de `enemyFaction`) ; Contact Lost :
- *  rien. Une zone par hex de reco : `{ hex, col, row, fleets, chit,
- *  redraw?, sightings: [{ col, row, sighted, faction }] }` — `fleets`, ids
- *  des task forces ennemies qui s'y trouvent ; `redraw`, le second chit
- *  d'une zone vide. */
-export function resolveRecon({ centers, enemies, enemyFaction, onMap, random = Math.random }) {
+ *  sur un hex de la zone (aux couleurs de `enemyFaction`) ni occupé ni
+ *  voisin d'une task force — des `enemies` comme des `friends`, celles du
+ *  chercheur (`{ col, row }`) ; Contact Lost : rien. Une zone par hex de
+ *  reco : `{ hex, col, row, fleets, chit, redraw?, sightings: [{ col, row,
+ *  sighted, faction }] }` — `fleets`, ids des task forces ennemies qui s'y
+ *  trouvent ; `redraw`, le second chit d'une zone vide. */
+export function resolveRecon({ centers, enemies, friends = [], enemyFaction, onMap, random = Math.random }) {
   const bag = { ...SEARCH_CHITS }
   const areas = reconZones(centers, onMap)
+  // Hex d'un faux pion : ni sur une task force, ni à côté (règle 7).
+  const taskForces = [...enemies, ...friends]
+  const fakeAllowed = (hex) => !taskForces.some((taskForce) => hexDistance(taskForce, hex) <= 1)
   return centers.map((center, index) => {
     const area = areas[index]
     const fleets = enemies.filter((enemy) => area.some((hex) => hex.col === enemy.col && hex.row === enemy.row))
@@ -154,9 +161,10 @@ export function resolveRecon({ centers, enemies, enemyFaction, onMap, random = M
       fleets: fleets.map((fleet) => String(fleet.id)), chit, sightings }
     if (!fleets.length && chit === 'misdirect') {
       zone.redraw = drawChit(bag, random)
-      if (zone.redraw === 'misdirect') {
+      const free = area.filter(fakeAllowed)
+      if (zone.redraw === 'misdirect' && free.length) {
         const sighted = random() < 0.5 ? 'carrierTF' : 'fleetTF'
-        const hex = area[Math.floor(random() * area.length)]
+        const hex = free[Math.floor(random() * free.length)]
         sightings.push({ col: hex.col, row: hex.row, sighted, faction: enemyFaction })
       }
     }
