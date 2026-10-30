@@ -73,6 +73,16 @@ export function createDuelReferee(module, scenarioId) {
     /** L'hex (`col` 0-based, `row` 1-based) est-il sur la carte ? */
     onMap,
 
+    /** La task force `id` peut-elle aller sur la carte ? Pas un porte-avions
+     *  de plus que n'en a le scénario pour son camp (`recon.carriers`, cf.
+     *  shared/duelRules.js, règle 1) — un déjà posé se déplace librement. */
+    allowsMove(game, id) {
+      const piece = pieces.get(String(id))
+      const cap = reconRules?.carriers?.[piece?.side]
+      if (!piece || cap == null || piece.role !== reconRules.role || game.boardState.has(piece.id)) return true
+      return piecesOf(game, piece.side).filter((other) => other.role === reconRules.role).length < cap
+    },
+
     /** Camps à qui transmettre la position du pion `id` : le sien, et
      *  l'adversaire tant qu'il le voit. */
     audienceOf(game, id) {

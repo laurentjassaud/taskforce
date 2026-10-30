@@ -354,7 +354,8 @@ export function recordMove(id, { counterId, col, row }, side) {
   const validId = (typeof counterId === 'string' || typeof counterId === 'number') && String(counterId).length <= 64
   const validCell = Number.isInteger(col) && Number.isInteger(row) && col >= 0 && row >= 0 && col < 1000 && row < 1000
   if (!validId || !validCell) throw new RoomError('bad-move')
-  if (game.referee && (game.referee.ownerOf(counterId) !== side || !game.referee.onMap(col, row))) throw new RoomError('bad-move')
+  if (game.referee && (game.referee.ownerOf(counterId) !== side || !game.referee.onMap(col, row)
+    || !game.referee.allowsMove(game, String(counterId)))) throw new RoomError('bad-move')
   game.boardState.set(String(counterId), { col, row })
   touch(game)
   return game

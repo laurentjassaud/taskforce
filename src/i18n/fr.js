@@ -149,6 +149,7 @@ export default {
     hintDrag: "Glisser un pion sur la carte pour le poser librement, ou cliquer dessus puis cliquer un des hex d'entrée surlignés en orange.",
     hintClick: "Cliquer un pion puis cliquer un des hex d'entrée surlignés en orange sur la carte.",
     hintDuel: 'Glissez un pion sur un hex de votre zone de mise en place, marquée sur la carte. Vous pouvez le déplacer à nouveau, ou le remettre dans ce panneau.',
+    carrierCap: "Le scénario ne vous donne qu'un porte-avions : une seule task force porte-avions sur la carte. | Le scénario vous donne {n} porte-avions : {n} task forces porte-avions au plus sur la carte.",
   },
 
   turnTracker: {

@@ -795,9 +795,9 @@
       "label": "Scenario 5 : Bataille de la mer de Corail",
       "deployment": "setup",
       "duel": {
-        "_comment": "Mode deux joueurs en double aveugle (cf. src/components/HexMap.vue, prop `duel`) : phases jouées après la mise en place (ids de `turnStructure.phases`) ; zone de mise en place de chaque camp — hex \"CCRR\" ou plages \"CCRR-CCRR\", cf. src/lib/setup.js — et couleur (toute valeur CSS) du dégradé qui la marque sur la carte ; reconnaissance — chaque task force de rôle `role` sur la carte désigne `zones[camp]` hex de reco à `range` hex ou moins d'elle, chacun couvrant une zone (lui et ses 6 voisins), cf. HexMap.vue::launchDuelRecon.",
+        "_comment": "Mode deux joueurs en double aveugle (cf. src/components/HexMap.vue, prop `duel`) : phases jouées après la mise en place (ids de `turnStructure.phases`) ; zone de mise en place de chaque camp — hex \"CCRR\" ou plages \"CCRR-CCRR\", cf. src/lib/setup.js — et couleur (toute valeur CSS) du dégradé qui la marque sur la carte ; reconnaissance — chaque task force de rôle `role` sur la carte désigne `zones[camp]` hex de reco à `range` hex ou moins d'elle, chacun couvrant une zone (lui et ses 6 voisins), et un camp ne pose pas plus de `carriers[camp]` task forces de ce rôle (les porte-avions du scénario) ; règles complètes en tête de shared/duelRules.js.",
         "phases": ["navalMovement", "reconnaissance"],
-        "recon": { "role": "carrier", "range": 8, "zones": { "ijn": 2, "usn": 3 } },
+        "recon": { "role": "carrier", "range": 8, "zones": { "ijn": 2, "usn": 3 }, "carriers": { "ijn": 3, "usn": 2 } },
         "setup": {
           "ijn": { "hexes": ["0601-2801"], "color": "var(--c-ijn)" },
           "usn": { "hexes": ["3203-3218", "3303-3319", "2818", "2919", "3018", "3119"], "color": "var(--c-zone-usn)" }

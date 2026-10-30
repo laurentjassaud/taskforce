@@ -147,6 +147,7 @@ export default {
     hintDrag: 'Drag a counter onto the map to place it freely, or click it then click one of the entry hexes highlighted in orange.',
     hintClick: 'Click a counter then click one of the entry hexes highlighted in orange on the map.',
     hintDuel: 'Drag a counter onto a hex of your setup zone, marked on the map. You can move it again, or drop it back into this panel.',
+    carrierCap: 'The scenario gives you a single carrier: one carrier task force on the map at most. | The scenario gives you {n} carriers: {n} carrier task forces on the map at most.',
   },
 
   turnTracker: {

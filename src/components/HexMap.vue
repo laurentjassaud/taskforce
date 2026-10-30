@@ -32,7 +32,7 @@ import { isUnit } from '../lib/units.js'
 import { parseSetup, rangeCells, zoneCells } from '../lib/setup.js'
 import { resolveRules, resolveTurnStructure, stackingLimitOf } from '../lib/rules.js'
 import { sideOfStep, resolveTrack, sidesOfTurn, turnOfStep, legacyStepMapper, slotOfStep, duelTrackOptions, turnInfoOf } from '../lib/turnTrack.js'
-import { reconZone, reconFits, resolveRecon, nightTurnsOf, nightSince as nightFellSince } from '../../shared/duelRules.js'
+import { reconZones, reconFits, resolveRecon, nightTurnsOf, nightSince as nightFellSince } from '../../shared/duelRules.js'
 import { connectedGroups } from '../lib/navalCombat.js'
 import CalibrationPanel from './CalibrationPanel.vue'
 import Counter from './Counter.vue'
@@ -2023,9 +2023,27 @@ function playerDummyHexes(counter) {
 }
 /** Le renfort `counter` peut-il être posé dans la phase en cours ? */
 function canPlaceNow(counter) {
-  if (props.duel) return phase.value === PHASE_SETUP && isDuelPiece(counter)
+  if (props.duel) return phase.value === PHASE_SETUP && isDuelPiece(counter) && !carrierCapReached(counter)
   const dummyHexes = playerDummyHexes(counter)
   return dummyHexes ? dummyHexes.size > 0 : canPlaceReinforcementNow(counter)
+}
+
+/** À deux joueurs : `counter`, un porte-avions de plus que n'en a le
+ *  scénario pour son camp (`scenario.duel.recon.carriers`, cf.
+ *  shared/duelRules.js, règle 1) ? Un déjà posé se déplace librement. */
+function carrierCapReached(counter) {
+  const side = sideOfCounter(counter)
+  const cap = duelRecon?.carriers?.[side]
+  const isCarrier = (piece) => (piece.role ?? counterDefinition(piece.id)?.role) === duelRecon.role
+  if (cap == null || !isCarrier(counter) || counters.value.some((piece) => String(piece.id) === String(counter.id))) return false
+  return counters.value.filter((piece) => isDuelPiece(piece) && sideOfCounter(piece) === side && isCarrier(piece)
+    && !eliminatedIds.value.has(String(piece.id))).length >= cap
+}
+/** Consigne du panneau de renforts du camp `side` à deux joueurs : la pose,
+ *  et ses porte-avions comptés (cf. `carrierCapReached`). */
+function duelSetupHint(side) {
+  const cap = duelRecon?.carriers?.[side]
+  return cap == null ? t('reinforcements.hintDuel') : `${t('reinforcements.hintDuel')} ${t('reinforcements.carrierCap', { n: cap }, cap)}`
 }
 
 function onReinforcementSelect(id) {
@@ -2827,7 +2845,9 @@ function onSightingMarkClick(mark) {
  *  `debugNote`) : chit tiré pour chaque zone d'une reconnaissance à deux. */
 function journalDebugNote(entry) {
   if (entry.kind !== 'duelRecon' || !entry.data?.zones) return null
-  const chits = entry.data.zones.map((zone) => `${zone.hex} ${moduleRules.searchResults?.[zone.chit]?.name ?? zone.chit}`)
+  const chitName = (chit) => moduleRules.searchResults?.[chit]?.name ?? chit
+  // Zone vide : le second chit d'un Misdirect (cf. shared/duelRules.js, règle 7).
+  const chits = entry.data.zones.map((zone) => `${zone.hex} ${chitName(zone.chit)}${zone.redraw ? ` → ${chitName(zone.redraw)}` : ''}`)
   return t('log.duelReconChits', { chits: chits.join(', ') })
 }
 
@@ -2880,15 +2900,35 @@ const duelReconPicks = computed(() => {
     .map((hex) => hex.col + ',' + hex.row))
 })
 
-/** Zone d'un hex de reco : lui et ceux de ses 6 voisins qui sont sur la carte. */
-const duelReconZoneOf = (center) => reconZone(center, hexOnMap)
-// Affichage des zones désignées : leurs hex, et leurs hex de reco.
+// Affichage des zones désignées : leurs hex de reco, et leurs zones — sans
+// recouvrement, chaque hex dans une seule (cf. shared/duelRules.js::
+// reconZones, règle 4), comme au tirage.
 const duelReconCenterHexes = computed(() => (duelReconActive.value
   ? duelReconCenters.value.map((center) => hexes.value.find((hex) => hex.c === center.col && hex.r === center.row)).filter(Boolean) : []))
-const duelReconZoneHexes = computed(() => {
-  const covered = new Set(duelReconCenterHexes.value.flatMap((hex) => duelReconZoneOf({ col: hex.c, row: hex.r }).map((cell) => cell.col + ',' + cell.row)))
-  return covered.size ? hexes.value.filter((hex) => covered.has(hex.c + ',' + hex.r)) : []
+const duelReconZones = computed(() => {
+  if (!duelReconCenterHexes.value.length) return []
+  const byKey = new Map(hexes.value.map((hex) => [hex.c + ',' + hex.r, hex]))
+  return reconZones(duelReconCenters.value, hexOnMap).map((cells) => cells.map((cell) => byKey.get(cell.col + ',' + cell.row)).filter(Boolean))
 })
+const duelReconZoneHexes = computed(() => duelReconZones.value.flat())
+// Voisin de chaque côté d'un hex — le côté `i` va de son sommet `i` au
+// suivant (cf. `hexes`) —, selon la parité de sa colonne (colonnes impaires
+// décalées vers le bas, cf. shared/hex.js).
+const HEX_SIDE_NEIGHBORS = {
+  even: [[-1, -1], [0, -1], [1, -1], [1, 0], [0, 1], [-1, 0]],
+  odd: [[-1, 0], [0, -1], [1, 0], [1, 1], [0, 1], [-1, 1]],
+}
+/** Contour de chaque zone de reco (tracé SVG) : les côtés de ses hex qui ne
+ *  donnent pas sur un autre de ses hex — la limite entre deux zones voisines
+ *  se voit. */
+const duelReconZoneBorders = computed(() => duelReconZones.value.map((zone) => {
+  const inZone = new Set(zone.map((hex) => hex.c + ',' + hex.r))
+  return zone.flatMap((hex) => {
+    const corners = hex.pts.split(' ')
+    return HEX_SIDE_NEIGHBORS[hex.c % 2 ? 'odd' : 'even']
+      .flatMap(([dc, dr], side) => (inZone.has(`${hex.c + dc},${hex.r + dr}`) ? [] : [`M${corners[side]}L${corners[(side + 1) % 6]}`]))
+  }).join('')
+}))
 
 /** Clic pendant la reconnaissance à deux (sur un hex ou un pion) : désigne
  *  ou annule un hex de reco. Vrai si le clic est consommé — tous le sont
@@ -4495,6 +4535,8 @@ function onMapDragEnd() {
             :points="hex.pts" vector-effect="non-scaling-stroke" />
           <polygon v-for="hex in duelReconCenterHexes" :key="'rc' + hex.id" class="hex-duel-recon-center"
             :points="hex.pts" vector-effect="non-scaling-stroke" />
+          <path v-for="(border, index) in duelReconZoneBorders" :key="'rb' + index" class="duel-recon-border"
+            :d="border" vector-effect="non-scaling-stroke" />
           <text v-for="hex in duelReconCenterHexes" :key="'rl' + hex.id" class="duel-recon-label" text-anchor="middle"
             :font-size="calibration.a * 0.3">
             <tspan :x="hex.cx" :y="hex.cy - calibration.a * 0.24">{{ $t('duelRecon.zoneLine1') }}</tspan>
@@ -4620,7 +4662,7 @@ function onMapDragEnd() {
           @settings-mismatch="(settings) => emit('restart-with', settings)" />
         <ReinforcementsPanel v-else :reinforcements="reinforcementsForTab(tab.key)"
           :selected-id="selectedReinforcementId" :current-turn="panelTurn" :draggable="draggable || phase === PHASE_SETUP"
-          :can-place="canPlaceNow" :hint="duel ? $t('reinforcements.hintDuel') : null" :hex-labels="!duel"
+          :can-place="canPlaceNow" :hint="duel ? duelSetupHint(tab.key) : null" :hex-labels="!duel"
           @dragstart="onCounterDragStart" @select="onReinforcementSelect" />
       </template>
     </SidePanel>
@@ -4961,6 +5003,14 @@ polygon.hex.recon-pick:hover {
   fill: color-mix(in srgb, var(--c-recon) 30%, transparent);
   stroke: var(--c-white);
   stroke-width: 2.5;
+}
+/* Limite de chaque zone (cf. `duelReconZoneBorders`) : un trait épais qui
+   sépare aussi deux zones voisines. */
+.duel-recon-border {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c-recon) 35%, var(--c-ink));
+  stroke-width: 3.5;
+  stroke-linecap: round;
 }
 .duel-recon-label {
   font-family: var(--font-ui);
