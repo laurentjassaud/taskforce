@@ -37,12 +37,23 @@ const emit = defineEmits(['close', 'confirm'])
 function onKey(event) {
   if (event.key === 'Escape' || event.key === 'Enter') emit('close')
 }
+
+// Un clic sur le fond la ferme — sauf juste après son ouverture : elle
+// s'ouvre sous le pointeur d'un clic (« suivant », déplacement…), et le
+// second clic d'un double-clic, ou d'un clic répété faute de réaction
+// visible, tomberait sur ce fond et la refermerait aussitôt : rien ne se
+// passait, il fallait recliquer.
+const BACKDROP_GRACE_MS = 500
+const openedAt = performance.now()
+function onBackdropClick() {
+  if (performance.now() - openedAt >= BACKDROP_GRACE_MS) emit('close')
+}
 onMounted(() => window.addEventListener('keydown', onKey))
 onUnmounted(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div class="pb-overlay" @click.self="emit('close')">
+  <div class="pb-overlay" @click.self="onBackdropClick">
     <div class="pb-modal" role="alertdialog" aria-labelledby="pb-title">
       <h3 id="pb-title">{{ title ?? $t('phaseBlocked.title') }}</h3>
       <p v-if="$slots.default"><slot /></p>
