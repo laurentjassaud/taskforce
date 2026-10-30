@@ -298,21 +298,60 @@ créer une partie en ligne.
 
 ## Mise en production
 
-Task Force est servi sur **https://taskforce.gameboxheroes.fr/**. Le front
-(`dist/`) et le serveur se déploient séparément ; une modification qui touche
-les deux se déploie **serveur d'abord**.
+Task Force est servi sur **https://taskforce.gameboxheroes.fr/** par Apache,
+sur le VPS qu'il partage avec generic-wargame (`rooms.gameboxheroes.fr`). Le
+front (`dist/`) et le serveur se déploient séparément ; une modification qui
+touche les deux se déploie **serveur d'abord**.
 - **Front** : `npm run build` (lit `.env.production`, non versionné :
   `VITE_API_URL=https://taskforce.gameboxheroes.fr`, sans port), puis copier
-  tout `dist/`, `.htaccess` compris. `public/.htaccess` relaie `/api` et
-  `/socket.io` vers le serveur Node sur le **port 8081** — le 8080 restant
-  au serveur de generic-wargame (`rooms.gameboxheroes.fr`) — et assure le
-  repli SPA.
+  tout `dist/` dans la racine web du site (`~/WWW/taskforce/`) — et rien
+  d'autre : tout ce qui s'y trouve est public.
+- **Apache** : le VPS ignore les `.htaccess` (`public/.htaccess` ne sert que
+  sur un hébergement qui les lit). Le relais de `/api` et `/socket.io` vers le
+  serveur Node, sur le **port 8081** — le 8080 restant au serveur de
+  generic-wargame —, et le repli SPA vivent dans le vhost
+  `/etc/apache2/sites-enabled/taskforce.conf` :
+
+  ```apache
+  DocumentRoot /home/prod/WWW/taskforce
+
+  RewriteEngine On
+  RewriteCond %{HTTP:Upgrade} websocket [NC]
+  RewriteRule ^/socket.io/(.*) ws://127.0.0.1:8081/socket.io/$1 [P,L]
+
+  ProxyPass /socket.io/ http://127.0.0.1:8081/socket.io/
+  ProxyPassReverse /socket.io/ http://127.0.0.1:8081/socket.io/
+  ProxyPass /api/ http://127.0.0.1:8081/api/
+  ProxyPassReverse /api/ http://127.0.0.1:8081/api/
+
+  <Directory /home/prod/WWW/taskforce >
+  FallbackResource /index.html
+  </Directory>
+  ```
+
+  puis `sudo apache2ctl configtest && sudo systemctl reload apache2`.
 - **Serveur** : copier `server/` (sans `node_modules/`) **et `shared/`** côte
-  à côte dans un même dossier du VPS — le serveur importe `../../shared/` —,
-  puis `npm install --omit=dev` dans `server/` et le lancer avec
-  `PORT=8081 CLIENT_ORIGIN=https://taskforce.gameboxheroes.fr`
-  (`node src/index.js`, ou un processus pm2 à part). Contrôle :
-  `curl http://127.0.0.1:8081/api/health` → `{"ok":true}`.
+  à côte dans un même dossier du VPS, **hors de la racine web**
+  (`~/node/taskforce/`) — le serveur importe `../../shared/` —, puis
+  `npm ci --omit=dev` dans `server/` et le lancer sous pm2 :
+
+  ```bash
+  PORT=8081 CLIENT_ORIGIN=https://taskforce.gameboxheroes.fr \
+  MODULES_URL=http://taskforce.gameboxheroes.fr \
+  pm2 start src/index.js --name taskforce
+  pm2 save
+  ```
+
+  Ensuite, `pm2 restart taskforce` **sans** `--update-env`, qui remplacerait
+  ces variables par celles du shell.
+- **Modules** : le VPS ne joint pas sa propre adresse publique. Le serveur
+  lit donc les modules en `http`, via Apache en local, grâce à la ligne
+  `127.0.0.1 taskforce.gameboxheroes.fr` de `/etc/hosts` ; sans elle, créer
+  une partie en ligne échoue en `module-unavailable` (503).
+
+Contrôles : sur le VPS, `curl http://127.0.0.1:8081/api/health` →
+`{"ok":true}` ; de l'extérieur (pas depuis le VPS),
+`https://taskforce.gameboxheroes.fr/api/health` → `{"ok":true}`.
 
 Prérequis : Node `^22.18.0` ou `>=24.12.0` (voir `engines`).
 
