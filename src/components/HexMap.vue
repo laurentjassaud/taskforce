@@ -904,6 +904,8 @@ function phaseChangeConfirmation() {
   // Hex de reco désignés à deux joueurs, sans décollage (cf. `launchDuelRecon`).
   const grounded = duelReconActive.value && !duelReconDone.value ? duelReconCenters.value.length : 0
   if (grounded > 0) warnings.push(t('phaseConfirm.duelRecon', { n: grounded }, grounded))
+  // … ou aucun, sans y avoir renoncé ("Annuler les vols", cf. `askCancelFlights`).
+  else if (duelReconActive.value && !duelReconDone.value && duelReconCarriers.value.length) warnings.push(t('phaseConfirm.duelReconNone'))
   return { title: nextLabel.value ?? t('turnTracker.nextTurn'), message: nextPhaseMessage(), warnings }
 }
 
@@ -1177,25 +1179,48 @@ function takeOverScreen() {
 /** Début du tour du camp `side` devant l'écran : à la mise en place, son
  *  panneau de renforts s'ouvre ; une modale résume ce qu'il a subi pendant
  *  le tour adverse — contacts pris par l'adversaire (cf. `checkDuelContact`)
- *  et task forces que ses reconnaissances ont survolées (cf. `isScouted`). */
-function startOwnTurn(side) {
+ *  et task forces que ses reconnaissances ont survolées (cf. `isScouted`).
+ *  `modal: false` : ce résumé est seulement renvoyé, une autre modale le
+ *  montre (cf. `yourTurn`). */
+function startOwnTurn(side, { modal = true } = {}) {
   if (phase.value === PHASE_SETUP) openTab.value = side
   const contacts = contactsSufferedBy(side)
   const scouted = reconsSufferedBy(side)
-  if (contacts.length || scouted.length) {
+  if (modal && (contacts.length || scouted.length)) {
     duelContactModal.value = { title: t(contacts.length ? 'duel.contactTitle' : 'duel.scoutedTitle'), lines: [...contacts, ...scouted] }
   }
+  return [...contacts, ...scouted]
 }
 // En ligne, la main revient au joueur de ce navigateur quand l'adversaire a
-// fini (cf. RoomLobby.vue, `game:turn`) : même début de tour qu'après
-// l'écran de passage — sauf en reconstituant la partie au chargement (rejeu
-// du journal partagé, cf. `startSharedJournal`). Quand il rend la main, son
-// panneau de renforts, ouvert pour la mise en place, se referme : plus rien
-// n'en sort ensuite.
-watch(() => turnInfo.value.step, () => {
-  if (!props.online || !props.duel || !props.localSide || isReplaying.value || replayLocked.value) return
-  if (turnInfo.value.activeSideKey === props.localSide) startOwnTurn(props.localSide)
-  else if (openTab.value === props.localSide) openTab.value = null
+// fini (cf. RoomLobby.vue, `game:turn`) : une modale « À vous de jouer » le
+// lui annonce (`yourTurn`), avec, en double aveugle, le même début de tour
+// qu'après l'écran de passage — sauf en reconstituant la partie au
+// chargement (rejeu du journal partagé, cf. `startSharedJournal`), ni au
+// premier camp de la partie (aucun camp avant lui). Quand il rend la main,
+// son panneau de renforts, ouvert pour la mise en place, se referme : plus
+// rien n'en sort ensuite.
+const yourTurn = ref(null) // { lines } — ce qu'il a subi pendant le tour adverse
+const yourTurnButton = ref(null)
+watch(() => [turnInfo.value.step, turnInfo.value.activeSideKey], ([, side], [, previousSide]) => {
+  if (!props.online || !props.localSide || isReplaying.value || replayLocked.value) return
+  const mine = side === props.localSide
+  if (mine && previousSide && previousSide !== props.localSide) {
+    yourTurn.value = { lines: props.duel ? startOwnTurn(side, { modal: false }) : [] }
+    nextTick(() => yourTurnButton.value?.focus())
+  } else if (props.duel && mine) startOwnTurn(side)
+  else if (props.duel && openTab.value === props.localSide) openTab.value = null
+})
+// Onglet en arrière-plan : son titre annonce aussi que la main est revenue,
+// jusqu'à la fermeture de la modale.
+let titleBeforeTurn = null
+watch(yourTurn, (value) => {
+  if (value && document.hidden && titleBeforeTurn == null) {
+    titleBeforeTurn = document.title
+    document.title = `● ${t('online.yourTurnTitle')} — ${titleBeforeTurn}`
+  } else if (!value && titleBeforeTurn != null) {
+    document.title = titleBeforeTurn
+    titleBeforeTurn = null
+  }
 })
 
 // --- Contacts à deux joueurs : une task force qui arrive au contact d'une
@@ -1307,11 +1332,28 @@ function contactsSufferedBy(side) {
  *  sans rien du résultat : une ligne, ou aucune. */
 function reconsSufferedBy(side) {
   const during = enemyStepsSince(side)
-  const ids = [...new Set(duelRecons.value.filter((recon) => recon.side !== side && during(recon.step))
-    .flatMap((recon) => recon.zones.flatMap((zone) => zone.fleets ?? [])))]
+  const recons = duelRecons.value.filter((recon) => recon.side !== side && during(recon.step))
+  const ids = [...new Set(recons.flatMap(scoutedFleetsOf))]
   if (!ids.length) return []
-  return [t('duel.scoutedSuffered', { units: ids.map((id) => counterDefinition(id)?.name ?? id).join(', ') }, ids.length)]
+  const hexes = Object.assign({}, ...recons.map((recon) => recon.hexes ?? {}))
+  return [t('duel.scoutedSuffered', { units: unitsWithHexes(ids, hexes) }, ids.length)]
 }
+/** Camp adverse de `side`. */
+const enemySideOf = (side) => Object.keys(props.module.sides ?? {}).find((key) => key !== side) ?? null
+/** Task forces survolées par la reconnaissance `recon`. */
+const scoutedFleetsOf = (recon) => [...new Set((recon.zones ?? []).flatMap((zone) => zone.fleets ?? []))]
+/** « TF 1 (1001), TF 3 (1203) » : les task forces `ids`, avec l'hex où une
+ *  reconnaissance ennemie les a survolées (`hexes`) quand il est connu. */
+const unitsWithHexes = (ids, hexes) => ids.map((id) => {
+  const name = counterDefinition(id)?.name ?? id
+  return hexes?.[id] ? `${name} (${hexes[id]})` : name
+}).join(', ')
+/** Reconnaissance vue de sa cible (en ligne, cf. server/src/duel.js::recon) :
+ *  ses task forces survolées, sans les hex de reco du chercheur. */
+const isScoutedEntry = (entry) => entry.kind === 'duelRecon' && !entry.data?.zones?.some((zone) => zone.col != null)
+/** Texte du journal de la cible d'une reconnaissance (`by`) : ses task
+ *  forces survolées (`fleets`), et où (`hexes`). */
+const scoutedText = ({ by, fleets, hexes }) => t('log.duelScouted', { side: sideLabel(by), units: unitsWithHexes(fleets, hexes) }, fleets.length)
 /** Ce camp est-il caché au joueur devant l'écran ? Tous, le temps de
  *  l'écran de passage. */
 const hiddenSide = (side) => blindView.value && (!!handoverSide.value || side !== viewSide.value)
@@ -1347,13 +1389,32 @@ function movedSince(marker) {
   return false
 }
 /** Entrée du journal visible du joueur devant l'écran : celles d'un pion ou
- *  d'une composition de l'adversaire sont cachées. */
+ *  d'une composition de l'adversaire sont cachées ; la reconnaissance
+ *  ennemie, vue de sa cible, ne se montre qu'à elle — et seulement si elle
+ *  a survolé quelque chose. */
 function journalEntryVisible(entry) {
+  if (isScoutedEntry(entry) && !scoutedFleetsOf(entry.data).length) return false
   if (!blindView.value) return true
   const data = entry.data ?? {}
   const side = data.counterId != null ? sideOfCounter(counterDefinition(data.counterId))
-    : entry.kind === 'alliedFleet' ? moduleRules.alliedFleetSide : entry.kind === 'duelRecon' ? data.side : null
+    : entry.kind === 'alliedFleet' ? moduleRules.alliedFleetSide
+    : isScoutedEntry(entry) ? enemySideOf(data.side)
+    : entry.kind === 'duelRecon' || entry.kind === 'duelScouted' ? data.side : null
   return !side || !hiddenSide(side)
+}
+/** Couleur du camp d'une entrée du journal (cf. JournalPanel.vue,
+ *  `entryColor`) : celui de son pion, de la reconnaissance ou du contact
+ *  qu'elle rapporte, à défaut du pas où elle a été écrite (tour, phase) ;
+ *  `null` sans camp (déploiement…). */
+function journalEntryColor(entry) {
+  const data = entry.data ?? {}
+  const side = data.counterId != null ? sideOfCounter(counterDefinition(data.counterId))
+    : entry.kind === 'alliedFleet' ? moduleRules.alliedFleetSide
+    : entry.kind === 'duelScouted' ? data.by
+    : entry.kind === 'duelRecon' || entry.kind === 'contact' ? data.side
+    : entry.kind === 'gameover' ? data.loser
+    : Number.isInteger(data.step) ? sideOfStep(trackConfig, data.step, turnTrackerRef.value?.rollOrders) : null
+  return side && props.module.sides?.[side] ? sideColor(side) : null
 }
 const shownEliminated = computed(() => eliminatedCounters.value.filter((counter) => !hiddenSide(sideOfCounter(counter))))
 // Trace de chaque task force affichée depuis le tour 1 (cf.
@@ -1388,7 +1449,9 @@ const sideColor = (side) => props.module.turnTrack?.sides?.[side]?.color ?? 'var
 // ["ijn"], "usn": ["usn"]}) — chacun ne liste que les renforts des factions
 // de son camp. Repli sur un onglet unique si le module n'a pas encore ce
 // champ. Plus un onglet fixe "Unités éliminées", commun à tous les camps
-// (regroupé par nationalité à l'intérieur).
+// (regroupé par nationalité à l'intérieur) — sauf à deux joueurs (`duel`),
+// qui n'ont ni combat ni tasse de recherche à suivre : ni lui ni celui de la
+// tasse.
 // Libellé de l'onglet d'un camp : "Renfort " + le nom du camp tel que la
 // piste de tour l'affiche (`turnTrack.sides[side].label`, ex. "Renfort
 // américains") — la clé brute du camp à défaut.
@@ -1416,11 +1479,14 @@ const sidePanelTabs = computed(() => {
   // Tasse de recherche du module (cf. SearchBagPanel.vue), s'il en a une :
   // toujours là, avec les chits retirés du jeu ; ce qui reste dans la
   // tasse est caché aux joueurs, montré en mode debug seulement.
-  const searchBag = moduleRules.searchBag ? [{ key: 'searchBag', label: t('tabs.searchBag') }] : []
-  return [...base, ...searchBag,
-    // Unités éliminées : #e3e0db, tiré du papier et de l'encre du thème.
-    { key: 'eliminated', label: t('tabs.eliminated'), tone: 'color-mix(in srgb, var(--c-paper) 92%, var(--c-ink))', lightTone: true },
-    { key: 'journal', label: t('tabs.journal'), tone: 'var(--c-gold)', lightTone: true }]
+  const searchBag = moduleRules.searchBag && !props.duel ? [{ key: 'searchBag', label: t('tabs.searchBag') }] : []
+  // Unités éliminées : #e3e0db, tiré du papier et de l'encre du thème. À deux
+  // joueurs, sans lui, le journal en prend la teinte : un fond neutre pour
+  // les couleurs des camps de ses entrées (cf. `journalEntryColor`).
+  const grey = 'color-mix(in srgb, var(--c-paper) 92%, var(--c-ink))'
+  const eliminated = props.duel ? [] : [{ key: 'eliminated', label: t('tabs.eliminated'), tone: grey, lightTone: true }]
+  return [...base, ...searchBag, ...eliminated,
+    { key: 'journal', label: t('tabs.journal'), tone: props.duel ? grey : 'var(--c-gold)', lightTone: true }]
 })
 function reinforcementsForTab(key) {
   const sides = props.module.sides
@@ -2748,10 +2814,13 @@ const isScouted = (counter) => duelScoutedIds.value.has(String(counter.id))
 // Pas de la piste où le joueur a refermé le panneau ("Continuer"), sa
 // reconnaissance faite — ou impossible, sans porte-avions.
 const duelReconClosed = ref(null)
+// Pas de la piste où le joueur a renoncé à sa reconnaissance ("Annuler les
+// vols", cf. `askCancelFlights`) : plus d'hex de reco à désigner.
+const duelReconDeclined = ref(null)
 const currentStepNow = () => turnTrackerRef.value?.currentStep ?? null
 /** Phase de reconnaissance du joueur devant l'écran ? */
 const duelReconActive = computed(() => !!duelRecon && !handoverSide.value && !replayLocked.value && isLocalTurn.value
-  && reconPhaseOf(turnInfo.value.activeSideKey))
+  && reconPhaseOf(turnInfo.value.activeSideKey) && duelReconDeclined.value !== currentStepNow())
 const duelReconDone = computed(() => duelReconLaunched.value.has(currentStepNow()))
 // En ligne : pas de la piste où le décollage attend la réponse du serveur
 // (cf. `launchDuelRecon`, `reconRefused`).
@@ -2853,16 +2922,58 @@ function launchDuelRecon() {
     return
   }
   const side = turnInfo.value.activeSideKey
-  const enemySide = Object.keys(props.module.sides ?? {}).find((key) => key !== side)
+  const enemySide = enemySideOf(side)
   const enemies = counters.value.filter((counter) => isDuelPiece(counter) && sideOfCounter(counter) !== side
     && !eliminatedIds.value.has(String(counter.id)))
     .map((counter) => ({ id: counter.id, col: counter.col, row: counter.row, faction: counter.faction,
       role: counter.role ?? counterDefinition(counter.id)?.role }))
   const zones = resolveRecon({ centers, enemies, enemyFaction: props.module.sides?.[enemySide]?.[0] ?? enemySide, onMap: hexOnMap })
-  const recon = { side, step, turn: turnInfo.value.turn, zones, track: TRACK_VERSION }
+  // Hex des task forces survolées, comme le serveur les donne à la cible en
+  // ligne (cf. server/src/duel.js::recon).
+  const fleets = scoutedFleetsOf({ zones })
+  const hexes = Object.fromEntries(fleets.map((id) => {
+    const enemy = enemies.find((candidate) => String(candidate.id) === String(id))
+    return [id, enemy ? hexId(enemy.col + 1, enemy.row) : null]
+  }))
+  const recon = { side, step, turn: turnInfo.value.turn, zones, hexes, track: TRACK_VERSION }
   applyDuelRecon(recon)
   log('duelRecon', duelReconText(recon), recon)
+  // Sur cet écran, l'entrée du chercheur est cachée à sa cible (cf.
+  // `journalEntryVisible`) : la cible a la sienne, ses task forces survolées
+  // et leurs hex.
+  if (fleets.length) {
+    const scouted = { side: enemySide, by: side, step, turn: recon.turn, fleets, hexes }
+    log('duelScouted', scoutedText(scouted), scouted)
+  }
 }
+// Moins d'hex de reco que le maximum (`duelReconMax`) : décoller, ou renoncer
+// à tous les vols, se confirme d'abord — `{ title, message, confirmLabel,
+// action }`, ou `null` (modale fermée).
+const reconConfirm = ref(null)
+/** "Décollage" : tout de suite si le joueur a désigné le maximum d'hex de
+ *  reco, sinon après confirmation. */
+function askLaunchDuelRecon() {
+  const n = duelReconCenters.value.length
+  if (n >= duelReconMax.value) return launchDuelRecon()
+  reconConfirm.value = { title: t('duelRecon.launchShortTitle'), message: t('duelRecon.launchShort', { n, max: duelReconMax.value }),
+    confirmLabel: t('duelRecon.launch'), action: launchDuelRecon }
+}
+/** "Annuler les vols" : le joueur renonce à sa reconnaissance de la phase,
+ *  après confirmation — ses hex de reco désignés sont oubliés. */
+function askCancelFlights() {
+  reconConfirm.value = { title: t('duelRecon.cancelTitle'), message: t('duelRecon.cancelText', { max: duelReconMax.value }, duelReconMax.value),
+    confirmLabel: t('duelRecon.cancelConfirm'), action: () => {
+      const step = currentStepNow()
+      duelReconPlan.value = { step, centers: [], found: 0 }
+      duelReconDeclined.value = step
+    } }
+}
+function confirmRecon() {
+  const action = reconConfirm.value?.action
+  reconConfirm.value = null
+  action?.()
+}
+
 /** En ligne : le serveur a refusé le décollage (cf. RoomLobby.vue) — le
  *  joueur peut le relancer. */
 function reconRefused() {
@@ -3848,6 +3959,10 @@ function applyRemoteEntry(entry) {
 function withText(entry) {
   if (entry.text || !entry.data) return entry
   if (entry.kind === 'contact') return { ...entry, text: contactTexts(entry.data).log }
+  if (isScoutedEntry(entry)) {
+    const fleets = scoutedFleetsOf(entry.data)
+    return fleets.length ? { ...entry, text: scoutedText({ by: entry.data.side, fleets, hexes: entry.data.hexes }) } : entry
+  }
   if (entry.kind === 'duelRecon' && entry.data.zones?.some((zone) => zone.col != null)) return { ...entry, text: duelReconText(entry.data) }
   return entry
 }
@@ -4476,7 +4591,7 @@ function onMapDragEnd() {
         <SearchBagPanel v-else-if="tab.key === 'searchBag'" :bag="moduleRules.searchBag.value"
           :full="moduleRules.searchBagFull ?? {}" :looks="moduleRules.searchResults ?? {}" :removed="removedSearchChits" :debug="debug" />
         <JournalPanel v-else-if="tab.key === 'journal'" ref="journalRef" :module-id="moduleId || module.name"
-          :turn="turnInfo.turn" :settings="settings" :shared="online" :debug="debug" :entry-visible="journalEntryVisible" :debug-note="journalDebugNote" @loaded="onJournalLoaded"
+          :turn="turnInfo.turn" :settings="settings" :shared="online" :debug="debug" :entry-visible="journalEntryVisible" :entry-color="journalEntryColor" :debug-note="journalDebugNote" @loaded="onJournalLoaded"
           @settings-mismatch="(settings) => emit('restart-with', settings)" />
         <ReinforcementsPanel v-else :reinforcements="reinforcementsForTab(tab.key)"
           :selected-id="selectedReinforcementId" :current-turn="panelTurn" :draggable="draggable || phase === PHASE_SETUP"
@@ -4512,11 +4627,22 @@ function onMapDragEnd() {
       <template v-else>
         <p>{{ $t('duelRecon.hint', { n: duelReconQuota, range: duelRecon.range }) }}</p>
         <p class="duel-recon-count">{{ $t('duelRecon.count', { n: duelReconCenters.length, max: duelReconMax }) }}</p>
-        <button type="button" class="naval-org-btn" :disabled="!duelReconCenters.length || duelReconWaiting" @click="launchDuelRecon">
-          {{ duelReconWaiting ? $t('duelRecon.waiting') : $t('duelRecon.launch') }}
-        </button>
+        <div class="duel-recon-actions">
+          <button type="button" class="naval-org-btn naval-org-btn-secondary" :disabled="duelReconWaiting" @click="askCancelFlights">
+            {{ $t('duelRecon.cancel') }}
+          </button>
+          <button type="button" class="naval-org-btn" :disabled="!duelReconCenters.length || duelReconWaiting" @click="askLaunchDuelRecon">
+            {{ duelReconWaiting ? $t('duelRecon.waiting') : $t('duelRecon.launch') }}
+          </button>
+        </div>
       </template>
     </div>
+    <!-- Reconnaissance à deux : moins d'hex de reco que le maximum (cf.
+         `askLaunchDuelRecon`, `askCancelFlights`). -->
+    <PhaseBlockedModal v-if="reconConfirm" :title="reconConfirm.title" :confirm-label="reconConfirm.confirmLabel"
+      @close="reconConfirm = null" @confirm="confirmRecon">
+      {{ reconConfirm.message }}
+    </PhaseBlockedModal>
     <NavalCombatModal v-if="navalView" :key="navalView.battle.key" :title="navalView.title" :battle="navalView.battle"
       :initiative="navalView.initiative" :engine-side="moduleRules.autoMoveSide" :side-labels="navalSideLabels"
       :fleet-names="navalView.fleetNames" :damages="moduleRules.shipDamages"
@@ -4569,6 +4695,24 @@ function onMapDragEnd() {
           <h2 id="handover-title">{{ $t('duel.handoverTitle', { side: sideLabel(handoverSide) }) }}</h2>
           <p class="handover-text">{{ $t('duel.handoverText', { side: sideLabel(handoverSide) }) }}</p>
           <button type="button" class="handover-button" @click="takeOverScreen">{{ $t('duel.handoverButton') }}</button>
+        </div>
+      </div>
+    </Teleport>
+    <!-- En ligne : la main revient à ce joueur (cf. `yourTurn`) — même carte
+         que l'écran de passage, sur un fond qui laisse voir la partie. -->
+    <Teleport to="body">
+      <div v-if="yourTurn && !gameEnd" class="handover your-turn" role="dialog" aria-modal="true" aria-labelledby="your-turn-title"
+        :style="{ '--side': sideColor(localSide) }" @keydown.esc="yourTurn = null">
+        <div class="handover-card">
+          <p class="handover-when">
+            {{ phase === PHASE_SETUP ? $t('phases.setup') : $t('duel.handoverTurn', { turn: turnInfo.turn, phase: phaseName(phase) }) }}
+          </p>
+          <h2 id="your-turn-title">{{ $t('online.yourTurnTitle') }}</h2>
+          <p class="handover-text">{{ $t('online.yourTurnText', { side: sideLabel(localSide) }) }}</p>
+          <ul v-if="yourTurn.lines.length" class="your-turn-lines">
+            <li v-for="(line, index) in yourTurn.lines" :key="index">{{ line }}</li>
+          </ul>
+          <button ref="yourTurnButton" type="button" class="handover-button" @click="yourTurn = null">{{ $t('online.yourTurnButton') }}</button>
         </div>
       </div>
     </Teleport>
@@ -4995,6 +5139,41 @@ polygon.hex.entry:hover {
   outline: 2px solid var(--c-panel-text);
   outline-offset: 3px;
 }
+.your-turn {
+  background: color-mix(in srgb, var(--c-ink) 30%, transparent);
+  animation: your-turn-fade 180ms var(--ease-out);
+}
+.your-turn .handover-card {
+  box-shadow: 0 18px 40px -16px color-mix(in srgb, var(--c-ink) 55%, transparent);
+  animation: your-turn-rise 240ms var(--ease-out);
+}
+.your-turn-lines {
+  margin: -8px 0 24px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--side);
+  border-radius: var(--radius-8);
+  background: color-mix(in srgb, var(--side) 8%, var(--c-white));
+  list-style: none;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  text-align: left;
+  color: var(--c-brand-ink);
+}
+.your-turn-lines li + li {
+  margin-top: 6px;
+}
+@keyframes your-turn-fade {
+  from { opacity: 0; }
+}
+@keyframes your-turn-rise {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .your-turn,
+  .your-turn .handover-card {
+    animation: none;
+  }
+}
 
 .online-wait {
   position: fixed;
@@ -5092,6 +5271,24 @@ polygon.hex.entry:hover {
 }
 .naval-org-btn:not(:disabled):active {
   transform: scale(0.97);
+}
+.duel-recon-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.duel-recon-actions .naval-org-btn {
+  margin-left: 0;
+}
+.naval-org-btn-secondary {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--side) 60%, transparent);
+  color: var(--c-brand-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .naval-org-btn-secondary:not(:disabled):hover {
+    background: color-mix(in srgb, var(--side) 12%, transparent);
+  }
 }
 @keyframes recon-pulse {
   from { fill-opacity: 0.35; }

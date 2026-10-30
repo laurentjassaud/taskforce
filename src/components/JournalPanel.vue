@@ -39,6 +39,9 @@ const props = defineProps({
   // entrées de l'adversaire cachées (cf. HexMap.vue::journalEntryVisible).
   // Elles restent enregistrées.
   entryVisible: { type: Function, default: null },
+  // Couleur du camp d'une entrée (`entrée -> couleur CSS | null`), qui la
+  // borde et la teinte (cf. HexMap.vue::journalEntryColor).
+  entryColor: { type: Function, default: null },
   // Complément d'une entrée montré en mode debug seulement (`entrée ->
   // texte | null`), ex. chits tirés par une reconnaissance à deux joueurs
   // (cf. HexMap.vue::journalDebugNote).
@@ -364,7 +367,8 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
     </div>
 
     <p v-if="!entries.length" class="jn-empty">{{ t('journal.empty') }}</p>
-    <div v-for="entry in displayEntries" :key="entry.id" class="jn-row" :class="'jn-' + entry.kind">
+    <div v-for="entry in displayEntries" :key="entry.id" class="jn-row" :class="['jn-' + entry.kind, { 'jn-sided': entryColor?.(entry) }]"
+      :style="entryColor?.(entry) ? { '--jn-side': entryColor(entry) } : null">
       <span class="jn-t">{{ entry.t }}</span>
       <span class="jn-txt">{{ entry.text }}<template v-if="debug && debugNote?.(entry)"><br /><span class="jn-debug">{{ debugNote(entry) }}</span></template></span>
     </div>
@@ -468,6 +472,7 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
   padding: 6px 10px;
   border-radius: var(--radius-4);
   background: color-mix(in srgb, currentColor 10%, transparent);
+  border-left: 4px solid transparent;
   line-height: 1.35;
 }
 
@@ -479,6 +484,16 @@ defineExpose({ log, clear, remove, revealEntry, resumePending, getEntry, appendR
 .jn-row.jn-phase {
   background: color-mix(in srgb, currentColor 5%, transparent);
   font-style: italic;
+}
+
+/* Camp de l'entrée (cf. prop `entryColor`) : liseré et teinte de sa couleur
+   — sauf les fonds propres à un type d'entrée, plus bas. */
+.jn-row.jn-sided {
+  border-left-color: var(--jn-side);
+  background: color-mix(in srgb, var(--jn-side) 12%, transparent);
+}
+.jn-row.jn-turn.jn-sided {
+  background: color-mix(in srgb, var(--jn-side) 24%, transparent);
 }
 
 .jn-row.jn-eliminate {

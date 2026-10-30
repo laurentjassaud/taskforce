@@ -134,9 +134,16 @@ export function createDuelReferee(module, scenarioId) {
       })
       game.duel.reconSteps.add(step)
       const turn = turnAt(step)
+      // La cible connaît ses task forces : elle apprend lesquelles ont été
+      // survolées, et l'hex où elles l'ont été (`hexes`, pour son journal).
+      const fleets = [...new Set(zones.flatMap((zone) => zone.fleets))]
+      const hexes = Object.fromEntries(fleets.map((id) => {
+        const at = positionOf(game, id)
+        return [id, at ? hexId(at.col + 1, at.row) : null]
+      }))
       return {
         searcher: { side, step, turn, track: TRACK_VERSION, zones: zones.map(({ hex, col, row, sightings }) => ({ hex, col, row, sightings })) },
-        target: { side, step, turn, track: TRACK_VERSION, zones: [{ fleets: [...new Set(zones.flatMap((zone) => zone.fleets))] }] },
+        target: { side, step, turn, track: TRACK_VERSION, zones: [{ fleets }], hexes },
         targetSide,
       }
     },
